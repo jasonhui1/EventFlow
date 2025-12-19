@@ -1,0 +1,1103 @@
+/* ========================================
+   Event Flow Writer - Pastel Theme
+   ======================================== */
+
+:root {
+  /* Pastel Color Palette */
+  --pastel-pink: #FFB5C5;
+  --pastel-purple: #C9B5FF;
+  --pastel-blue: #B5D4FF;
+  --pastel-mint: #B5FFD9;
+  --pastel-yellow: #FFF5B5;
+  --pastel-peach: #FFCEB5;
+  --pastel-lavender: #E5D4FF;
+  --pastel-aqua: #B5F5FF;
+  
+  /* Dark theme base */
+  --bg-primary: #1a1a2e;
+  --bg-secondary: #16213e;
+  --bg-tertiary: #0f0f1e;
+  --bg-card: rgba(255, 255, 255, 0.05);
+  --bg-card-hover: rgba(255, 255, 255, 0.08);
+  
+  /* Text colors */
+  --text-primary: #ffffff;
+  --text-secondary: rgba(255, 255, 255, 0.7);
+  --text-muted: rgba(255, 255, 255, 0.4);
+  
+  /* Accent gradients */
+  --gradient-pink-purple: linear-gradient(135deg, var(--pastel-pink), var(--pastel-purple));
+  --gradient-blue-mint: linear-gradient(135deg, var(--pastel-blue), var(--pastel-mint));
+  --gradient-peach-yellow: linear-gradient(135deg, var(--pastel-peach), var(--pastel-yellow));
+  
+  /* Shadows */
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
+  --shadow-glow: 0 0 20px rgba(201, 181, 255, 0.3);
+  
+  /* Border radius */
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  
+  /* Transitions */
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.25s ease;
+  --transition-slow: 0.4s ease;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  overflow: hidden;
+}
+
+#root {
+  width: 100vw;
+  height: 100vh;
+}
+
+/* ========================================
+   Main Layout
+   ======================================== */
+
+.app-container {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  background: var(--bg-primary);
+}
+
+/* ========================================
+   Sidebar
+   ======================================== */
+
+.sidebar {
+  width: 280px;
+  height: 100%;
+  background: var(--bg-secondary);
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sidebar-header {
+  padding: 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.sidebar-title {
+  font-size: 18px;
+  font-weight: 600;
+  background: var(--gradient-pink-purple);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 4px;
+}
+
+.sidebar-subtitle {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.sidebar-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+.sidebar-section {
+  margin-bottom: 24px;
+}
+
+.sidebar-section-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+  padding-left: 4px;
+}
+
+/* ========================================
+   Node Palette (Draggable nodes)
+   ======================================== */
+
+.node-palette {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.palette-node {
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  cursor: grab;
+  transition: all var(--transition-normal);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.palette-node:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--pastel-purple);
+  transform: translateX(4px);
+  box-shadow: var(--shadow-glow);
+}
+
+.palette-node:active {
+  cursor: grabbing;
+}
+
+.palette-node-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+}
+
+.palette-node-icon.event {
+  background: var(--gradient-pink-purple);
+}
+
+.palette-node-icon.group {
+  background: var(--gradient-blue-mint);
+}
+
+.palette-node-icon.branch {
+  background: var(--gradient-peach-yellow);
+}
+
+.palette-node-info {
+  flex: 1;
+}
+
+.palette-node-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.palette-node-desc {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* ========================================
+   Event Library
+   ======================================== */
+
+.event-library {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.event-item {
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.event-item:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--pastel-mint);
+}
+
+.event-item.active {
+  background: rgba(181, 255, 217, 0.1);
+  border-color: var(--pastel-mint);
+}
+
+.event-item-name {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.event-item-count {
+  font-size: 11px;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.1);
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.add-event-btn {
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: 1px dashed rgba(255, 255, 255, 0.2);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.add-event-btn:hover {
+  background: var(--bg-card);
+  border-color: var(--pastel-purple);
+  color: var(--pastel-purple);
+}
+
+/* ========================================
+   Main Canvas Area
+   ======================================== */
+
+.canvas-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.canvas-header {
+  padding: 16px 24px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.canvas-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.canvas-title h2 {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.canvas-title input {
+  background: transparent;
+  border: none;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
+}
+
+.canvas-title input:hover,
+.canvas-title input:focus {
+  background: var(--bg-card);
+  outline: none;
+}
+
+.canvas-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.action-btn {
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  font-size: 13px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.action-btn:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--pastel-purple);
+  color: var(--text-primary);
+}
+
+.action-btn.primary {
+  background: var(--gradient-pink-purple);
+  border: none;
+  color: #1a1a2e;
+}
+
+.action-btn.primary:hover {
+  box-shadow: var(--shadow-glow);
+  transform: translateY(-1px);
+}
+
+.react-flow-wrapper {
+  flex: 1;
+  background: var(--bg-tertiary);
+}
+
+/* ========================================
+   Right Panel (Properties)
+   ======================================== */
+
+.properties-panel {
+  width: 320px;
+  height: 100%;
+  background: var(--bg-secondary);
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.properties-header {
+  padding: 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.properties-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.properties-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.property-group {
+  margin-bottom: 24px;
+}
+
+.property-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+  display: block;
+}
+
+.property-input {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+  font-size: 13px;
+  transition: all var(--transition-fast);
+}
+
+.property-input:focus {
+  outline: none;
+  border-color: var(--pastel-purple);
+  box-shadow: 0 0 0 3px rgba(201, 181, 255, 0.2);
+}
+
+.property-textarea {
+  min-height: 100px;
+  resize: vertical;
+  font-family: inherit;
+}
+
+/* Probability Slider */
+.probability-slider-container {
+  padding: 12px;
+  background: var(--bg-card);
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.probability-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.probability-label {
+  font-size: 11px;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.probability-value {
+  font-weight: 600;
+  color: var(--pastel-purple);
+}
+
+.probability-slider {
+  width: 100%;
+  height: 6px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: linear-gradient(90deg, var(--pastel-pink) 0%, var(--pastel-purple) 100%);
+  border-radius: 3px;
+  outline: none;
+}
+
+.probability-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  background: var(--text-primary);
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: var(--shadow-md);
+  transition: transform var(--transition-fast);
+}
+
+.probability-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+/* ========================================
+   Custom React Flow Nodes
+   ======================================== */
+
+.event-node {
+  min-width: 200px;
+  background: var(--bg-card);
+  backdrop-filter: blur(10px);
+  border-radius: var(--radius-md);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  box-shadow: var(--shadow-md);
+  transition: all var(--transition-normal);
+}
+
+.event-node:hover {
+  box-shadow: var(--shadow-lg), var(--shadow-glow);
+  border-color: var(--pastel-purple);
+}
+
+.event-node.selected {
+  border-color: var(--pastel-purple);
+  box-shadow: 0 0 0 2px rgba(201, 181, 255, 0.3), var(--shadow-lg);
+}
+
+.event-node-header {
+  padding: 12px 16px;
+  background: var(--gradient-pink-purple);
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.event-node-icon {
+  font-size: 14px;
+}
+
+.event-node-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1a1a2e;
+  flex: 1;
+}
+
+.event-node-body {
+  padding: 12px 16px;
+}
+
+.event-node-content {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin-bottom: 12px;
+}
+
+.event-node-handles {
+  display: flex;
+  justify-content: space-between;
+}
+
+.handle-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.handle-label {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.handle-label.input {
+  text-align: left;
+}
+
+.handle-label.output {
+  text-align: right;
+  justify-content: flex-end;
+}
+
+/* Group Node */
+.group-node {
+  min-width: 240px;
+  background: rgba(181, 212, 255, 0.08);
+  backdrop-filter: blur(10px);
+  border-radius: var(--radius-md);
+  border: 2px solid rgba(181, 212, 255, 0.2);
+  box-shadow: var(--shadow-md);
+}
+
+.group-node-header {
+  padding: 12px 16px;
+  background: var(--gradient-blue-mint);
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+}
+
+/* Branch Node */
+.branch-node {
+  min-width: 180px;
+  background: rgba(255, 206, 181, 0.08);
+  backdrop-filter: blur(10px);
+  border-radius: var(--radius-md);
+  border: 2px solid rgba(255, 206, 181, 0.2);
+  box-shadow: var(--shadow-md);
+}
+
+.branch-node-header {
+  padding: 12px 16px;
+  background: var(--gradient-peach-yellow);
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+}
+
+.branch-outputs {
+  padding: 8px 16px 12px;
+}
+
+.branch-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.branch-option:last-child {
+  border-bottom: none;
+}
+
+.branch-option-name {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.branch-option-weight {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--pastel-peach);
+  background: rgba(255, 206, 181, 0.15);
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+/* Reference Node (for reusable events) */
+.reference-node {
+  min-width: 180px;
+  background: rgba(229, 212, 255, 0.08);
+  backdrop-filter: blur(10px);
+  border-radius: var(--radius-md);
+  border: 2px dashed rgba(229, 212, 255, 0.3);
+  box-shadow: var(--shadow-md);
+}
+
+.reference-node-header {
+  padding: 12px 16px;
+  background: linear-gradient(135deg, var(--pastel-lavender), var(--pastel-aqua));
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+}
+
+/* ========================================
+   React Flow Handles
+   ======================================== */
+
+.react-flow__handle {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--pastel-purple);
+  border: 2px solid var(--bg-secondary);
+  transition: all var(--transition-fast);
+}
+
+.react-flow__handle:hover {
+  transform: scale(1.3);
+  box-shadow: 0 0 10px var(--pastel-purple);
+}
+
+.react-flow__handle-left {
+  left: -6px;
+}
+
+.react-flow__handle-right {
+  right: -6px;
+}
+
+.react-flow__handle-top {
+  top: -6px;
+}
+
+.react-flow__handle-bottom {
+  bottom: -6px;
+}
+
+/* Multiple handles stacked */
+.handle-stack {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.handle-stack.left {
+  left: -6px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.handle-stack.right {
+  right: -6px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+/* ========================================
+   React Flow Edges
+   ======================================== */
+
+.react-flow__edge-path {
+  stroke: var(--pastel-purple);
+  stroke-width: 2;
+  transition: all var(--transition-fast);
+}
+
+.react-flow__edge:hover .react-flow__edge-path {
+  stroke-width: 3;
+  filter: drop-shadow(0 0 6px var(--pastel-purple));
+}
+
+.react-flow__edge.selected .react-flow__edge-path {
+  stroke: var(--pastel-pink);
+  stroke-width: 3;
+}
+
+/* Edge labels (probability) */
+.edge-label {
+  background: var(--bg-secondary);
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--pastel-purple);
+  border: 1px solid rgba(201, 181, 255, 0.3);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ========================================
+   React Flow Controls & Background
+   ======================================== */
+
+.react-flow__background {
+  background-color: var(--bg-tertiary);
+}
+
+.react-flow__controls {
+  box-shadow: var(--shadow-md);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.react-flow__controls-button {
+  background: var(--bg-secondary);
+  border: none;
+  color: var(--text-secondary);
+  width: 32px;
+  height: 32px;
+}
+
+.react-flow__controls-button:hover {
+  background: var(--bg-card-hover);
+  color: var(--text-primary);
+}
+
+.react-flow__minimap {
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+}
+
+/* ========================================
+   Context Menu
+   ======================================== */
+
+.context-menu {
+  position: fixed;
+  min-width: 200px;
+  background: var(--bg-secondary);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  padding: 8px;
+  z-index: 1000;
+  animation: contextMenuFadeIn 0.15s ease;
+}
+
+@keyframes contextMenuFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.context-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.context-menu-item:hover {
+  background: var(--bg-card-hover);
+  color: var(--text-primary);
+}
+
+.context-menu-item-icon {
+  font-size: 14px;
+  width: 20px;
+  text-align: center;
+}
+
+.context-menu-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.1);
+  margin: 8px 0;
+}
+
+.context-menu-section {
+  padding: 4px 12px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+}
+
+/* Autocomplete in context menu */
+.context-menu-search {
+  margin-bottom: 8px;
+}
+
+.context-menu-search input {
+  width: 100%;
+  padding: 8px 12px;
+  background: var(--bg-card);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
+.context-menu-search input:focus {
+  outline: none;
+  border-color: var(--pastel-purple);
+}
+
+.context-menu-events {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+/* ========================================
+   Fixed Prompt Panel
+   ======================================== */
+
+.fixed-prompt-panel {
+  background: var(--bg-card);
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 16px;
+}
+
+.fixed-prompt-header {
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.fixed-prompt-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.fixed-prompt-toggle {
+  width: 32px;
+  height: 18px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 9px;
+  cursor: pointer;
+  position: relative;
+  transition: all var(--transition-fast);
+}
+
+.fixed-prompt-toggle.active {
+  background: var(--pastel-purple);
+}
+
+.fixed-prompt-toggle::after {
+  content: '';
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  background: white;
+  border-radius: 50%;
+  top: 2px;
+  left: 2px;
+  transition: all var(--transition-fast);
+}
+
+.fixed-prompt-toggle.active::after {
+  left: 16px;
+}
+
+.fixed-prompt-content {
+  padding: 12px 16px;
+}
+
+.fixed-prompt-content textarea {
+  width: 100%;
+  min-height: 80px;
+  background: var(--bg-tertiary);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-family: 'JetBrains Mono', monospace;
+  resize: vertical;
+}
+
+.fixed-prompt-content textarea:focus {
+  outline: none;
+  border-color: var(--pastel-purple);
+}
+
+/* ========================================
+   Modal
+   ======================================== */
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.modal {
+  background: var(--bg-secondary);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  min-width: 400px;
+  max-width: 600px;
+  max-height: 80vh;
+  overflow: hidden;
+  animation: modalSlideIn 0.25s ease;
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.modal-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.modal-title {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.modal-close {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  transition: all var(--transition-fast);
+}
+
+.modal-close:hover {
+  background: var(--bg-card);
+  color: var(--text-primary);
+}
+
+.modal-body {
+  padding: 24px;
+  overflow-y: auto;
+}
+
+.modal-footer {
+  padding: 16px 24px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+/* ========================================
+   Animations
+   ======================================== */
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+.animate-pulse {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+/* ========================================
+   Scrollbar
+   ======================================== */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-tertiary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* ========================================
+   Empty State
+   ======================================== */
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 40px;
+}
+
+.empty-state-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.empty-state-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.empty-state-desc {
+  font-size: 13px;
+  max-width: 300px;
+  line-height: 1.6;
+}
