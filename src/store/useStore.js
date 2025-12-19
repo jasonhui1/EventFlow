@@ -62,13 +62,38 @@ const createReferenceNode = (position = { x: 0, y: 0 }, data = {}) => ({
     },
 });
 
+const createStartNode = (position = { x: 0, y: 0 }, data = {}) => ({
+    id: uuidv4(),
+    type: 'startNode',
+    position,
+    data: {
+        label: data.label || 'Start Flow',
+        outputs: [{ id: 'start_output', label: 'Start' }],
+        ...data,
+    },
+});
+
+const createEndNode = (position = { x: 0, y: 0 }, data = {}) => ({
+    id: uuidv4(),
+    type: 'endNode',
+    position,
+    data: {
+        label: data.label || 'End Flow',
+        inputs: [{ id: 'end_input', label: 'End' }],
+        ...data,
+    },
+});
+
 // Initial demo event
 const createInitialEvent = () => ({
     id: uuidv4(),
     name: 'Date Event',
     description: 'A romantic date sequence',
     fixedPrompt: 'casual outfit, sunny day, happy expression',
-    nodes: [],
+    nodes: [
+        createStartNode({ x: 50, y: 150 }),
+        createEndNode({ x: 600, y: 150 })
+    ],
     edges: [],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
@@ -221,7 +246,10 @@ const useStore = create(
                     name,
                     description: '',
                     fixedPrompt: '',
-                    nodes: [],
+                    nodes: [
+                        createStartNode({ x: 50, y: 150 }),
+                        createEndNode({ x: 600, y: 150 })
+                    ],
                     edges: [],
                     createdAt: new Date().toISOString(),
                     updatedAt: new Date().toISOString(),
@@ -229,7 +257,7 @@ const useStore = create(
                 set((state) => ({
                     events: [...state.events, newEvent],
                     currentEventId: newEvent.id,
-                    nodes: [],
+                    nodes: newEvent.nodes,
                     edges: [],
                 }));
                 return newEvent.id;
@@ -317,6 +345,12 @@ const useStore = create(
                         break;
                     case 'referenceNode':
                         newNode = createReferenceNode(position);
+                        break;
+                    case 'startNode':
+                        newNode = createStartNode(position);
+                        break;
+                    case 'endNode':
+                        newNode = createEndNode(position);
                         break;
                     default:
                         newNode = createEventNode(position);
@@ -607,22 +641,25 @@ const useStore = create(
             // ========================================
 
             // Get all parent nodes (nodes that connect TO this node)
-            getParentNodes: (nodeId) => {
+            getParentNodes: (nodeId, context = null) => {
                 const state = get();
-                const parentEdges = state.edges.filter((edge) => edge.target === nodeId);
+                const edges = context?.edges || state.edges;
+                const nodes = context?.nodes || state.nodes;
+
+                const parentEdges = edges.filter((edge) => edge.target === nodeId);
                 return parentEdges.map((edge) => {
-                    const parentNode = state.nodes.find((n) => n.id === edge.source);
+                    const parentNode = nodes.find((n) => n.id === edge.source);
                     return parentNode ? { node: parentNode, edgeId: edge.id, sourceHandle: edge.sourceHandle } : null;
                 }).filter(Boolean);
             },
 
             // Get ALL upstream nodes recursively (for UI display)
-            getAllUpstreamNodes: (nodeId, visited = new Set(), depth = 0) => {
+            getAllUpstreamNodes: (nodeId, visited = new Set(), depth = 0, context = null) => {
                 const state = get();
                 if (visited.has(nodeId)) return [];
                 visited.add(nodeId);
 
-                const parentNodes = get().getParentNodes(nodeId);
+                const parentNodes = get().getParentNodes(nodeId, context);
                 let allUpstream = [];
 
                 for (const { node: parentNode } of parentNodes) {
@@ -637,7 +674,7 @@ const useStore = create(
                     });
 
                     // Recursively get grandparents
-                    const grandparents = get().getAllUpstreamNodes(parentNode.id, visited, depth + 1);
+                    const grandparents = get().getAllUpstreamNodes(parentNode.id, visited, depth + 1, context);
                     allUpstream = [...allUpstream, ...grandparents];
                 }
 
@@ -647,9 +684,11 @@ const useStore = create(
             // Get all inherited prompts from parent nodes (recursive)
             // disabledSources is the list from the ORIGINAL node we're computing for
             getInheritedPrompts: (nodeId, visited = new Set(), options = {}) => {
-                const { originalDisabledSources = null, selectSinglePath = false, randomize = false } = options;
+                const { originalDisabledSources = null, selectSinglePath = false, randomize = false, allowedEdges = null, context = null } = options;
                 const state = get();
-                const node = state.nodes.find((n) => n.id === nodeId);
+                const nodes = context?.nodes || state.nodes;
+
+                const node = nodes.find((n) => n.id === nodeId);
                 if (!node || visited.has(nodeId)) return [];
 
                 visited.add(nodeId);
@@ -660,11 +699,11 @@ const useStore = create(
                     ? originalDisabledSources
                     : (node.data?.disabledInheritedSources || []);
 
-                let parentNodes = get().getParentNodes(nodeId);
+                let parentNodes = get().getParentNodes(nodeId, context);
 
                 // Filter by allowed allowedEdges if provided (for consistent simulation)
-                if (options.allowedEdges) {
-                    parentNodes = parentNodes.filter(({ edgeId }) => options.allowedEdges.has(edgeId));
+                if (allowedEdges) {
+                    parentNodes = parentNodes.filter(({ edgeId }) => allowedEdges.has(edgeId));
                 }
 
                 // If multiple branches exist and we only want one path
@@ -690,6 +729,29 @@ const useStore = create(
 
                     // Skip adding this parent's prompt if it's in the disabled list
                     if (disabledSources.includes(parentNode.id)) continue;
+
+                    // Handle reference nodes: traverse into referenced event's graph
+                    if (parentNode.type === 'referenceNode' && parentNode.data?.referenceId) {
+                        const referencedEvent = state.events.find(e => e.id === parentNode.data.referenceId);
+                        if (referencedEvent && referencedEvent.nodes && referencedEvent.edges) {
+                            // Find the end node of the referenced event to trace back inherited prompts
+                            const refEndNode = referencedEvent.nodes.find(n => n.type === 'endNode');
+                            if (refEndNode) {
+                                // Create a context for the referenced event's graph
+                                const refContext = {
+                                    nodes: referencedEvent.nodes,
+                                    edges: referencedEvent.edges
+                                };
+                                // Get inherited prompts from the referenced event's end node
+                                const refInherited = get().getInheritedPrompts(refEndNode.id, new Set(), {
+                                    ...options,
+                                    context: refContext,
+                                    originalDisabledSources: [], // Don't carry over disabled sources to referenced events
+                                });
+                                inheritedPrompts = [...inheritedPrompts, ...refInherited];
+                            }
+                        }
+                    }
 
                     // Add parent's own inherited prompt if it has one
                     if (parentNode.data?.inheritedPrompt) {
@@ -748,11 +810,16 @@ const useStore = create(
             // Get the fully composed prompt for a node
             getComposedPrompt: (nodeId, options = {}) => {
                 const state = get();
-                const node = state.nodes.find((n) => n.id === nodeId);
+                const context = options.context || null;
+                const nodes = context?.nodes || state.nodes;
+
+                const node = nodes.find((n) => n.id === nodeId);
                 if (!node) return { parts: [], full: '' };
 
+                // Handle Event Fixed Prompt (if context is passed, we might need the event prompt from context too? 
+                // For now, assume top-level event prompt is sufficient or context includes it if needed)
                 const currentEvent = get().getCurrentEvent();
-                const eventFixedPrompt = currentEvent?.fixedPrompt || '';
+                const eventFixedPrompt = options.fixedPrompt || currentEvent?.fixedPrompt || '';
 
                 // NEW: Default to selecting a single path for a clean preview
                 // If allowedEdges is provided, we trust that set and don't force single path selection here
@@ -760,6 +827,7 @@ const useStore = create(
                     selectSinglePath: !options.allowedEdges,
                     randomize: options.randomize || false,
                     allowedEdges: options.allowedEdges,
+                    context: context
                 });
 
                 const localPrompt = node.data?.localPrompt || '';

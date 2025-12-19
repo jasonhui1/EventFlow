@@ -45,6 +45,30 @@ const Sidebar = () => {
                         <div
                             className="palette-node"
                             draggable
+                            onDragStart={(e) => onDragStart(e, 'startNode')}
+                        >
+                            <div className="palette-node-icon" style={{ color: '#B5FFD9' }}>🚀</div>
+                            <div className="palette-node-info">
+                                <div className="palette-node-name">Start Node</div>
+                                <div className="palette-node-desc">Begin flow</div>
+                            </div>
+                        </div>
+
+                        <div
+                            className="palette-node"
+                            draggable
+                            onDragStart={(e) => onDragStart(e, 'endNode')}
+                        >
+                            <div className="palette-node-icon" style={{ color: '#FFB5C5' }}>🏁</div>
+                            <div className="palette-node-info">
+                                <div className="palette-node-name">End Node</div>
+                                <div className="palette-node-desc">End flow</div>
+                            </div>
+                        </div>
+
+                        <div
+                            className="palette-node"
+                            draggable
                             onDragStart={(e) => onDragStart(e, 'eventNode')}
                         >
                             <div className="palette-node-icon event">📌</div>

@@ -18,6 +18,8 @@ import EventNode from './components/nodes/EventNode';
 import GroupNode from './components/nodes/GroupNode';
 import BranchNode from './components/nodes/BranchNode';
 import ReferenceNode from './components/nodes/ReferenceNode';
+import StartNode from './components/nodes/StartNode';
+import EndNode from './components/nodes/EndNode';
 
 // Register custom node types
 const nodeTypes = {
@@ -25,6 +27,8 @@ const nodeTypes = {
     groupNode: GroupNode,
     branchNode: BranchNode,
     referenceNode: ReferenceNode,
+    startNode: StartNode,
+    endNode: EndNode,
 };
 
 import EventSimulationModal from './components/EventSimulationModal';
@@ -458,6 +462,8 @@ function App() {
                         onDrop={onDrop}
                         onDragOver={onDragOver}
                         onPaneContextMenu={onPaneContextMenu}
+                        onNodeContextMenu={(e) => { e.preventDefault(); }}
+                        onEdgeContextMenu={(e) => { e.preventDefault(); }}
                         onNodeClick={onNodeClick}
                         onPaneClick={onPaneClick}
                         onConnectEnd={onConnectEnd}
@@ -498,6 +504,8 @@ function App() {
                                     case 'groupNode': return '#B5D4FF';
                                     case 'branchNode': return '#FFCEB5';
                                     case 'referenceNode': return '#E5D4FF';
+                                    case 'startNode': return '#B5FFD9';
+                                    case 'endNode': return '#FFB5C5';
                                     default: return '#C9B5FF';
                                 }
                             }}
