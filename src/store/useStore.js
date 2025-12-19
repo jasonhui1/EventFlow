@@ -845,6 +845,34 @@ const useStore = create(
                     parts.push({ label: `From: ${item.nodeLabel}`, prompt: item.prompt, type: item.type, nodeId: item.nodeId });
                 });
 
+                // SPECIAL: If this is a reference node, we "simulate" the referenced event by grabbing its flow
+                // This ensures the "carry forward" includes the referenced event's content at this point
+                if (node.type === 'referenceNode' && node.data?.referenceId) {
+                    const refEvent = state.events.find(e => e.id === node.data.referenceId);
+                    if (refEvent && refEvent.nodes) {
+                        const refEndNode = refEvent.nodes.find(n => n.type === 'endNode');
+                        if (refEndNode) {
+                            const refContext = { nodes: refEvent.nodes, edges: refEvent.edges || [] };
+                            // Get prompts trailing to the end of the referenced event
+                            const innerPrompts = get().getInheritedPrompts(refEndNode.id, new Set(), {
+                                selectSinglePath: true,
+                                randomize: options.randomize,
+                                context: refContext,
+                                // Important: We don't pass allowedEdges here as they apply to the parent graph
+                            });
+
+                            innerPrompts.forEach(item => {
+                                parts.push({
+                                    label: `(Ref) ${item.nodeLabel}`,
+                                    prompt: item.prompt,
+                                    type: 'reference-inner',
+                                    nodeId: item.nodeId
+                                });
+                            });
+                        }
+                    }
+                }
+
                 // This node's local prompt
                 if (localPrompt) {
                     parts.push({ label: 'This Event Only', prompt: localPrompt, type: 'local' });

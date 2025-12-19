@@ -9,12 +9,13 @@ const EventSimulationModal = ({ onClose }) => {
     const [seed, setSeed] = useState(0); // Used to trigger refresh
 
     const simulatedResults = useMemo(() => {
-        // 1. Identify roots (nodes with no incoming edges)
-        const allTargetNodeIds = new Set(edges.map(e => e.target));
-        const rootNodes = nodes.filter(n => !allTargetNodeIds.has(n.id));
+        // 1. Identify Start Nodes specifically
+        let startNodes = nodes.filter(n => n.type === 'startNode');
 
-        // Fallback if no independent roots (e.g. all connected in cycle or just one node)
-        let startNodes = rootNodes.length > 0 ? rootNodes : nodes;
+        // If no Start Node, strict simulation means no path to follow
+        if (startNodes.length === 0) {
+            return [];
+        }
 
         // Sort roots by Y to have a deterministic starting order
         startNodes.sort((a, b) => a.position.y - b.position.y);
@@ -31,6 +32,11 @@ const EventSimulationModal = ({ onClose }) => {
             if (visitedNodeIds.has(currentNode.id)) continue;
             visitedNodeIds.add(currentNode.id);
             orderedNodes.push(currentNode);
+
+            // If we hit an End Node, we stop traversing this branch (it absorbs the flow)
+            if (currentNode.type === 'endNode') {
+                continue;
+            }
 
             const outgoingEdges = edges.filter(e => e.source === currentNode.id);
 
@@ -61,11 +67,11 @@ const EventSimulationModal = ({ onClose }) => {
         }
 
         // --- Pass 2: Prompt Generation with Context ---
-        // Now validNodes are those we visited. 
-        // We filter out logic nodes (branches) for display, but keep them in the visited set for context if needed.
+        // Filter out Start, End, and Logic nodes from display
+        const hiddenTypes = ['startNode', 'endNode', 'branchNode'];
 
         return orderedNodes
-            .filter(node => !['branchNode'].includes(node.type))
+            .filter(node => !hiddenTypes.includes(node.type))
             .map(node => {
                 const { full, parts } = getComposedPrompt(node.id, {
                     allowedEdges: visitedEdgeIds, // <--- CRITICAL: Pass the specific edges chosen in Pass 1
@@ -127,8 +133,8 @@ const EventSimulationModal = ({ onClose }) => {
                         alignItems: 'center'
                     }}>
                         <div>
-                            Generated single-path simulation. Branch choices are consistent.<br />
-                            <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)' }}>Logic nodes (e.g., Branches) are hidden from output.</span>
+                            Generated single-path simulation (Start → End).<br />
+                            <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)' }}>Start, End, and Branch nodes are hidden from output.</span>
                         </div>
                         <button
                             className="action-btn"
@@ -183,7 +189,7 @@ const EventSimulationModal = ({ onClose }) => {
 
                     {simulatedResults.length === 0 && (
                         <div style={{ textAlign: 'center', padding: '40px', color: 'rgba(255,255,255,0.3)' }}>
-                            No nodes visited in this simulation path.
+                            No valid path from Start -&gt; End found, or graph is empty (requires Start Node).
                         </div>
                     )}
                 </div>
