@@ -234,11 +234,118 @@ function App() {
         input.click();
     };
 
+    // Track Alt key state
+    const [isAltPressed, setIsAltPressed] = useState(false);
+    const [tempConnection, setTempConnection] = useState(null);
+
+    // Global Alt key listener
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (e.key === 'Alt') setIsAltPressed(true);
+        };
+        const handleKeyUp = (e) => {
+            if (e.key === 'Alt') setIsAltPressed(false);
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        window.addEventListener('keyup', handleKeyUp);
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+            window.removeEventListener('keyup', handleKeyUp);
+        };
+    }, []);
+
+    // Handle Alt+Drag connection
+    const onMouseDownCapture = useCallback((e) => {
+        if (!isAltPressed) return;
+
+        // Check if we clicked on a node
+        const nodeElement = e.target.closest('.react-flow__node');
+        if (!nodeElement) return;
+
+        const nodeId = nodeElement.getAttribute('data-id');
+        if (!nodeId) return;
+
+        // Stop standard React Flow behavior (drag/select)
+        e.stopPropagation();
+        e.preventDefault();
+
+        // Get start position (center of node)
+        const rect = nodeElement.getBoundingClientRect();
+        const startX = rect.left + rect.width / 2;
+        const startY = rect.top + rect.height / 2;
+
+        setTempConnection({
+            sourceId: nodeId,
+            startX,
+            startY,
+            currentX: e.clientX,
+            currentY: e.clientY
+        });
+    }, [isAltPressed]);
+
+    // Handle mouse move for temp connection
+    useEffect(() => {
+        const onMouseMove = (e) => {
+            if (!tempConnection) return;
+            setTempConnection(prev => ({
+                ...prev,
+                currentX: e.clientX,
+                currentY: e.clientY
+            }));
+        };
+
+        const onMouseUp = (e) => {
+            if (!tempConnection) return;
+
+            // Check if dropped on a node
+            const nodeElement = document.elementFromPoint(e.clientX, e.clientY)?.closest('.react-flow__node');
+            if (nodeElement) {
+                const targetId = nodeElement.getAttribute('data-id');
+
+                // Validate connection
+                if (targetId && targetId !== tempConnection.sourceId) {
+                    // Find default handles
+                    const sourceNode = nodes.find(n => n.id === tempConnection.sourceId);
+                    const targetNode = nodes.find(n => n.id === targetId);
+
+                    if (sourceNode && targetNode) {
+                        // Default to first output and first input
+                        const sourceHandle = sourceNode.data?.outputs?.[0]?.id || null;
+                        const targetHandle = targetNode.data?.inputs?.[0]?.id || null;
+
+                        onConnect({
+                            source: tempConnection.sourceId,
+                            sourceHandle: sourceHandle,
+                            target: targetId,
+                            targetHandle: targetHandle
+                        });
+                    }
+                }
+            }
+
+            setTempConnection(null);
+        };
+
+        if (tempConnection) {
+            window.addEventListener('mousemove', onMouseMove);
+            window.addEventListener('mouseup', onMouseUp);
+        }
+
+        return () => {
+            window.removeEventListener('mousemove', onMouseMove);
+            window.removeEventListener('mouseup', onMouseUp);
+        };
+    }, [tempConnection, nodes, onConnect]);
+
     return (
         <div className="app-container">
             <Sidebar />
 
-            <div className="canvas-container">
+            <div
+                className="canvas-container"
+                onMouseDownCapture={onMouseDownCapture}
+            >
                 {/* Header with event info */}
                 <div className="canvas-header">
                     <div className="canvas-title">
@@ -326,6 +433,10 @@ function App() {
                         onPaneClick={onPaneClick}
                         onConnectEnd={onConnectEnd}
                         nodeTypes={nodeTypes}
+
+                        // Disable node dragging when Alt is pressed to allow our custom drag
+                        nodesDraggable={!isAltPressed}
+
                         selectionOnDrag
                         panOnDrag={[1, 2]}
                         selectionMode="partial"
@@ -370,6 +481,32 @@ function App() {
                             color="rgba(255,255,255,0.1)"
                         />
                     </ReactFlow>
+
+                    {/* Temp Connection Line Overlay */}
+                    {tempConnection && (
+                        <svg
+                            style={{
+                                position: 'fixed',
+                                top: 0,
+                                left: 0,
+                                width: '100%',
+                                height: '100%',
+                                pointerEvents: 'none',
+                                zIndex: 9999
+                            }}
+                        >
+                            <line
+                                x1={tempConnection.startX}
+                                y1={tempConnection.startY}
+                                x2={tempConnection.currentX}
+                                y2={tempConnection.currentY}
+                                stroke="#C9B5FF"
+                                strokeWidth="2"
+                                strokeDasharray="5,5"
+                            />
+                            <circle cx={tempConnection.currentX} cy={tempConnection.currentY} r="4" fill="#C9B5FF" />
+                        </svg>
+                    )}
                 </div>
 
                 {/* Context Menu */}
