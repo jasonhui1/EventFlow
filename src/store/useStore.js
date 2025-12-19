@@ -615,7 +615,8 @@ const useStore = create(
 
             // Get all inherited prompts from parent nodes (recursive)
             // disabledSources is the list from the ORIGINAL node we're computing for
-            getInheritedPrompts: (nodeId, visited = new Set(), originalDisabledSources = null) => {
+            getInheritedPrompts: (nodeId, visited = new Set(), options = {}) => {
+                const { originalDisabledSources = null, selectSinglePath = false, randomize = false } = options;
                 const state = get();
                 const node = state.nodes.find((n) => n.id === nodeId);
                 if (!node || visited.has(nodeId)) return [];
@@ -628,13 +629,27 @@ const useStore = create(
                     ? originalDisabledSources
                     : (node.data?.disabledInheritedSources || []);
 
-                const parentNodes = get().getParentNodes(nodeId);
+                let parentNodes = get().getParentNodes(nodeId);
+
+                // If multiple branches exist and we only want one path
+                if (selectSinglePath && parentNodes.length > 1) {
+                    if (randomize) {
+                        const index = Math.floor(Math.random() * parentNodes.length);
+                        parentNodes = [parentNodes[index]];
+                    } else {
+                        parentNodes = [parentNodes[0]];
+                    }
+                }
+
                 let inheritedPrompts = [];
 
                 for (const { node: parentNode } of parentNodes) {
                     // Get inherited prompts from parent's parents first (recursive)
-                    // Pass along the original disabled sources
-                    const parentInherited = get().getInheritedPrompts(parentNode.id, visited, disabledSources);
+                    // Pass along the original disabled sources and other options
+                    const parentInherited = get().getInheritedPrompts(parentNode.id, visited, {
+                        ...options,
+                        originalDisabledSources: disabledSources,
+                    });
                     inheritedPrompts = [...inheritedPrompts, ...parentInherited];
 
                     // Skip adding this parent's prompt if it's in the disabled list
@@ -695,14 +710,20 @@ const useStore = create(
             },
 
             // Get the fully composed prompt for a node
-            getComposedPrompt: (nodeId) => {
+            getComposedPrompt: (nodeId, options = {}) => {
                 const state = get();
                 const node = state.nodes.find((n) => n.id === nodeId);
                 if (!node) return { parts: [], full: '' };
 
                 const currentEvent = get().getCurrentEvent();
                 const eventFixedPrompt = currentEvent?.fixedPrompt || '';
-                const inheritedPrompts = get().getInheritedPrompts(nodeId);
+
+                // NEW: Default to selecting a single path for a clean preview
+                const inheritedPrompts = get().getInheritedPrompts(nodeId, new Set(), {
+                    selectSinglePath: true,
+                    randomize: options.randomize || false,
+                });
+
                 const localPrompt = node.data?.localPrompt || '';
                 const nodeInheritedPrompt = node.data?.inheritedPrompt || '';
 
@@ -735,8 +756,7 @@ const useStore = create(
 
             // Generate a test prompt, randomly selecting branches based on weights
             generateTestPrompt: (nodeId, randomize = true) => {
-                const state = get();
-                const composed = get().getComposedPrompt(nodeId);
+                const composed = get().getComposedPrompt(nodeId, { randomize });
 
                 // For now, return the composed prompt
                 // Branch selection would require more complex path tracing
