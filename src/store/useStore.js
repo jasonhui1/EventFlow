@@ -662,6 +662,11 @@ const useStore = create(
 
                 let parentNodes = get().getParentNodes(nodeId);
 
+                // Filter by allowed allowedEdges if provided (for consistent simulation)
+                if (options.allowedEdges) {
+                    parentNodes = parentNodes.filter(({ edgeId }) => options.allowedEdges.has(edgeId));
+                }
+
                 // If multiple branches exist and we only want one path
                 if (selectSinglePath && parentNodes.length > 1) {
                     if (randomize) {
@@ -750,9 +755,11 @@ const useStore = create(
                 const eventFixedPrompt = currentEvent?.fixedPrompt || '';
 
                 // NEW: Default to selecting a single path for a clean preview
+                // If allowedEdges is provided, we trust that set and don't force single path selection here
                 const inheritedPrompts = get().getInheritedPrompts(nodeId, new Set(), {
-                    selectSinglePath: true,
+                    selectSinglePath: !options.allowedEdges,
                     randomize: options.randomize || false,
+                    allowedEdges: options.allowedEdges,
                 });
 
                 const localPrompt = node.data?.localPrompt || '';
