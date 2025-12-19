@@ -4,88 +4,134 @@ import useStore from '../store/useStore';
 const EventSimulationModal = ({ onClose }) => {
     const nodes = useStore((state) => state.nodes);
     const edges = useStore((state) => state.edges);
+    const events = useStore((state) => state.events);
     const getComposedPrompt = useStore((state) => state.getComposedPrompt);
     const [copied, setCopied] = useState(false);
     const [seed, setSeed] = useState(0); // Used to trigger refresh
 
     const simulatedResults = useMemo(() => {
-        // 1. Identify Start Nodes specifically
-        let startNodes = nodes.filter(n => n.type === 'startNode');
+        // Recursive Simulation Helper
+        const simulateGraph = (currentNodes, currentEdges, incomingContextParts = [], visitedEventIds = new Set()) => {
+            // 1. Identify Start Nodes specifically in this graph context
+            const startNodes = currentNodes.filter(n => n.type === 'startNode');
 
-        // If no Start Node, strict simulation means no path to follow
-        if (startNodes.length === 0) {
-            return [];
-        }
+            // If no Start Node, strict simulation means no path to follow
+            if (startNodes.length === 0) return [];
 
-        // Sort roots by Y to have a deterministic starting order
-        startNodes.sort((a, b) => a.position.y - b.position.y);
+            // Sort roots by Y for deterministic starting order
+            startNodes.sort((a, b) => a.position.y - b.position.y);
 
-        const visitedNodeIds = new Set();
-        const visitedEdgeIds = new Set();
-        const orderedNodes = [];
-        const queue = [...startNodes];
+            const results = [];
+            const visitedNodeIds = new Set();
+            const visitedEdgeIds = new Set(); // Track edges traversed in THIS graph layer
+            const queue = [...startNodes];
 
-        // --- Pass 1: Graph Traversal & Edge Selection ---
-        while (queue.length > 0) {
-            const currentNode = queue.shift();
+            while (queue.length > 0) {
+                const currentNode = queue.shift();
 
-            if (visitedNodeIds.has(currentNode.id)) continue;
-            visitedNodeIds.add(currentNode.id);
-            orderedNodes.push(currentNode);
+                if (visitedNodeIds.has(currentNode.id)) continue;
+                visitedNodeIds.add(currentNode.id);
 
-            // If we hit an End Node, we stop traversing this branch (it absorbs the flow)
-            if (currentNode.type === 'endNode') {
-                continue;
-            }
+                // --- Processing Logic ---
 
-            const outgoingEdges = edges.filter(e => e.source === currentNode.id);
+                // CASE 1: Reference Node (Recurse)
+                // We use resolveReferences: false in getComposedPrompt to get the prompt UP TO this node,
+                // then recursively simulate inside.
+                if (currentNode.type === 'referenceNode' && currentNode.data?.referenceId) {
+                    // Prevent infinite recursion
+                    if (!visitedEventIds.has(currentNode.data.referenceId)) {
+                        const refEvent = events.find(e => e.id === currentNode.data.referenceId);
+                        if (refEvent && refEvent.nodes) {
+                            // Calculate "Upstream + Local" context for this reference node
+                            // We explicitly avoid resolving references here to get the "outer" context + local prompt
+                            const { parts: refPromptParts } = getComposedPrompt(currentNode.id, {
+                                allowedEdges: visitedEdgeIds,
+                                randomize: false,
+                                resolveReferences: false,
+                                context: { nodes: currentNodes, edges: currentEdges }
+                            });
 
-            if (currentNode.type === 'branchNode') {
-                // Randomly select ONE path
-                if (outgoingEdges.length > 0) {
-                    const uniqueHandles = [...new Set(outgoingEdges.map(e => e.sourceHandle))];
+                            // Combine with incoming context from parent graph
+                            const newContextParts = [...incomingContextParts, ...refPromptParts];
+                            const newVisitedEvents = new Set(visitedEventIds).add(currentNode.data.referenceId);
 
-                    if (uniqueHandles.length > 0) {
-                        const randomHandle = uniqueHandles[Math.floor(Math.random() * uniqueHandles.length)];
-                        const selectedEdges = outgoingEdges.filter(e => e.sourceHandle === randomHandle);
+                            // RECURSE
+                            const innerResults = simulateGraph(
+                                refEvent.nodes,
+                                refEvent.edges || [],
+                                newContextParts,
+                                newVisitedEvents
+                            );
 
-                        selectedEdges.forEach(edge => {
-                            visitedEdgeIds.add(edge.id); // Record chosen edge
-                            const targetNode = nodes.find(n => n.id === edge.target);
-                            if (targetNode) queue.push(targetNode);
+                            results.push(...innerResults);
+                        }
+                    }
+                }
+                // CASE 2: Normal Displayable Node
+                else {
+                    const hiddenTypes = ['startNode', 'endNode', 'branchNode', 'referenceNode'];
+
+                    if (!hiddenTypes.includes(currentNode.type)) {
+                        // Build Prompt
+                        const { parts: localParts, full } = getComposedPrompt(currentNode.id, {
+                            allowedEdges: visitedEdgeIds,
+                            randomize: false,
+                            resolveReferences: false,
+                            context: { nodes: currentNodes, edges: currentEdges }
+                        });
+
+                        const finalParts = [...incomingContextParts, ...localParts];
+                        const fullPrompt = finalParts.map(p => p.prompt).filter(Boolean).join(', ');
+
+                        results.push({
+                            id: `${currentNode.id}-${Math.random().toString(36).substr(2, 9)}`, // Unique key for render
+                            originalId: currentNode.id,
+                            label: currentNode.data?.label || currentNode.type,
+                            type: currentNode.type,
+                            prompt: fullPrompt,
+                            parts: finalParts
                         });
                     }
                 }
-            } else {
-                // Follow ALL paths
-                outgoingEdges.forEach(edge => {
-                    visitedEdgeIds.add(edge.id); // Record chosen edge
-                    const targetNode = nodes.find(n => n.id === edge.target);
-                    if (targetNode) queue.push(targetNode);
-                });
+
+                // --- Traversal Logic (Finding Next Nodes) ---
+
+                // If End Node, stop this branch (it absorbs the flow)
+                if (currentNode.type === 'endNode') {
+                    continue;
+                }
+
+                const outgoingEdges = currentEdges.filter(e => e.source === currentNode.id);
+
+                if (currentNode.type === 'branchNode') {
+                    // Randomly select ONE path
+                    if (outgoingEdges.length > 0) {
+                        const uniqueHandles = [...new Set(outgoingEdges.map(e => e.sourceHandle))];
+                        if (uniqueHandles.length > 0) {
+                            const randomHandle = uniqueHandles[Math.floor(Math.random() * uniqueHandles.length)];
+                            const selectedEdges = outgoingEdges.filter(e => e.sourceHandle === randomHandle);
+                            selectedEdges.forEach(edge => {
+                                visitedEdgeIds.add(edge.id);
+                                const targetNode = currentNodes.find(n => n.id === edge.target);
+                                if (targetNode) queue.push(targetNode);
+                            });
+                        }
+                    }
+                } else {
+                    // Follow ALL paths
+                    outgoingEdges.forEach(edge => {
+                        visitedEdgeIds.add(edge.id);
+                        const targetNode = currentNodes.find(n => n.id === edge.target);
+                        if (targetNode) queue.push(targetNode);
+                    });
+                }
             }
-        }
 
-        // --- Pass 2: Prompt Generation with Context ---
-        // Filter out Start, End, and Logic nodes from display
-        const hiddenTypes = ['startNode', 'endNode', 'branchNode'];
+            return results;
+        };
 
-        return orderedNodes
-            .filter(node => !hiddenTypes.includes(node.type))
-            .map(node => {
-                const { full, parts } = getComposedPrompt(node.id, {
-                    allowedEdges: visitedEdgeIds, // <--- CRITICAL: Pass the specific edges chosen in Pass 1
-                    randomize: false // No internal randomization needed, we dictated the path
-                });
-                return {
-                    id: node.id,
-                    label: node.data?.label || node.type,
-                    type: node.type,
-                    prompt: full,
-                    parts: parts
-                };
-            });
-    }, [nodes, edges, getComposedPrompt, seed]);
+        return simulateGraph(nodes, edges);
+    }, [nodes, edges, events, getComposedPrompt, seed]);
 
     const handleRefresh = () => {
         setSeed(prev => prev + 1);

@@ -847,7 +847,7 @@ const useStore = create(
 
                 // SPECIAL: If this is a reference node, we "simulate" the referenced event by grabbing its flow
                 // This ensures the "carry forward" includes the referenced event's content at this point
-                if (node.type === 'referenceNode' && node.data?.referenceId) {
+                if (options.resolveReferences !== false && node.type === 'referenceNode' && node.data?.referenceId) {
                     const refEvent = state.events.find(e => e.id === node.data.referenceId);
                     if (refEvent && refEvent.nodes) {
                         const refEndNode = refEvent.nodes.find(n => n.type === 'endNode');
