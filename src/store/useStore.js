@@ -425,6 +425,22 @@ const useStore = create(
 
             // Edge Actions
             addEdge: (connection) => {
+                const state = get();
+
+                // Check for duplicates
+                const exists = state.edges.some(
+                    (edge) =>
+                        edge.source === connection.source &&
+                        edge.target === connection.target &&
+                        (edge.sourceHandle === connection.sourceHandle || (!edge.sourceHandle && !connection.sourceHandle)) &&
+                        (edge.targetHandle === connection.targetHandle || (!edge.targetHandle && !connection.targetHandle))
+                );
+
+                if (exists) {
+                    console.log('Edge already exists, skipping.');
+                    return;
+                }
+
                 const newEdge = {
                     id: `edge_${uuidv4()}`,
                     ...connection,
