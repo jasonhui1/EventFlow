@@ -52,6 +52,7 @@ function App() {
     const selectEvent = useStore((state) => state.selectEvent);
     const events = useStore((state) => state.events);
     const deleteNodes = useStore((state) => state.deleteNodes);
+    const deleteEdges = useStore((state) => state.deleteEdges);
     const undo = useStore((state) => state.undo);
     const redo = useStore((state) => state.redo);
     const copySelectedNodes = useStore((state) => state.copySelectedNodes);
@@ -161,13 +162,16 @@ function App() {
                 return;
             }
 
-            // Delete selected nodes
+            // Delete selected nodes and edges
             if (event.key === 'Delete' || event.key === 'Backspace') {
                 const selectedNodeIds = nodes.filter(n => n.selected).map(n => n.id);
-                if (selectedNodeIds.length > 0) {
+                const selectedEdgeIds = edges.filter(e => e.selected).map(e => e.id);
+
+                if (selectedNodeIds.length > 0 || selectedEdgeIds.length > 0) {
                     event.preventDefault();
                     pushToHistory();
-                    deleteNodes(selectedNodeIds);
+                    if (selectedNodeIds.length > 0) deleteNodes(selectedNodeIds);
+                    if (selectedEdgeIds.length > 0) deleteEdges(selectedEdgeIds);
                 }
             }
 
@@ -198,7 +202,7 @@ function App() {
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [nodes, deleteNodes, copySelectedNodes, pasteNodes, undo, redo, pushToHistory]);
+    }, [nodes, edges, deleteNodes, deleteEdges, copySelectedNodes, pasteNodes, undo, redo, pushToHistory]);
 
     // Export handler
     const handleExport = () => {

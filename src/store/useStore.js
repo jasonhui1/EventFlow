@@ -356,6 +356,13 @@ const useStore = create(
                 }));
             },
 
+            // Delete multiple edges at once
+            deleteEdges: (edgeIds) => {
+                set((state) => ({
+                    edges: state.edges.filter((edge) => !edgeIds.includes(edge.id)),
+                }));
+            },
+
             addNodeOutput: (nodeId) => {
                 set((state) => ({
                     nodes: state.nodes.map((node) => {
@@ -475,6 +482,14 @@ const useStore = create(
                     changes.forEach((change) => {
                         if (change.type === 'remove') {
                             newEdges = newEdges.filter((e) => e.id !== change.id);
+                        } else if (change.type === 'select') {
+                            const edgeIndex = newEdges.findIndex((e) => e.id === change.id);
+                            if (edgeIndex !== -1) {
+                                newEdges[edgeIndex] = {
+                                    ...newEdges[edgeIndex],
+                                    selected: change.selected,
+                                };
+                            }
                         }
                     });
                     return { edges: newEdges };
