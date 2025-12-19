@@ -322,6 +322,25 @@ function App() {
                         });
                     }
                 }
+            } else {
+                // Dropped on empty space - Open Context Menu
+                if (reactFlowInstance) {
+                    const sourceNode = nodes.find(n => n.id === tempConnection.sourceId);
+                    const sourceHandle = sourceNode?.data?.outputs?.[0]?.id || null;
+
+                    const position = reactFlowInstance.screenToFlowPosition({
+                        x: e.clientX,
+                        y: e.clientY,
+                    });
+
+                    setContextMenu({
+                        x: e.clientX,
+                        y: e.clientY,
+                        flowPosition: position,
+                        sourceNodeId: tempConnection.sourceId,
+                        sourceHandle: sourceHandle,
+                    });
+                }
             }
 
             setTempConnection(null);
@@ -336,7 +355,7 @@ function App() {
             window.removeEventListener('mousemove', onMouseMove);
             window.removeEventListener('mouseup', onMouseUp);
         };
-    }, [tempConnection, nodes, onConnect]);
+    }, [tempConnection, nodes, onConnect, reactFlowInstance]);
 
     return (
         <div className="app-container">
