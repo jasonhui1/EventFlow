@@ -47,6 +47,7 @@ function App() {
     const onConnect = useStore((state) => state.onConnect);
     const addNode = useStore((state) => state.addNode);
     const insertNodeOnEdge = useStore((state) => state.insertNodeOnEdge);
+    const extractNodeFromFlow = useStore((state) => state.extractNodeFromFlow);
     const updateNode = useStore((state) => state.updateNode);
     const setSelectedNode = useStore((state) => state.setSelectedNode);
     const currentEventId = useStore((state) => state.currentEventId);
@@ -139,9 +140,22 @@ function App() {
         [reactFlowInstance, addNode, insertNodeOnEdge, updateNode, events]
     );
 
-    // Handle existing node dropped on an edge
+    // Handle existing node dragged on an edge (insertion) or Ctrl+Drag (extraction)
+    const onNodeDrag = useCallback((event, node) => {
+        // If Ctrl is pressed, extract node from flow instantly
+        if (event.ctrlKey || event.metaKey) {
+            // Only extract if it has connections
+            const hasConnections = edges.some(e => e.source === node.id || e.target === node.id);
+            if (hasConnections) {
+                console.log('Reactive extraction from flow:', node.id);
+                pushToHistory();
+                extractNodeFromFlow(node.id);
+            }
+        }
+    }, [extractNodeFromFlow, pushToHistory, edges]);
+
     const onNodeDragStop = useCallback((event, node) => {
-        // Use the same bounding box detection logic
+        // Use the same bounding box detection logic for edge insertion
         const EDGE_DETECTION_PADDING = 30; // pixels
         let targetEdgeId = null;
 
@@ -518,6 +532,7 @@ function App() {
                         onInit={setReactFlowInstance}
                         onDrop={onDrop}
                         onDragOver={onDragOver}
+                        onNodeDrag={onNodeDrag}
                         onNodeDragStop={onNodeDragStop}
                         onPaneContextMenu={onPaneContextMenu}
                         onNodeContextMenu={(e) => { e.preventDefault(); }}

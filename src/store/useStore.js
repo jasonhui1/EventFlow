@@ -408,6 +408,46 @@ const useStore = create(
                 return targetNodeId;
             },
 
+            extractNodeFromFlow: (nodeId) => {
+                const state = get();
+                const incomingEdges = state.edges.filter(e => e.target === nodeId);
+                const outgoingEdges = state.edges.filter(e => e.source === nodeId);
+
+                const newEdges = [];
+                // Create bridge edges between all parents and all children
+                incomingEdges.forEach(inEdge => {
+                    outgoingEdges.forEach(outEdge => {
+                        // Avoid duplicates if a connection already exists
+                        const exists = state.edges.some(e =>
+                            e.source === inEdge.source &&
+                            e.target === outEdge.target &&
+                            e.sourceHandle === inEdge.sourceHandle &&
+                            e.targetHandle === outEdge.targetHandle
+                        );
+
+                        if (!exists) {
+                            newEdges.push({
+                                id: `edge_${uuidv4()}`,
+                                source: inEdge.source,
+                                sourceHandle: inEdge.sourceHandle,
+                                target: outEdge.target,
+                                targetHandle: outEdge.targetHandle,
+                                type: 'smoothstep',
+                                animated: true,
+                                style: { stroke: '#C9B5FF', strokeWidth: 2 },
+                            });
+                        }
+                    });
+                });
+
+                set((state) => ({
+                    edges: [
+                        ...state.edges.filter(e => e.source !== nodeId && e.target !== nodeId),
+                        ...newEdges
+                    ]
+                }));
+            },
+
             updateNode: (nodeId, data) => {
                 set((state) => ({
                     nodes: state.nodes.map((node) =>
