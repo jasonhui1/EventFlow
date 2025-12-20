@@ -375,6 +375,10 @@ function App() {
             <div
                 className="canvas-container"
                 onMouseDownCapture={onMouseDownCapture}
+                onContextMenu={(e) => {
+                    if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) return;
+                    e.preventDefault();
+                }}
             >
                 {/* Header with event info */}
                 <div className="canvas-header">
