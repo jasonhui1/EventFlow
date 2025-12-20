@@ -68,9 +68,18 @@ function App() {
     const copySelectedNodes = useStore((state) => state.copySelectedNodes);
     const pasteNodes = useStore((state) => state.pasteNodes);
     const pushToHistory = useStore((state) => state.pushToHistory);
+    const loadFromServer = useStore((state) => state.loadFromServer);
+    const saveToServer = useStore((state) => state.saveToServer);
+    const isLoading = useStore((state) => state.isLoading);
+    const isSaving = useStore((state) => state.isSaving);
+
+    // Load events from server on mount
+    useEffect(() => {
+        loadFromServer();
+    }, [loadFromServer]);
 
     // Select first event if none selected
-    React.useEffect(() => {
+    useEffect(() => {
         if (!currentEventId && events.length > 0) {
             selectEvent(events[0].id);
         }
@@ -488,11 +497,31 @@ function App() {
                         <button className="action-btn" onClick={handleExport}>
                             📤 Export
                         </button>
-                        <button className="action-btn primary" onClick={saveCurrentEvent}>
-                            💾 Save
+                        <button
+                            className={`action-btn primary ${isSaving ? 'loading' : ''}`}
+                            onClick={saveToServer}
+                            disabled={isSaving}
+                        >
+                            {isSaving ? 'Saving...' : '💾 Save'}
                         </button>
                     </div>
                 </div>
+
+                {isLoading && (
+                    <div style={{
+                        position: 'absolute',
+                        top: '50%',
+                        left: '50%',
+                        transform: 'translate(-50%, -50%)',
+                        zIndex: 1000,
+                        background: 'rgba(0,0,0,0.8)',
+                        padding: '20px',
+                        borderRadius: '12px',
+                        color: 'white'
+                    }}>
+                        Loading events from server...
+                    </div>
+                )}
 
                 {/* Fixed Prompt for current event */}
                 {currentEvent && (
