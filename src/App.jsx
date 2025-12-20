@@ -32,12 +32,14 @@ const nodeTypes = {
 };
 
 import EventSimulationModal from './components/EventSimulationModal';
+import BulkExportModal from './components/BulkExportModal';
 
 function App() {
     const reactFlowWrapper = useRef(null);
     const [reactFlowInstance, setReactFlowInstance] = useState(null);
     const [contextMenu, setContextMenu] = useState(null);
     const [showSimulationModal, setShowSimulationModal] = useState(false);
+    const [showBulkExportModal, setShowBulkExportModal] = useState(false);
 
     // Store state
     const nodes = useStore((state) => state.nodes);
@@ -482,6 +484,9 @@ function App() {
                         <button className="action-btn" onClick={() => setShowSimulationModal(true)} style={{ background: 'rgba(255, 181, 197, 0.1)', color: '#FFB5C5', border: '1px solid rgba(255, 181, 197, 0.3)' }}>
                             🔮 Simulate
                         </button>
+                        <button className="action-btn" onClick={() => setShowBulkExportModal(true)} style={{ background: 'rgba(201, 181, 255, 0.1)', color: '#C9B5FF', border: '1px solid rgba(201, 181, 255, 0.3)' }}>
+                            📤 Bulk Export
+                        </button>
                         <button className="action-btn" onClick={handleImport}>
                             📥 Import
                         </button>
@@ -646,6 +651,10 @@ function App() {
 
             {showSimulationModal && (
                 <EventSimulationModal onClose={() => setShowSimulationModal(false)} />
+            )}
+
+            {showBulkExportModal && (
+                <BulkExportModal onClose={() => setShowBulkExportModal(false)} />
             )}
         </div>
     );
