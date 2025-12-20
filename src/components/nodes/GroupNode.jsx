@@ -38,7 +38,6 @@ const GroupNode = ({ id, data, selected }) => {
             <div className="group-node-header">
                 <span className="event-node-icon">📁</span>
                 <input
-                    ref={inputRef}
                     className="event-node-title"
                     value={data.label}
                     onChange={(e) => updateNode(id, { label: e.target.value })}
@@ -61,6 +60,7 @@ const GroupNode = ({ id, data, selected }) => {
                     </span>
                 </div>
                 <textarea
+                    ref={inputRef}
                     value={data.fixedPrompt || ''}
                     onChange={(e) => updateNode(id, { fixedPrompt: e.target.value })}
                     onClick={(e) => e.stopPropagation()}

@@ -44,7 +44,6 @@ const BranchNode = ({ id, data, selected }) => {
             <div className="branch-node-header">
                 <span className="event-node-icon">🔀</span>
                 <input
-                    ref={inputRef}
                     className="event-node-title"
                     value={data.label}
                     onChange={(e) => updateNode(id, { label: e.target.value })}
@@ -64,6 +63,7 @@ const BranchNode = ({ id, data, selected }) => {
                 {data.outputs?.map((output, index) => (
                     <div key={output.id} className="branch-option">
                         <input
+                            ref={index === 0 ? inputRef : null}
                             value={output.label}
                             onChange={(e) => {
                                 const newOutputs = data.outputs.map((o) =>

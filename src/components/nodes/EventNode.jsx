@@ -41,7 +41,6 @@ const EventNode = ({ id, data, selected }) => {
             <div className="event-node-header">
                 <span className="event-node-icon">📌</span>
                 <input
-                    ref={inputRef}
                     className="event-node-title"
                     value={data.label}
                     onChange={(e) => updateNode(id, { label: e.target.value })}
@@ -59,6 +58,7 @@ const EventNode = ({ id, data, selected }) => {
 
             <div className="event-node-body">
                 <textarea
+                    ref={inputRef}
                     className="event-node-content"
                     value={data.content || ''}
                     onChange={(e) => updateNode(id, { content: e.target.value })}
