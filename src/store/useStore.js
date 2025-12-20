@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
+import * as sim from '../utils/simulationUtils';
 
 // Default node templates
 const createEventNode = (position = { x: 0, y: 0 }, data = {}) => ({
@@ -751,14 +752,9 @@ const useStore = create(
             // Get all parent nodes (nodes that connect TO this node)
             getParentNodes: (nodeId, context = null) => {
                 const state = get();
-                const edges = context?.edges || state.edges;
                 const nodes = context?.nodes || state.nodes;
-
-                const parentEdges = edges.filter((edge) => edge.target === nodeId);
-                return parentEdges.map((edge) => {
-                    const parentNode = nodes.find((n) => n.id === edge.source);
-                    return parentNode ? { node: parentNode, edgeId: edge.id, sourceHandle: edge.sourceHandle } : null;
-                }).filter(Boolean);
+                const edges = context?.edges || state.edges;
+                return sim.getParentNodes(nodeId, nodes, edges);
             },
 
             // Get ALL upstream nodes recursively (for UI display)
@@ -792,99 +788,11 @@ const useStore = create(
             },
 
             // Get all inherited prompts from parent nodes (recursive)
-            // disabledSources is the list from the ORIGINAL node we're computing for
             getInheritedPrompts: (nodeId, visited = new Set(), options = {}) => {
-                const { originalDisabledSources = null, selectSinglePath = false, randomize = false, allowedEdges = null, context = null } = options;
                 const state = get();
-                const nodes = context?.nodes || state.nodes;
-
-                const node = nodes.find((n) => n.id === nodeId);
-                if (!node || visited.has(nodeId)) return [];
-
-                visited.add(nodeId);
-
-                // If this is the first call (original node), get its disabled list
-                // Otherwise, use the passed-in list from the original node
-                const disabledSources = originalDisabledSources !== null
-                    ? originalDisabledSources
-                    : (node.data?.disabledInheritedSources || []);
-
-                let parentNodes = get().getParentNodes(nodeId, context);
-
-                // Filter by allowed allowedEdges if provided (for consistent simulation)
-                if (allowedEdges) {
-                    parentNodes = parentNodes.filter(({ edgeId }) => allowedEdges.has(edgeId));
-                }
-
-                // If multiple branches exist and we only want one path
-                if (selectSinglePath && parentNodes.length > 1) {
-                    if (randomize) {
-                        const index = Math.floor(Math.random() * parentNodes.length);
-                        parentNodes = [parentNodes[index]];
-                    } else {
-                        parentNodes = [parentNodes[0]];
-                    }
-                }
-
-                let inheritedPrompts = [];
-
-                for (const { node: parentNode } of parentNodes) {
-                    // Get inherited prompts from parent's parents first (recursive)
-                    // Pass along the original disabled sources and other options
-                    const parentInherited = get().getInheritedPrompts(parentNode.id, visited, {
-                        ...options,
-                        originalDisabledSources: disabledSources,
-                    });
-                    inheritedPrompts = [...inheritedPrompts, ...parentInherited];
-
-                    // Skip adding this parent's prompt if it's in the disabled list
-                    if (disabledSources.includes(parentNode.id)) continue;
-
-                    // Handle reference nodes: traverse into referenced event's graph
-                    if (parentNode.type === 'referenceNode' && parentNode.data?.referenceId) {
-                        const referencedEvent = state.events.find(e => e.id === parentNode.data.referenceId);
-                        if (referencedEvent && referencedEvent.nodes && referencedEvent.edges) {
-                            // Find the end node of the referenced event to trace back inherited prompts
-                            const refEndNode = referencedEvent.nodes.find(n => n.type === 'endNode');
-                            if (refEndNode) {
-                                // Create a context for the referenced event's graph
-                                const refContext = {
-                                    nodes: referencedEvent.nodes,
-                                    edges: referencedEvent.edges
-                                };
-                                // Get inherited prompts from the referenced event's end node
-                                const refInherited = get().getInheritedPrompts(refEndNode.id, new Set(), {
-                                    ...options,
-                                    context: refContext,
-                                    originalDisabledSources: [], // Don't carry over disabled sources to referenced events
-                                });
-                                inheritedPrompts = [...inheritedPrompts, ...refInherited];
-                            }
-                        }
-                    }
-
-                    // Add parent's own inherited prompt if it has one
-                    if (parentNode.data?.inheritedPrompt) {
-                        inheritedPrompts.push({
-                            nodeId: parentNode.id,
-                            nodeLabel: parentNode.data.label || 'Unknown',
-                            prompt: parentNode.data.inheritedPrompt,
-                            type: parentNode.type,
-                        });
-                    }
-
-                    // For group nodes, add their fixed prompt
-                    if (parentNode.type === 'groupNode' && parentNode.data?.fixedPrompt) {
-                        inheritedPrompts.push({
-                            nodeId: parentNode.id,
-                            nodeLabel: parentNode.data.label || 'Group',
-                            prompt: parentNode.data.fixedPrompt,
-                            type: 'groupNode',
-                        });
-                    }
-                }
-
-                return inheritedPrompts;
+                const nodes = options.context?.nodes || state.nodes;
+                const edges = options.context?.edges || state.edges;
+                return sim.getInheritedPrompts(nodeId, state.events, nodes, edges, visited, options);
             },
 
             // Toggle whether to inherit from a specific source node
@@ -920,174 +828,21 @@ const useStore = create(
             // Get the fully composed prompt for a node
             getComposedPrompt: (nodeId, options = {}) => {
                 const state = get();
-                const context = options.context || null;
-                const nodes = context?.nodes || state.nodes;
+                const nodes = options.context?.nodes || state.nodes;
+                const edges = options.context?.edges || state.edges;
+                const currentEvent = state.getCurrentEvent();
+                const fixedPrompt = options.fixedPrompt || currentEvent?.fixedPrompt || '';
 
-                const node = nodes.find((n) => n.id === nodeId);
-                if (!node) return { parts: [], full: '' };
-
-                // Handle Event Fixed Prompt (if context is passed, we might need the event prompt from context too? 
-                // For now, assume top-level event prompt is sufficient or context includes it if needed)
-                const currentEvent = get().getCurrentEvent();
-                const eventFixedPrompt = options.fixedPrompt || currentEvent?.fixedPrompt || '';
-
-                // NEW: Default to selecting a single path for a clean preview
-                // If allowedEdges is provided, we trust that set and don't force single path selection here
-                const inheritedPrompts = get().getInheritedPrompts(nodeId, new Set(), {
-                    selectSinglePath: !options.allowedEdges,
-                    randomize: options.randomize || false,
-                    allowedEdges: options.allowedEdges,
-                    context: context
-                });
-
-                const localPrompt = node.data?.localPrompt || '';
-                const nodeInheritedPrompt = node.data?.inheritedPrompt || '';
-
-                const parts = [];
-
-                // Event-level fixed prompt
-                if (eventFixedPrompt) {
-                    parts.push({ label: 'Event Fixed Prompt', prompt: eventFixedPrompt, type: 'event' });
-                }
-
-                // Inherited from parent nodes
-                inheritedPrompts.forEach((item) => {
-                    parts.push({ label: `From: ${item.nodeLabel}`, prompt: item.prompt, type: item.type, nodeId: item.nodeId });
-                });
-
-                // SPECIAL: If this is a reference node, we "simulate" the referenced event by grabbing its flow
-                // This ensures the "carry forward" includes the referenced event's content at this point
-                if (options.resolveReferences !== false && node.type === 'referenceNode' && node.data?.referenceId) {
-                    const refEvent = state.events.find(e => e.id === node.data.referenceId);
-                    if (refEvent && refEvent.nodes) {
-                        const refEndNode = refEvent.nodes.find(n => n.type === 'endNode');
-                        if (refEndNode) {
-                            const refContext = { nodes: refEvent.nodes, edges: refEvent.edges || [] };
-                            // Get prompts trailing to the end of the referenced event
-                            const innerPrompts = get().getInheritedPrompts(refEndNode.id, new Set(), {
-                                selectSinglePath: true,
-                                randomize: options.randomize,
-                                context: refContext,
-                                // Important: We don't pass allowedEdges here as they apply to the parent graph
-                            });
-
-                            innerPrompts.forEach(item => {
-                                parts.push({
-                                    label: `(Ref) ${item.nodeLabel}`,
-                                    prompt: item.prompt,
-                                    type: 'reference-inner',
-                                    nodeId: item.nodeId
-                                });
-                            });
-                        }
-                    }
-                }
-
-                // This node's local prompt
-                if (localPrompt) {
-                    parts.push({ label: 'This Event Only', prompt: localPrompt, type: 'local' });
-                }
-
-                // This node's inherited prompt (for display, shows what it passes on)
-                if (nodeInheritedPrompt) {
-                    parts.push({ label: 'Carries Forward', prompt: nodeInheritedPrompt, type: 'inherited' });
-                }
-
-                const full = parts.map((p) => p.prompt).filter(Boolean).join(', ');
-
-                return { parts, full };
+                return sim.getComposedPrompt(nodeId, state.events, nodes, edges, fixedPrompt, options);
             },
 
             // Simulation Logic (Graph Traversal)
             simulateEvent: (currentNodes, currentEdges, incomingContextParts = [], visitedEventIds = new Set()) => {
                 const state = get();
-                const startNodes = currentNodes.filter(n => n.type === 'startNode');
+                const currentEvent = state.getCurrentEvent();
+                const fixedPrompt = currentEvent?.fixedPrompt || '';
 
-                if (startNodes.length === 0) return [];
-
-                startNodes.sort((a, b) => a.position.y - b.position.y);
-                const results = [];
-                const visitedNodeIds = new Set();
-                const visitedEdgeIds = new Set();
-                const queue = [...startNodes];
-
-                while (queue.length > 0) {
-                    const currentNode = queue.shift();
-
-                    if (visitedNodeIds.has(currentNode.id)) continue;
-                    visitedNodeIds.add(currentNode.id);
-
-                    if (currentNode.type === 'referenceNode' && currentNode.data?.referenceId) {
-                        if (!visitedEventIds.has(currentNode.data.referenceId)) {
-                            const refEvent = state.events.find(e => e.id === currentNode.data.referenceId);
-                            if (refEvent && refEvent.nodes) {
-                                const { parts: refPromptParts } = state.getComposedPrompt(currentNode.id, {
-                                    allowedEdges: visitedEdgeIds,
-                                    randomize: false,
-                                    resolveReferences: false,
-                                    context: { nodes: currentNodes, edges: currentEdges }
-                                });
-
-                                const newContextParts = [...incomingContextParts, ...refPromptParts];
-                                const newVisitedEvents = new Set(visitedEventIds).add(currentNode.data.referenceId);
-
-                                const innerResults = state.simulateEvent(
-                                    refEvent.nodes,
-                                    refEvent.edges || [],
-                                    newContextParts,
-                                    newVisitedEvents
-                                );
-                                results.push(...innerResults);
-                            }
-                        }
-                    } else {
-                        const hiddenTypes = ['startNode', 'endNode', 'branchNode', 'referenceNode'];
-                        if (!hiddenTypes.includes(currentNode.type)) {
-                            const { parts: localParts } = state.getComposedPrompt(currentNode.id, {
-                                allowedEdges: visitedEdgeIds,
-                                randomize: false,
-                                resolveReferences: false,
-                                context: { nodes: currentNodes, edges: currentEdges }
-                            });
-
-                            const finalParts = [...incomingContextParts, ...localParts];
-                            const fullPrompt = finalParts.map(p => p.prompt).filter(Boolean).join(', ');
-
-                            results.push({
-                                id: `${currentNode.id}-${Math.random().toString(36).substr(2, 9)}`,
-                                originalId: currentNode.id,
-                                label: currentNode.data?.label || currentNode.type,
-                                type: currentNode.type,
-                                prompt: fullPrompt,
-                                parts: finalParts
-                            });
-                        }
-                    }
-
-                    if (currentNode.type === 'endNode') continue;
-
-                    const outgoingEdges = currentEdges.filter(e => e.source === currentNode.id);
-
-                    if (currentNode.type === 'branchNode') {
-                        if (outgoingEdges.length > 0) {
-                            const uniqueHandles = [...new Set(outgoingEdges.map(e => e.sourceHandle))];
-                            const randomHandle = uniqueHandles[Math.floor(Math.random() * uniqueHandles.length)];
-                            const selectedEdges = outgoingEdges.filter(e => e.sourceHandle === randomHandle);
-                            selectedEdges.forEach(edge => {
-                                visitedEdgeIds.add(edge.id);
-                                const targetNode = currentNodes.find(n => n.id === edge.target);
-                                if (targetNode) queue.push(targetNode);
-                            });
-                        }
-                    } else {
-                        outgoingEdges.forEach(edge => {
-                            visitedEdgeIds.add(edge.id);
-                            const targetNode = currentNodes.find(n => n.id === edge.target);
-                            if (targetNode) queue.push(targetNode);
-                        });
-                    }
-                }
-                return results;
+                return sim.simulateEvent(state.events, currentNodes, currentEdges, fixedPrompt, incomingContextParts, visitedEventIds);
             },
 
             // Generate a test prompt, randomly selecting branches based on weights
