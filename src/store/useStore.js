@@ -362,6 +362,48 @@ const useStore = create(
                 return newNode.id;
             },
 
+            addNodeOnEdge: (type, position, edgeId) => {
+                const state = get();
+                const edge = state.edges.find((e) => e.id === edgeId);
+                if (!edge) return null;
+
+                const nodeId = state.addNode(type, position);
+                const newNode = get().nodes.find(n => n.id === nodeId);
+
+                // Create new edges
+                const edge1 = {
+                    id: `edge_${uuidv4()}`,
+                    source: edge.source,
+                    sourceHandle: edge.sourceHandle,
+                    target: nodeId,
+                    targetHandle: newNode.data?.inputs?.[0]?.id || null,
+                    type: 'smoothstep',
+                    animated: true,
+                    style: { stroke: '#C9B5FF', strokeWidth: 2 },
+                };
+
+                const edge2 = {
+                    id: `edge_${uuidv4()}`,
+                    source: nodeId,
+                    sourceHandle: newNode.data?.outputs?.[0]?.id || null,
+                    target: edge.target,
+                    targetHandle: edge.targetHandle,
+                    type: 'smoothstep',
+                    animated: true,
+                    style: { stroke: '#C9B5FF', strokeWidth: 2 },
+                };
+
+                set((state) => ({
+                    edges: [
+                        ...state.edges.filter((e) => e.id !== edgeId), // Remove old edge
+                        edge1,
+                        edge2,
+                    ],
+                }));
+
+                return nodeId;
+            },
+
             updateNode: (nodeId, data) => {
                 set((state) => ({
                     nodes: state.nodes.map((node) =>

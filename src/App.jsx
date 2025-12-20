@@ -46,6 +46,7 @@ function App() {
     const onEdgesChange = useStore((state) => state.onEdgesChange);
     const onConnect = useStore((state) => state.onConnect);
     const addNode = useStore((state) => state.addNode);
+    const addNodeOnEdge = useStore((state) => state.addNodeOnEdge);
     const updateNode = useStore((state) => state.updateNode);
     const setSelectedNode = useStore((state) => state.setSelectedNode);
     const currentEventId = useStore((state) => state.currentEventId);
@@ -93,22 +94,49 @@ function App() {
                 y: event.clientY,
             });
 
-            const nodeId = addNode(type, position);
+            // Check if dropped on an edge using bounding box detection
+            // Iterate through all edge elements and check if drop point is within their bounding box (with padding)
+            const EDGE_DETECTION_PADDING = 30; // pixels
+            let targetEdgeId = null;
+
+            const edgeElements = document.querySelectorAll('.react-flow__edge');
+            for (const edgeEl of edgeElements) {
+                const rect = edgeEl.getBoundingClientRect();
+                // Expand the bounding box by padding
+                if (
+                    event.clientX >= rect.left - EDGE_DETECTION_PADDING &&
+                    event.clientX <= rect.right + EDGE_DETECTION_PADDING &&
+                    event.clientY >= rect.top - EDGE_DETECTION_PADDING &&
+                    event.clientY <= rect.bottom + EDGE_DETECTION_PADDING
+                ) {
+                    targetEdgeId = edgeEl.getAttribute('data-id');
+                    break; // Use first matching edge
+                }
+            }
+
+            let nodeId;
+
+            if (targetEdgeId) {
+                console.log('Dropped on edge:', targetEdgeId);
+                nodeId = addNodeOnEdge(type, position, targetEdgeId);
+            } else {
+                nodeId = addNode(type, position);
+            }
 
             // If dropped from event library with referenceId
             const referenceId = event.dataTransfer.getData('referenceId');
             if (referenceId && type === 'referenceNode') {
-                const event = events.find((e) => e.id === referenceId);
-                if (event) {
+                const eventItem = events.find((e) => e.id === referenceId); // Renamed to avoid scoping conflict with event arg
+                if (eventItem) {
                     updateNode(nodeId, {
                         referenceId,
-                        referenceName: event.name,
-                        label: `→ ${event.name}`,
+                        referenceName: eventItem.name,
+                        label: `→ ${eventItem.name}`,
                     });
                 }
             }
         },
-        [reactFlowInstance, addNode, updateNode, events]
+        [reactFlowInstance, addNode, addNodeOnEdge, updateNode, events]
     );
 
     // Right-click context menu
