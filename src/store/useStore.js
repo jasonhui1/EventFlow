@@ -771,15 +771,17 @@ const useStore = create(
                 let allUpstream = [];
 
                 for (const { node: parentNode } of parentNodes) {
-                    // Add this parent
-                    const prompt = parentNode.data?.inheritedPrompt || parentNode.data?.fixedPrompt || '';
-                    allUpstream.push({
-                        nodeId: parentNode.id,
-                        nodeLabel: parentNode.data?.label || 'Unknown',
-                        nodeType: parentNode.type,
-                        prompt: prompt,
-                        depth: depth,
-                    });
+                    // Add this parent if it's not a start flow node
+                    if (parentNode.type !== 'startNode') {
+                        const prompt = parentNode.data?.inheritedPrompt || parentNode.data?.fixedPrompt || '';
+                        allUpstream.push({
+                            nodeId: parentNode.id,
+                            nodeLabel: parentNode.data?.label || 'Unknown',
+                            nodeType: parentNode.type,
+                            prompt: prompt,
+                            depth: depth,
+                        });
+                    }
 
                     // Recursively get grandparents
                     const grandparents = get().getAllUpstreamNodes(parentNode.id, visited, depth + 1, context);
