@@ -998,6 +998,98 @@ const useStore = create(
                 return { parts, full };
             },
 
+            // Simulation Logic (Graph Traversal)
+            simulateEvent: (currentNodes, currentEdges, incomingContextParts = [], visitedEventIds = new Set()) => {
+                const state = get();
+                const startNodes = currentNodes.filter(n => n.type === 'startNode');
+
+                if (startNodes.length === 0) return [];
+
+                startNodes.sort((a, b) => a.position.y - b.position.y);
+                const results = [];
+                const visitedNodeIds = new Set();
+                const visitedEdgeIds = new Set();
+                const queue = [...startNodes];
+
+                while (queue.length > 0) {
+                    const currentNode = queue.shift();
+
+                    if (visitedNodeIds.has(currentNode.id)) continue;
+                    visitedNodeIds.add(currentNode.id);
+
+                    if (currentNode.type === 'referenceNode' && currentNode.data?.referenceId) {
+                        if (!visitedEventIds.has(currentNode.data.referenceId)) {
+                            const refEvent = state.events.find(e => e.id === currentNode.data.referenceId);
+                            if (refEvent && refEvent.nodes) {
+                                const { parts: refPromptParts } = state.getComposedPrompt(currentNode.id, {
+                                    allowedEdges: visitedEdgeIds,
+                                    randomize: false,
+                                    resolveReferences: false,
+                                    context: { nodes: currentNodes, edges: currentEdges }
+                                });
+
+                                const newContextParts = [...incomingContextParts, ...refPromptParts];
+                                const newVisitedEvents = new Set(visitedEventIds).add(currentNode.data.referenceId);
+
+                                const innerResults = state.simulateEvent(
+                                    refEvent.nodes,
+                                    refEvent.edges || [],
+                                    newContextParts,
+                                    newVisitedEvents
+                                );
+                                results.push(...innerResults);
+                            }
+                        }
+                    } else {
+                        const hiddenTypes = ['startNode', 'endNode', 'branchNode', 'referenceNode'];
+                        if (!hiddenTypes.includes(currentNode.type)) {
+                            const { parts: localParts } = state.getComposedPrompt(currentNode.id, {
+                                allowedEdges: visitedEdgeIds,
+                                randomize: false,
+                                resolveReferences: false,
+                                context: { nodes: currentNodes, edges: currentEdges }
+                            });
+
+                            const finalParts = [...incomingContextParts, ...localParts];
+                            const fullPrompt = finalParts.map(p => p.prompt).filter(Boolean).join(', ');
+
+                            results.push({
+                                id: `${currentNode.id}-${Math.random().toString(36).substr(2, 9)}`,
+                                originalId: currentNode.id,
+                                label: currentNode.data?.label || currentNode.type,
+                                type: currentNode.type,
+                                prompt: fullPrompt,
+                                parts: finalParts
+                            });
+                        }
+                    }
+
+                    if (currentNode.type === 'endNode') continue;
+
+                    const outgoingEdges = currentEdges.filter(e => e.source === currentNode.id);
+
+                    if (currentNode.type === 'branchNode') {
+                        if (outgoingEdges.length > 0) {
+                            const uniqueHandles = [...new Set(outgoingEdges.map(e => e.sourceHandle))];
+                            const randomHandle = uniqueHandles[Math.floor(Math.random() * uniqueHandles.length)];
+                            const selectedEdges = outgoingEdges.filter(e => e.sourceHandle === randomHandle);
+                            selectedEdges.forEach(edge => {
+                                visitedEdgeIds.add(edge.id);
+                                const targetNode = currentNodes.find(n => n.id === edge.target);
+                                if (targetNode) queue.push(targetNode);
+                            });
+                        }
+                    } else {
+                        outgoingEdges.forEach(edge => {
+                            visitedEdgeIds.add(edge.id);
+                            const targetNode = currentNodes.find(n => n.id === edge.target);
+                            if (targetNode) queue.push(targetNode);
+                        });
+                    }
+                }
+                return results;
+            },
+
             // Generate a test prompt, randomly selecting branches based on weights
             generateTestPrompt: (nodeId, randomize = true) => {
                 const composed = get().getComposedPrompt(nodeId, { randomize });
