@@ -61,6 +61,7 @@ function App() {
     const selectEvent = useStore((state) => state.selectEvent);
     const events = useStore((state) => state.events);
     const deleteNodes = useStore((state) => state.deleteNodes);
+    const extractAndDeleteNodes = useStore((state) => state.extractAndDeleteNodes);
     const deleteEdges = useStore((state) => state.deleteEdges);
     const undo = useStore((state) => state.undo);
     const redo = useStore((state) => state.redo);
@@ -244,7 +245,16 @@ function App() {
                 if (selectedNodeIds.length > 0 || selectedEdgeIds.length > 0) {
                     event.preventDefault();
                     pushToHistory();
-                    if (selectedNodeIds.length > 0) deleteNodes(selectedNodeIds);
+
+                    if (selectedNodeIds.length > 0) {
+                        if (event.ctrlKey || event.metaKey) {
+                            console.log('Ctrl+Delete: Extracting and deleting nodes:', selectedNodeIds);
+                            extractAndDeleteNodes(selectedNodeIds);
+                        } else {
+                            deleteNodes(selectedNodeIds);
+                        }
+                    }
+
                     if (selectedEdgeIds.length > 0) deleteEdges(selectedEdgeIds);
                 }
             }

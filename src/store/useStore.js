@@ -410,42 +410,61 @@ const useStore = create(
 
             extractNodeFromFlow: (nodeId) => {
                 const state = get();
-                const incomingEdges = state.edges.filter(e => e.target === nodeId);
-                const outgoingEdges = state.edges.filter(e => e.source === nodeId);
+                const { edges } = state._getBridgedState([nodeId]);
+                set({ edges });
+            },
 
-                const newEdges = [];
-                // Create bridge edges between all parents and all children
-                incomingEdges.forEach(inEdge => {
-                    outgoingEdges.forEach(outEdge => {
-                        // Avoid duplicates if a connection already exists
-                        const exists = state.edges.some(e =>
-                            e.source === inEdge.source &&
-                            e.target === outEdge.target &&
-                            e.sourceHandle === inEdge.sourceHandle &&
-                            e.targetHandle === outEdge.targetHandle
-                        );
+            extractAndDeleteNodes: (nodeIds) => {
+                const state = get();
+                const { nodes, edges } = state._getBridgedState(nodeIds);
+                set({
+                    nodes,
+                    edges,
+                    selectedNode: nodeIds.includes(state.selectedNode?.id) ? null : state.selectedNode,
+                });
+            },
 
-                        if (!exists) {
-                            newEdges.push({
-                                id: `edge_${uuidv4()}`,
-                                source: inEdge.source,
-                                sourceHandle: inEdge.sourceHandle,
-                                target: outEdge.target,
-                                targetHandle: outEdge.targetHandle,
-                                type: 'smoothstep',
-                                animated: true,
-                                style: { stroke: '#C9B5FF', strokeWidth: 2 },
-                            });
-                        }
+            // Internal helper to calculate bridged state without committing to store
+            _getBridgedState: (nodeIds) => {
+                const state = get();
+                let currentEdges = [...state.edges];
+
+                nodeIds.forEach(nodeId => {
+                    const incomingEdges = currentEdges.filter(e => e.target === nodeId);
+                    const outgoingEdges = currentEdges.filter(e => e.source === nodeId);
+
+                    incomingEdges.forEach(inEdge => {
+                        outgoingEdges.forEach(outEdge => {
+                            const exists = currentEdges.some(e =>
+                                e.source === inEdge.source &&
+                                e.target === outEdge.target &&
+                                e.sourceHandle === inEdge.sourceHandle &&
+                                e.targetHandle === outEdge.targetHandle
+                            );
+
+                            if (!exists) {
+                                currentEdges.push({
+                                    id: `edge_${uuidv4()}`,
+                                    source: inEdge.source,
+                                    sourceHandle: inEdge.sourceHandle,
+                                    target: outEdge.target,
+                                    targetHandle: outEdge.targetHandle,
+                                    type: 'smoothstep',
+                                    animated: true,
+                                    style: { stroke: '#C9B5FF', strokeWidth: 2 },
+                                });
+                            }
+                        });
                     });
+
+                    // Remove edges connected to this node
+                    currentEdges = currentEdges.filter(e => e.source !== nodeId && e.target !== nodeId);
                 });
 
-                set((state) => ({
-                    edges: [
-                        ...state.edges.filter(e => e.source !== nodeId && e.target !== nodeId),
-                        ...newEdges
-                    ]
-                }));
+                return {
+                    nodes: state.nodes.filter(n => !nodeIds.includes(n.id)),
+                    edges: currentEdges
+                };
             },
 
             updateNode: (nodeId, data) => {
