@@ -6,6 +6,23 @@ const EventNode = ({ id, data, selected }) => {
     const updateNode = useStore((state) => state.updateNode);
     const addNodeOutput = useStore((state) => state.addNodeOutput);
     const addNodeInput = useStore((state) => state.addNodeInput);
+    const inputRef = React.useRef(null);
+
+    React.useEffect(() => {
+        if (data.initialFocus && inputRef.current) {
+            // Small timeout to ensure component is fully mounted and ready
+            const timer = setTimeout(() => {
+                if (inputRef.current) {
+                    inputRef.current.focus();
+                    inputRef.current.select();
+                }
+                // Clear the flag
+                updateNode(id, { initialFocus: undefined });
+            }, 50);
+
+            return () => clearTimeout(timer);
+        }
+    }, [data.initialFocus, id, updateNode]);
 
     return (
         <div className={`event-node ${selected ? 'selected' : ''}`}>
@@ -24,6 +41,7 @@ const EventNode = ({ id, data, selected }) => {
             <div className="event-node-header">
                 <span className="event-node-icon">📌</span>
                 <input
+                    ref={inputRef}
                     className="event-node-title"
                     value={data.label}
                     onChange={(e) => updateNode(id, { label: e.target.value })}

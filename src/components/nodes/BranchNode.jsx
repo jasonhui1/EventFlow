@@ -6,6 +6,20 @@ const BranchNode = ({ id, data, selected }) => {
     const updateNode = useStore((state) => state.updateNode);
     const updateOutputWeight = useStore((state) => state.updateOutputWeight);
     const addNodeOutput = useStore((state) => state.addNodeOutput);
+    const inputRef = React.useRef(null);
+
+    React.useEffect(() => {
+        if (data.initialFocus && inputRef.current) {
+            const timer = setTimeout(() => {
+                if (inputRef.current) {
+                    inputRef.current.focus();
+                    inputRef.current.select();
+                }
+                updateNode(id, { initialFocus: undefined });
+            }, 50);
+            return () => clearTimeout(timer);
+        }
+    }, [data.initialFocus, id, updateNode]);
 
     const totalWeight = data.outputs?.reduce((sum, o) => sum + (o.weight || 0), 0) || 100;
 
@@ -30,6 +44,7 @@ const BranchNode = ({ id, data, selected }) => {
             <div className="branch-node-header">
                 <span className="event-node-icon">🔀</span>
                 <input
+                    ref={inputRef}
                     className="event-node-title"
                     value={data.label}
                     onChange={(e) => updateNode(id, { label: e.target.value })}

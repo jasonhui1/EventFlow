@@ -333,27 +333,30 @@ const useStore = create(
             // Node Actions
             addNode: (type, position) => {
                 let newNode;
+                // Add initialFocus flag to new nodes so they can auto-focus their inputs
+                const dataWithFocus = { initialFocus: true };
+
                 switch (type) {
                     case 'eventNode':
-                        newNode = createEventNode(position);
+                        newNode = createEventNode(position, dataWithFocus);
                         break;
                     case 'groupNode':
-                        newNode = createGroupNode(position);
+                        newNode = createGroupNode(position, dataWithFocus);
                         break;
                     case 'branchNode':
-                        newNode = createBranchNode(position);
+                        newNode = createBranchNode(position, dataWithFocus);
                         break;
                     case 'referenceNode':
-                        newNode = createReferenceNode(position);
+                        newNode = createReferenceNode(position, dataWithFocus);
                         break;
                     case 'startNode':
-                        newNode = createStartNode(position);
+                        newNode = createStartNode(position, dataWithFocus);
                         break;
                     case 'endNode':
-                        newNode = createEndNode(position);
+                        newNode = createEndNode(position, dataWithFocus);
                         break;
                     default:
-                        newNode = createEventNode(position);
+                        newNode = createEventNode(position, dataWithFocus);
                 }
                 set((state) => ({ nodes: [...state.nodes, newNode] }));
                 return newNode.id;
