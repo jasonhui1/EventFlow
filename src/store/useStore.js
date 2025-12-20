@@ -362,21 +362,25 @@ const useStore = create(
                 return newNode.id;
             },
 
-            addNodeOnEdge: (type, position, edgeId) => {
+            insertNodeOnEdge: (type, position, edgeId, nodeId = null) => {
                 const state = get();
                 const edge = state.edges.find((e) => e.id === edgeId);
                 if (!edge) return null;
 
-                const nodeId = state.addNode(type, position);
-                const newNode = get().nodes.find(n => n.id === nodeId);
+                let targetNodeId = nodeId;
+                if (!targetNodeId) {
+                    targetNodeId = state.addNode(type, position);
+                }
+
+                const targetNode = get().nodes.find(n => n.id === targetNodeId);
 
                 // Create new edges
                 const edge1 = {
                     id: `edge_${uuidv4()}`,
                     source: edge.source,
                     sourceHandle: edge.sourceHandle,
-                    target: nodeId,
-                    targetHandle: newNode.data?.inputs?.[0]?.id || null,
+                    target: targetNodeId,
+                    targetHandle: targetNode.data?.inputs?.[0]?.id || null,
                     type: 'smoothstep',
                     animated: true,
                     style: { stroke: '#C9B5FF', strokeWidth: 2 },
@@ -384,8 +388,8 @@ const useStore = create(
 
                 const edge2 = {
                     id: `edge_${uuidv4()}`,
-                    source: nodeId,
-                    sourceHandle: newNode.data?.outputs?.[0]?.id || null,
+                    source: targetNodeId,
+                    sourceHandle: targetNode.data?.outputs?.[0]?.id || null,
                     target: edge.target,
                     targetHandle: edge.targetHandle,
                     type: 'smoothstep',
@@ -401,7 +405,7 @@ const useStore = create(
                     ],
                 }));
 
-                return nodeId;
+                return targetNodeId;
             },
 
             updateNode: (nodeId, data) => {

@@ -46,7 +46,7 @@ function App() {
     const onEdgesChange = useStore((state) => state.onEdgesChange);
     const onConnect = useStore((state) => state.onConnect);
     const addNode = useStore((state) => state.addNode);
-    const addNodeOnEdge = useStore((state) => state.addNodeOnEdge);
+    const insertNodeOnEdge = useStore((state) => state.insertNodeOnEdge);
     const updateNode = useStore((state) => state.updateNode);
     const setSelectedNode = useStore((state) => state.setSelectedNode);
     const currentEventId = useStore((state) => state.currentEventId);
@@ -118,7 +118,7 @@ function App() {
 
             if (targetEdgeId) {
                 console.log('Dropped on edge:', targetEdgeId);
-                nodeId = addNodeOnEdge(type, position, targetEdgeId);
+                nodeId = insertNodeOnEdge(type, position, targetEdgeId);
             } else {
                 nodeId = addNode(type, position);
             }
@@ -136,8 +136,33 @@ function App() {
                 }
             }
         },
-        [reactFlowInstance, addNode, addNodeOnEdge, updateNode, events]
+        [reactFlowInstance, addNode, insertNodeOnEdge, updateNode, events]
     );
+
+    // Handle existing node dropped on an edge
+    const onNodeDragStop = useCallback((event, node) => {
+        // Use the same bounding box detection logic
+        const EDGE_DETECTION_PADDING = 30; // pixels
+        let targetEdgeId = null;
+
+        const edgeElements = document.querySelectorAll('.react-flow__edge');
+        for (const edgeEl of edgeElements) {
+            const rect = edgeEl.getBoundingClientRect();
+            if (
+                event.clientX >= rect.left - EDGE_DETECTION_PADDING &&
+                event.clientX <= rect.right + EDGE_DETECTION_PADDING &&
+                event.clientY >= rect.top - EDGE_DETECTION_PADDING &&
+                event.clientY <= rect.bottom + EDGE_DETECTION_PADDING
+            ) {
+                targetEdgeId = edgeEl.getAttribute('data-id');
+                break;
+            }
+        }
+
+        if (targetEdgeId) {
+            insertNodeOnEdge(null, null, targetEdgeId, node.id);
+        }
+    }, [insertNodeOnEdge]);
 
     // Right-click context menu
     const onPaneContextMenu = useCallback((event) => {
@@ -493,6 +518,7 @@ function App() {
                         onInit={setReactFlowInstance}
                         onDrop={onDrop}
                         onDragOver={onDragOver}
+                        onNodeDragStop={onNodeDragStop}
                         onPaneContextMenu={onPaneContextMenu}
                         onNodeContextMenu={(e) => { e.preventDefault(); }}
                         onEdgeContextMenu={(e) => { e.preventDefault(); }}
