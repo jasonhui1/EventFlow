@@ -287,12 +287,7 @@ const useStore = create(
                 const state = get();
                 // Save current event first
                 if (state.currentEventId) {
-                    const updatedEvents = state.events.map((e) =>
-                        e.id === state.currentEventId
-                            ? { ...e, nodes: state.nodes, edges: state.edges, updatedAt: new Date().toISOString() }
-                            : e
-                    );
-                    set({ events: updatedEvents });
+                    state.saveCurrentEvent();
                 }
 
                 // Skip if already selected and loaded
@@ -729,6 +724,17 @@ const useStore = create(
                 const state = get();
                 if (!state.currentEventId) return;
 
+                const currentEvent = state.events.find((e) => e.id === state.currentEventId);
+                if (!currentEvent) return;
+
+                // Reference Check: Only save if there's actually a difference to avoid loops
+                if (
+                    currentEvent.nodes === state.nodes &&
+                    currentEvent.edges === state.edges
+                ) {
+                    return;
+                }
+
                 set((state) => ({
                     events: state.events.map((e) =>
                         e.id === state.currentEventId
@@ -901,5 +907,21 @@ const useStore = create(
         }
     )
 );
+
+// ========================================
+// Reactive Auto-Save Subscription
+// ========================================
+
+let autoSaveTimeout;
+useStore.subscribe((state, prevState) => {
+    // Watch for Changes in nodes or edges
+    if (state.nodes !== prevState.nodes || state.edges !== prevState.edges) {
+        clearTimeout(autoSaveTimeout);
+        // Debounce: Wait 1 second after last change before syncing to library
+        autoSaveTimeout = setTimeout(() => {
+            useStore.getState().saveCurrentEvent();
+        }, 1000);
+    }
+});
 
 export default useStore;
