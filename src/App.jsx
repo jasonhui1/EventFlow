@@ -35,6 +35,11 @@ import EventSimulationModal from './components/EventSimulationModal';
 import BulkExportModal from './components/BulkExportModal';
 
 function App() {
+
+    const [costumeOptions, setCostumeOptions] = useState(['casual', ' school uniform']);
+    const [showWeights, setShowWeights] = useState(false);
+
+
     const reactFlowWrapper = useRef(null);
     const [reactFlowInstance, setReactFlowInstance] = useState(null);
     const [contextMenu, setContextMenu] = useState(null);
@@ -536,6 +541,77 @@ function App() {
                     </div>
                 )}
 
+
+                {/* Costume Selection */}
+                {currentEvent && (
+                    <div className="costume-selection-container">
+                        <div className="costume-label">
+                            <span style={{ fontSize: '14px' }}>👗</span> COSTUMES:
+                        </div>
+                        <div className="costume-tags">
+                            {costumeOptions.map(costume => {
+                                const currentCostumes = currentEvent.costumes || [];
+                                const isActive = currentCostumes.some(c => (typeof c === 'string' ? c : c.name) === costume);
+                                return (
+                                    <button
+                                        key={costume}
+                                        className={`costume-tag ${isActive ? 'active' : ''}`}
+                                        onClick={() => toggleCostume(costume)}
+                                    >
+                                        {costume}
+                                    </button>
+                                );
+                            })}
+                        </div>
+
+                        {(currentEvent.costumes || []).length > 0 && (
+                            <button
+                                className={`weights-toggle-btn ${showWeights ? 'active' : ''}`}
+                                onClick={() => setShowWeights(!showWeights)}
+                                title="Configure Weights"
+                            >
+                                {showWeights ? '📊 Hide Weights' : '📊 Weights'}
+                            </button>
+                        )}
+                    </div>
+                )}
+
+                {/* Costume Weight Configuration (Collapsible) */}
+                {currentEvent && showWeights && (currentEvent.costumes || []).length > 0 && (
+                    <div className="costume-weights-panel">
+                        <div className="weights-grid">
+                            {(() => {
+                                const currentCostumes = currentEvent.costumes || [];
+                                const totalWeight = currentCostumes.reduce((sum, c) => sum + (c.weight || 0), 0);
+
+                                return currentCostumes.map(costume => {
+                                    const cName = typeof costume === 'string' ? costume : costume.name;
+                                    const cWeight = typeof costume === 'string' ? 1 : (costume.weight ?? 1);
+                                    const percentage = totalWeight > 0 ? Math.round((cWeight / totalWeight) * 100) : 0;
+
+                                    return (
+                                        <div key={cName} className="weight-item">
+                                            <div className="weight-info">
+                                                <span className="weight-name">{cName}</span>
+                                                <span className="weight-value">Ratio: {cWeight} <span style={{ color: 'var(--pastel-blue)', opacity: 0.8 }}>({percentage}%)</span></span>
+                                            </div>
+                                            <input
+                                                type="range"
+                                                min="0.2"
+                                                max="5"
+                                                step="0.1"
+                                                value={cWeight}
+                                                onChange={(e) => updateCostumeWeight(currentEventId, cName, parseFloat(e.target.value))}
+                                                className="weight-slider"
+                                            />
+                                        </div>
+                                    );
+                                });
+                            })()}
+                        </div>
+                    </div>
+                )}
+
                 {/* React Flow Canvas */}
                 <div className="react-flow-wrapper" ref={reactFlowWrapper}>
                     <ReactFlow
@@ -649,14 +725,18 @@ function App() {
 
             <PropertiesPanel />
 
-            {showSimulationModal && (
-                <EventSimulationModal onClose={() => setShowSimulationModal(false)} />
-            )}
+            {
+                showSimulationModal && (
+                    <EventSimulationModal onClose={() => setShowSimulationModal(false)} />
+                )
+            }
 
-            {showBulkExportModal && (
-                <BulkExportModal onClose={() => setShowBulkExportModal(false)} />
-            )}
-        </div>
+            {
+                showBulkExportModal && (
+                    <BulkExportModal onClose={() => setShowBulkExportModal(false)} />
+                )
+            }
+        </div >
     );
 }
 

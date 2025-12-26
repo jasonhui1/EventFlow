@@ -14,6 +14,11 @@ const Sidebar = () => {
     // Modal states
     const [showNewEventModal, setShowNewEventModal] = useState(false);
     const [deleteEventModal, setDeleteEventModal] = useState(null); // { id, name }
+    const [searchTerm, setSearchTerm] = useState('');
+
+    const filteredEvents = events.filter(event =>
+        event.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
 
     const onDragStart = (event, nodeType) => {
         event.dataTransfer.setData('application/reactflow', nodeType);
@@ -119,8 +124,20 @@ const Sidebar = () => {
                 {/* Event Library */}
                 <div className="sidebar-section">
                     <h3 className="sidebar-section-title">Event Library</h3>
+
+                    <div className="sidebar-search">
+                        <span className="sidebar-search-icon">🔍</span>
+                        <input
+                            type="text"
+                            className="sidebar-search-input"
+                            placeholder="Search events..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+
                     <div className="event-library">
-                        {events.map((event) => (
+                        {filteredEvents.map((event) => (
                             <div
                                 key={event.id}
                                 className={`event-item ${currentEventId === event.id ? 'active' : ''}`}

@@ -96,6 +96,7 @@ const createInitialEvent = () => ({
         createEndNode({ x: 600, y: 150 })
     ],
     edges: [],
+    costumes: [],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
 });
@@ -252,6 +253,7 @@ const useStore = create(
                         createEndNode({ x: 600, y: 150 })
                     ],
                     edges: [],
+                    costumes: [],
                     createdAt: new Date().toISOString(),
                     updatedAt: new Date().toISOString(),
                 };
@@ -322,6 +324,34 @@ const useStore = create(
                 set((state) => ({
                     events: state.events.map((e) =>
                         e.id === eventId ? { ...e, fixedPrompt, updatedAt: new Date().toISOString() } : e
+                    ),
+                }));
+            },
+
+            updateEventCostumes: (eventId, costumes) => {
+                set((state) => ({
+                    events: state.events.map((e) =>
+                        e.id === eventId ? {
+                            ...e, costumes: costumes.map(c =>
+                                typeof c === 'string' ? { name: c, weight: 1 } : c
+                            ), updatedAt: new Date().toISOString()
+                        } : e
+                    ),
+                }));
+            },
+
+            updateCostumeWeight: (eventId, costumeName, weight) => {
+                set((state) => ({
+                    events: state.events.map((e) =>
+                        e.id === eventId
+                            ? {
+                                ...e,
+                                costumes: (e.costumes || []).map((c) =>
+                                    c.name === costumeName ? { ...c, weight } : c
+                                ),
+                                updatedAt: new Date().toISOString(),
+                            }
+                            : e
                     ),
                 }));
             },
