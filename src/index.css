@@ -693,7 +693,7 @@ body {
   transition: all var(--transition-normal);
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  /* overflow: hidden; */
 }
 
 .event-node:hover {
