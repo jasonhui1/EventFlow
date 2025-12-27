@@ -28,6 +28,7 @@ const PromptPreview = ({ nodeId, onClose }) => {
             case 'groupNode': return '#B5D4FF';
             case 'local': return '#FFB5C5';
             case 'inherited': return '#B5FFD9';
+            case 'shot': return '#FFCEB5';
             default: return 'rgba(255,255,255,0.6)';
         }
     };
@@ -39,6 +40,7 @@ const PromptPreview = ({ nodeId, onClose }) => {
             case 'groupNode': return '📁';
             case 'local': return '🎯';
             case 'inherited': return '➡️';
+            case 'shot': return '📐';
             default: return '•';
         }
     };

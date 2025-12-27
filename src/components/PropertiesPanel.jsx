@@ -146,6 +146,26 @@ const PropertiesPanel = () => {
                     </>
                 )}
 
+
+                <div className="property-group">
+                    <label style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        cursor: 'pointer',
+                        fontSize: '13px',
+                        color: '#A0A0C0'
+                    }}>
+                        <input
+                            type="checkbox"
+                            checked={data.usePerspective || false}
+                            onChange={(e) => updateNode(id, { usePerspective: e.target.checked })}
+                            style={{ cursor: 'pointer' }}
+                        />
+                        📐 Perspective & Foreshortening
+                    </label>
+                </div>
+
                 {/* Fixed Prompt (for Group Nodes) */}
                 {type === 'groupNode' && (
                     <div className="property-group">

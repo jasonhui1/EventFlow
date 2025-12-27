@@ -78,6 +78,7 @@ const EventNode = ({ id, data, selected }) => {
                     }}
                 />
 
+
                 {/* Local Prompt - Only for this event */}
                 <div style={{ marginBottom: '8px' }}>
                     <div style={{
@@ -144,6 +145,37 @@ const EventNode = ({ id, data, selected }) => {
                             resize: 'vertical',
                         }}
                     />
+                </div>
+
+
+                {/* Shot Modifiers */}
+                <div style={{
+                    marginBottom: '10px',
+                    padding: '4px 8px',
+                    background: 'rgba(255, 255, 255, 0.03)',
+                    borderRadius: '6px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                }}>
+                    <label style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        cursor: 'pointer',
+                        fontSize: '11px',
+                        color: '#A0A0C0',
+                        userSelect: 'none'
+                    }}>
+                        <input
+                            type="checkbox"
+                            checked={data.usePerspective || false}
+                            onChange={(e) => updateNode(id, { usePerspective: e.target.checked })}
+                            onClick={(e) => e.stopPropagation()}
+                            style={{ cursor: 'pointer' }}
+                        />
+                        📐 Perspective & Foreshortening
+                    </label>
                 </div>
 
                 <div className="event-node-handles">

@@ -162,6 +162,10 @@ export const getComposedPrompt = (nodeId, allEvents, nodes, edges, currentEventF
         parts.push({ label: 'Carries Forward', prompt: nodeInheritedPrompt, type: 'inherited' });
     }
 
+    if (node.data?.usePerspective) {
+        parts.push({ label: 'Perspective', prompt: 'perspective, foreshortening', type: 'shot' });
+    }
+
     const full = parts.map((p) => p.prompt).filter(Boolean).join(', ');
 
     return { parts, full };
