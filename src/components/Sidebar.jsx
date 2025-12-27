@@ -151,41 +151,26 @@ const Sidebar = () => {
                                 }}
                             >
                                 <span className="event-item-name">{event.name}</span>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <div className="event-item-actions">
                                     <span className="event-item-count">{event.nodes?.length || 0}</span>
                                     <button
+                                        className="event-action-btn duplicate"
                                         onClick={(e) => {
                                             e.stopPropagation();
                                             duplicateEvent(event.id);
                                         }}
                                         title="Duplicate Event"
-                                        style={{
-                                            background: 'rgba(100,200,255,0.2)',
-                                            border: 'none',
-                                            borderRadius: '4px',
-                                            color: '#8ecfff',
-                                            padding: '2px 6px',
-                                            cursor: 'pointer',
-                                            fontSize: '10px',
-                                        }}
                                     >
                                         ❐
                                     </button>
                                     {events.length > 1 && (
                                         <button
+                                            className="event-action-btn delete"
                                             onClick={(e) => {
                                                 e.stopPropagation();
                                                 handleDeleteEvent(event.id, event.name);
                                             }}
-                                            style={{
-                                                background: 'rgba(255,100,100,0.2)',
-                                                border: 'none',
-                                                borderRadius: '4px',
-                                                color: '#ff6b6b',
-                                                padding: '2px 6px',
-                                                cursor: 'pointer',
-                                                fontSize: '10px',
-                                            }}
+                                            title="Delete Event"
                                         >
                                             ✕
                                         </button>
