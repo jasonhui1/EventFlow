@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
+import { applyNodeChanges, applyEdgeChanges } from '@xyflow/react';
 import * as sim from '../utils/simulationUtils';
 
 // Default node templates
@@ -629,56 +630,49 @@ const useStore = create(
             // React Flow callbacks
             onNodesChange: (changes) => {
                 set((state) => {
-                    const newNodes = [...state.nodes];
+                    // Side-effect: Track selected node
                     changes.forEach((change) => {
-                        if (change.type === 'position' && change.position) {
-                            const nodeIndex = newNodes.findIndex((n) => n.id === change.id);
-                            if (nodeIndex !== -1) {
-                                newNodes[nodeIndex] = {
-                                    ...newNodes[nodeIndex],
-                                    position: change.position,
-                                };
-                            }
-                        } else if (change.type === 'remove') {
-                            const nodeIndex = newNodes.findIndex((n) => n.id === change.id);
-                            if (nodeIndex !== -1) {
-                                newNodes.splice(nodeIndex, 1);
-                            }
-                        } else if (change.type === 'select') {
-                            const nodeIndex = newNodes.findIndex((n) => n.id === change.id);
-                            if (nodeIndex !== -1) {
-                                newNodes[nodeIndex] = {
-                                    ...newNodes[nodeIndex],
-                                    selected: change.selected,
-                                };
-                                if (change.selected) {
-                                    set({ selectedNode: newNodes[nodeIndex] });
-                                }
+                        if (change.type === 'select' && change.selected) {
+                            // We need to look up in the current state or the new state?
+                            // applyNodeChanges hasn't run yet, so look in current state.
+                            const node = state.nodes.find((n) => n.id === change.id);
+                            if (node) {
+                                // We can't update state inside set() directly if we are returning partial state.
+                                // But selectedNode is part of the state.
+                                // We can just include selectedNode in the return object?
+                                // No, because we are iterating.
+                                // Instead, we can't easily set state.selectedNode here inside the reduce/map.
+                                // But since we are returning an object to merge, we can compute it.
                             }
                         }
                     });
-                    return { nodes: newNodes };
+
+                    // More robust selection handling:
+                    const newNodes = applyNodeChanges(changes, state.nodes);
+
+                    // Check if selected node changed
+                    let newSelectedNode = state.selectedNode;
+                    changes.forEach((change) => {
+                        if (change.type === 'select') {
+                            if (change.selected) {
+                                newSelectedNode = newNodes.find((n) => n.id === change.id) || null;
+                            } else if (state.selectedNode?.id === change.id) {
+                                newSelectedNode = null;
+                            }
+                        }
+                    });
+
+                    return {
+                        nodes: newNodes,
+                        selectedNode: newSelectedNode
+                    };
                 });
             },
 
             onEdgesChange: (changes) => {
-                set((state) => {
-                    let newEdges = [...state.edges];
-                    changes.forEach((change) => {
-                        if (change.type === 'remove') {
-                            newEdges = newEdges.filter((e) => e.id !== change.id);
-                        } else if (change.type === 'select') {
-                            const edgeIndex = newEdges.findIndex((e) => e.id === change.id);
-                            if (edgeIndex !== -1) {
-                                newEdges[edgeIndex] = {
-                                    ...newEdges[edgeIndex],
-                                    selected: change.selected,
-                                };
-                            }
-                        }
-                    });
-                    return { edges: newEdges };
-                });
+                set((state) => ({
+                    edges: applyEdgeChanges(changes, state.edges),
+                }));
             },
 
             onConnect: (connection) => {

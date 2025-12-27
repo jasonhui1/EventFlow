@@ -684,12 +684,15 @@ body {
 
 .event-node {
   min-width: 200px;
+  height: 100%;
   background: var(--bg-card);
   backdrop-filter: blur(10px);
   border-radius: var(--radius-md);
   border: 2px solid rgba(255, 255, 255, 0.1);
   box-shadow: var(--shadow-md);
   transition: all var(--transition-normal);
+  display: flex;
+  flex-direction: column;
 }
 
 .event-node:hover {

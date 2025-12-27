@@ -1,5 +1,5 @@
 import React, { memo } from 'react';
-import { Handle, Position } from '@xyflow/react';
+import { Handle, Position, NodeResizer } from '@xyflow/react';
 import useStore from '../../store/useStore';
 import ResizingTextarea from '../ResizingTextarea';
 
@@ -14,8 +14,9 @@ const EventNode = ({ id, data, selected }) => {
             // Small timeout to ensure component is fully mounted and ready
             const timer = setTimeout(() => {
                 if (inputRef.current) {
-                    inputRef.current.focus();
-                    inputRef.current.select();
+                    // Check if it's a textarea or input
+                    if (inputRef.current.focus) inputRef.current.focus();
+                    if (inputRef.current.select) inputRef.current.select();
                 }
                 // Clear the flag
                 updateNode(id, { initialFocus: undefined });
@@ -26,7 +27,15 @@ const EventNode = ({ id, data, selected }) => {
     }, [data.initialFocus, id, updateNode]);
 
     return (
-        <div className={`event-node ${selected ? 'selected' : ''}`}>
+        <div className={`event-node ${selected ? 'selected' : ''}`} style={{ height: '100%' }}>
+            <NodeResizer
+                color="#C9B5FF"
+                isVisible={selected}
+                minWidth={200}
+                minHeight={100}
+                handleStyle={{ width: 8, height: 8, borderRadius: '50%' }}
+                lineStyle={{ border: '1px solid #C9B5FF' }}
+            />
             {/* Input Handles */}
             {data.inputs?.map((input, index) => (
                 <Handle
