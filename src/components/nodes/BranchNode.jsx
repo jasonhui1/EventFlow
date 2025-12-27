@@ -44,7 +44,7 @@ const BranchNode = ({ id, data, selected }) => {
             <div className="branch-node-header">
                 <span className="event-node-icon">🔀</span>
                 <input
-                    className="event-node-title"
+                    className="event-node-title nodrag"
                     value={data.label}
                     onChange={(e) => updateNode(id, { label: e.target.value })}
                     onClick={(e) => e.stopPropagation()}
@@ -60,69 +60,105 @@ const BranchNode = ({ id, data, selected }) => {
             </div>
 
             <div className="branch-outputs">
-                {data.outputs?.map((output, index) => (
-                    <div key={output.id} className="branch-option">
-                        <input
-                            ref={index === 0 ? inputRef : null}
-                            value={output.label}
-                            onChange={(e) => {
-                                const newOutputs = data.outputs.map((o) =>
-                                    o.id === output.id ? { ...o, label: e.target.value } : o
-                                );
-                                updateNode(id, { outputs: newOutputs });
-                            }}
-                            onClick={(e) => e.stopPropagation()}
-                            style={{
-                                background: 'transparent',
-                                border: 'none',
-                                color: 'rgba(255,255,255,0.7)',
-                                fontSize: '12px',
-                                width: '80px',
-                            }}
-                        />
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                {data.outputs?.map((output, index) => {
+                    const percentage = Math.round(((output.weight || 50) / totalWeight) * 100);
+                    return (
+                        <div key={output.id} className="branch-option" style={{
+                            flexDirection: 'column',
+                            alignItems: 'stretch',
+                            gap: '4px',
+                            position: 'relative',
+                            padding: '8px 0'
+                        }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <input
+                                    ref={index === 0 ? inputRef : null}
+                                    value={output.label}
+                                    onChange={(e) => {
+                                        const newOutputs = data.outputs.map((o) =>
+                                            o.id === output.id ? { ...o, label: e.target.value } : o
+                                        );
+                                        updateNode(id, { outputs: newOutputs });
+                                    }}
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="nodrag"
+                                    style={{
+                                        background: 'transparent',
+                                        border: 'none',
+                                        color: 'rgba(255,255,255,0.7)',
+                                        fontSize: '11px',
+                                        flex: 1,
+                                        fontWeight: 500,
+                                    }}
+                                />
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <span style={{
+                                        fontSize: '10px',
+                                        fontWeight: 600,
+                                        color: '#FFCEB5',
+                                        background: 'rgba(255, 206, 181, 0.1)',
+                                        padding: '1px 6px',
+                                        borderRadius: '10px'
+                                    }}>
+                                        {percentage}%
+                                    </span>
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            const newOutputs = data.outputs.filter(o => o.id !== output.id);
+                                            updateNode(id, { outputs: newOutputs });
+                                        }}
+                                        style={{
+                                            background: 'transparent',
+                                            border: 'none',
+                                            color: 'rgba(255,100,100,0.5)',
+                                            fontSize: '12px',
+                                            cursor: 'pointer',
+                                            padding: '0 4px'
+                                        }}
+                                    >
+                                        ×
+                                    </button>
+                                </div>
+                            </div>
+
                             <input
-                                type="number"
-                                value={output.weight || 50}
-                                onChange={(e) => handleWeightChange(output.id, parseInt(e.target.value) || 0)}
-                                onClick={(e) => e.stopPropagation()}
-                                min="0"
+                                type="range"
+                                min="1"
                                 max="100"
+                                value={output.weight || 50}
+                                onChange={(e) => handleWeightChange(output.id, parseInt(e.target.value))}
+                                onClick={(e) => e.stopPropagation()}
+                                className="probability-slider nodrag"
                                 style={{
-                                    width: '40px',
-                                    background: 'rgba(255, 206, 181, 0.15)',
-                                    border: 'none',
-                                    borderRadius: '4px',
-                                    color: '#FFCEB5',
-                                    fontSize: '11px',
-                                    padding: '2px 4px',
-                                    textAlign: 'center',
+                                    height: '4px',
+                                    marginTop: '4px',
+                                    cursor: 'pointer'
                                 }}
                             />
-                            <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)' }}>
-                                ({Math.round((output.weight / totalWeight) * 100)}%)
-                            </span>
-                        </div>
 
-                        {/* Output Handle for this branch */}
-                        <Handle
-                            type="source"
-                            position={Position.Right}
-                            id={output.id}
-                            style={{
-                                top: `${50 + index * 40}px`,
-                                background: '#FFCEB5',
-                            }}
-                            title={output.label}
-                        />
-                    </div>
-                ))}
+                            {/* Output Handle for this branch */}
+                            <Handle
+                                type="source"
+                                position={Position.Right}
+                                id={output.id}
+                                style={{
+                                    top: '50%',
+                                    right: '-6px',
+                                    background: '#FFCEB5',
+                                }}
+                                title={output.label}
+                            />
+                        </div>
+                    );
+                })}
 
                 <button
                     onClick={(e) => {
                         e.stopPropagation();
                         addNodeOutput(id);
                     }}
+                    className="nodrag"
                     style={{
                         width: '100%',
                         marginTop: '8px',
@@ -141,6 +177,7 @@ const BranchNode = ({ id, data, selected }) => {
 
             <div style={{ padding: '8px 16px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
                 <input
+                    className="nodrag"
                     value={data.condition || ''}
                     onChange={(e) => updateNode(id, { condition: e.target.value })}
                     onClick={(e) => e.stopPropagation()}
