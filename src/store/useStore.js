@@ -9,6 +9,8 @@ const createEventNode = (position = { x: 0, y: 0 }, data = {}) => ({
     id: uuidv4(),
     type: 'eventNode',
     position,
+    width: 320,
+    height: 400,
     data: {
         label: data.label || 'New Event',
         content: data.content || '',
@@ -245,25 +247,40 @@ const useStore = create(
 
             // Event Actions
             addEvent: (name = 'New Event') => {
+                const startNode = createStartNode({ x: 50, y: 50 });
+                const event1 = createEventNode({ x: 400, y: 50 }, { label: 'Event 1' });
+                const event2 = createEventNode({ x: 750, y: 50 }, { label: 'Event 2' });
+                const event3 = createEventNode({ x: 1100, y: 50 }, { label: 'Event 3' });
+                const event4 = createEventNode({ x: 1450, y: 50 }, { label: 'Event 4' });
+                const endNode = createEndNode({ x: 1850, y: 850 });
+
+                const nodes = [startNode, event1, event2, event3, event4, endNode];
+
+                const edges = [
+                    { id: `edge_${uuidv4()}`, source: startNode.id, sourceHandle: 'start_output', target: event1.id, targetHandle: 'trigger', type: 'smoothstep', animated: true, style: { stroke: '#C9B5FF', strokeWidth: 2 } },
+                    { id: `edge_${uuidv4()}`, source: event1.id, sourceHandle: 'next', target: event2.id, targetHandle: 'trigger', type: 'smoothstep', animated: true, style: { stroke: '#C9B5FF', strokeWidth: 2 } },
+                    { id: `edge_${uuidv4()}`, source: event2.id, sourceHandle: 'next', target: event3.id, targetHandle: 'trigger', type: 'smoothstep', animated: true, style: { stroke: '#C9B5FF', strokeWidth: 2 } },
+                    { id: `edge_${uuidv4()}`, source: event3.id, sourceHandle: 'next', target: event4.id, targetHandle: 'trigger', type: 'smoothstep', animated: true, style: { stroke: '#C9B5FF', strokeWidth: 2 } },
+                    { id: `edge_${uuidv4()}`, source: event4.id, sourceHandle: 'next', target: endNode.id, targetHandle: 'end_input', type: 'smoothstep', animated: true, style: { stroke: '#C9B5FF', strokeWidth: 2 } },
+                ];
+
                 const newEvent = {
                     id: uuidv4(),
                     name,
                     description: '',
                     fixedPrompt: '',
-                    nodes: [
-                        createStartNode({ x: 50, y: 150 }),
-                        createEndNode({ x: 600, y: 150 })
-                    ],
-                    edges: [],
+                    nodes,
+                    edges,
                     costumes: [],
                     createdAt: new Date().toISOString(),
                     updatedAt: new Date().toISOString(),
                 };
+
                 set((state) => ({
                     events: [...state.events, newEvent],
                     currentEventId: newEvent.id,
                     nodes: newEvent.nodes,
-                    edges: [],
+                    edges: newEvent.edges,
                 }));
                 return newEvent.id;
             },

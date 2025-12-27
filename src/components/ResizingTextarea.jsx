@@ -30,7 +30,7 @@ const ResizingTextarea = forwardRef(({ value, onChange, placeholder, className, 
                 // useLayoutEffect is usually fast enough.
             }}
             placeholder={placeholder}
-            className={className}
+            className={`nodrag ${className || ''}`}
             style={{
                 ...style,
                 overflow: 'hidden', // Hide scrollbar

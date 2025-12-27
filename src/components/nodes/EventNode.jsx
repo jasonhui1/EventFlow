@@ -31,8 +31,8 @@ const EventNode = ({ id, data, selected }) => {
             <NodeResizer
                 color="#C9B5FF"
                 isVisible={selected}
-                minWidth={200}
-                minHeight={100}
+                minWidth={320}
+                minHeight={200}
                 handleStyle={{ width: 8, height: 8, borderRadius: '50%' }}
                 lineStyle={{ border: '1px solid #C9B5FF' }}
             />
@@ -51,7 +51,7 @@ const EventNode = ({ id, data, selected }) => {
             <div className="event-node-header">
                 <span className="event-node-icon">📌</span>
                 <input
-                    className="event-node-title"
+                    className="event-node-title nodrag"
                     value={data.label}
                     onChange={(e) => updateNode(id, { label: e.target.value })}
                     onClick={(e) => e.stopPropagation()}
