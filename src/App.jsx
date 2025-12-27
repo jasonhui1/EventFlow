@@ -103,23 +103,32 @@ function App() {
                 y: event.clientY,
             });
 
-            // Check if dropped on an edge using bounding box detection
-            // Iterate through all edge elements and check if drop point is within their bounding box (with padding)
-            const EDGE_DETECTION_PADDING = 30; // pixels
+            // Check if dropped on an edge using element detection
             let targetEdgeId = null;
 
-            const edgeElements = document.querySelectorAll('.react-flow__edge');
-            for (const edgeEl of edgeElements) {
-                const rect = edgeEl.getBoundingClientRect();
-                // Expand the bounding box by padding
-                if (
-                    event.clientX >= rect.left - EDGE_DETECTION_PADDING &&
-                    event.clientX <= rect.right + EDGE_DETECTION_PADDING &&
-                    event.clientY >= rect.top - EDGE_DETECTION_PADDING &&
-                    event.clientY <= rect.bottom + EDGE_DETECTION_PADDING
-                ) {
-                    targetEdgeId = edgeEl.getAttribute('data-id');
-                    break; // Use first matching edge
+            const elements = document.elementsFromPoint(event.clientX, event.clientY);
+
+            // Helper to check for edge in elements
+            const findEdge = (els) => {
+                for (const el of els) {
+                    const edgeEl = el.closest('.react-flow__edge');
+                    if (edgeEl) return edgeEl.getAttribute('data-id');
+                }
+                return null;
+            };
+
+            targetEdgeId = findEdge(elements);
+
+            // If not found at exact cursor, check a small radius (simulating node size for new drops)
+            if (!targetEdgeId) {
+                const offsets = [
+                    { x: -30, y: -20 }, { x: 30, y: -20 },
+                    { x: -30, y: 20 }, { x: 30, y: 20 }
+                ];
+                for (const offset of offsets) {
+                    const els = document.elementsFromPoint(event.clientX + offset.x, event.clientY + offset.y);
+                    targetEdgeId = findEdge(els);
+                    if (targetEdgeId) break;
                 }
             }
 
@@ -163,21 +172,39 @@ function App() {
     }, [extractNodeFromFlow, pushToHistory, edges]);
 
     const onNodeDragStop = useCallback((event, node) => {
-        // Use the same bounding box detection logic for edge insertion
-        const EDGE_DETECTION_PADDING = 30; // pixels
+        // Check if dropped on an edge using element detection
         let targetEdgeId = null;
+        // Helper to check for edge in elements
+        const findEdge = (els) => {
+            for (const el of els) {
+                const edgeEl = el.closest('.react-flow__edge');
+                if (edgeEl) return edgeEl.getAttribute('data-id');
+            }
+            return null;
+        };
 
-        const edgeElements = document.querySelectorAll('.react-flow__edge');
-        for (const edgeEl of edgeElements) {
-            const rect = edgeEl.getBoundingClientRect();
-            if (
-                event.clientX >= rect.left - EDGE_DETECTION_PADDING &&
-                event.clientX <= rect.right + EDGE_DETECTION_PADDING &&
-                event.clientY >= rect.top - EDGE_DETECTION_PADDING &&
-                event.clientY <= rect.bottom + EDGE_DETECTION_PADDING
-            ) {
-                targetEdgeId = edgeEl.getAttribute('data-id');
-                break;
+        // 1. Check mouse position first
+        let elements = document.elementsFromPoint(event.clientX, event.clientY);
+        targetEdgeId = findEdge(elements);
+
+        // 2. If not found, check node corners/center based on actual node text
+        if (!targetEdgeId) {
+            const nodeEl = document.querySelector(`.react-flow__node[data-id="${node.id}"]`);
+            if (nodeEl) {
+                const rect = nodeEl.getBoundingClientRect();
+                const checkPoints = [
+                    { x: rect.left + 10, y: rect.top + 10 },
+                    { x: rect.right - 10, y: rect.top + 10 },
+                    { x: rect.left + 10, y: rect.bottom - 10 },
+                    { x: rect.right - 10, y: rect.bottom - 10 },
+                    { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
+                ];
+
+                for (const point of checkPoints) {
+                    elements = document.elementsFromPoint(point.x, point.y);
+                    targetEdgeId = findEdge(elements);
+                    if (targetEdgeId) break;
+                }
             }
         }
 
@@ -652,6 +679,7 @@ function App() {
                         defaultEdgeOptions={{
                             type: 'smoothstep',
                             animated: true,
+                            interactionWidth: 200, // Makes edge detection much easier
                             style: { stroke: '#C9B5FF', strokeWidth: 2 },
                         }}
                     >

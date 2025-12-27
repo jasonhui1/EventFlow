@@ -728,8 +728,8 @@ body {
 
 .event-node-body {
   padding: 12px 16px;
-  overflow-y: auto;
-  flex: 1;
+  /* overflow-y: auto; */
+  /* flex: 1;    */
 }
 
 .event-node-content {
