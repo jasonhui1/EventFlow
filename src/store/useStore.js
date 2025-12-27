@@ -101,8 +101,6 @@ const createInitialEvent = () => ({
     ],
     edges: [],
     costumes: [],
-    history: [],
-    historyIndex: -1,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
 });
@@ -124,113 +122,72 @@ const useStore = create(
             // Context menu state
             contextMenu: null,
 
-            // Internal flag to prevent history loops during undo/redo
-            isInternalChange: false,
-
             // Session-based confirmation flags (not persisted)
             sessionConfirmDelete: false,
             setSessionConfirmDelete: (value) => set({ sessionConfirmDelete: value }),
             sessionConfirmDeleteNode: false,
             setSessionConfirmDeleteNode: (value) => set({ sessionConfirmDeleteNode: value }),
 
-            // Undo/Redo history settings
+            // Undo/Redo history
+            history: [],
+            historyIndex: -1,
             maxHistoryLength: 50,
+            isUndoRedo: false, // Flag to prevent recording undo/redo as new history
 
             // Clipboard for copy/paste
             clipboard: null,
 
-            // Push current state to history of the current event
+            // Push current state to history
             pushToHistory: () => {
                 const state = get();
-                if (!state.currentEventId) return;
-
                 const snapshot = {
                     nodes: JSON.parse(JSON.stringify(state.nodes)),
                     edges: JSON.parse(JSON.stringify(state.edges)),
                 };
 
-                set((state) => {
-                    const currentEvent = state.events.find(e => e.id === state.currentEventId);
-                    if (!currentEvent) return state;
+                // Remove any future states if we're not at the end
+                const newHistory = state.history.slice(0, state.historyIndex + 1);
+                newHistory.push(snapshot);
 
-                    // Remove any future states if we're not at the end
-                    const history = currentEvent.history || [];
-                    let newHistory = history.slice(0, (currentEvent.historyIndex ?? -1) + 1);
+                // Limit history length
+                if (newHistory.length > state.maxHistoryLength) {
+                    newHistory.shift();
+                }
 
-                    // Don't push if the state is identical to the last one
-                    if (newHistory.length > 0) {
-                        const last = newHistory[newHistory.length - 1];
-                        if (JSON.stringify(last.nodes) === JSON.stringify(snapshot.nodes) &&
-                            JSON.stringify(last.edges) === JSON.stringify(snapshot.edges)) {
-                            return state;
-                        }
-                    }
-
-                    newHistory.push(snapshot);
-
-                    // Limit history length
-                    if (newHistory.length > state.maxHistoryLength) {
-                        newHistory.shift();
-                    }
-
-                    return {
-                        events: state.events.map(e =>
-                            e.id === state.currentEventId
-                                ? { ...e, history: newHistory, historyIndex: newHistory.length - 1 }
-                                : e
-                        )
-                    };
+                set({
+                    history: newHistory,
+                    historyIndex: newHistory.length - 1,
                 });
             },
 
             // Undo action
             undo: () => {
                 const state = get();
-                const currentEvent = state.events.find(e => e.id === state.currentEventId);
-                if (!currentEvent || !currentEvent.history || currentEvent.historyIndex <= 0) return;
-
-                const prevIndex = currentEvent.historyIndex - 1;
-                const prevState = currentEvent.history[prevIndex];
-
-                set((state) => ({
-                    isInternalChange: true,
-                    nodes: JSON.parse(JSON.stringify(prevState.nodes)),
-                    edges: JSON.parse(JSON.stringify(prevState.edges)),
-                    selectedNode: null,
-                    events: state.events.map(e =>
-                        e.id === state.currentEventId
-                            ? { ...e, historyIndex: prevIndex }
-                            : e
-                    )
-                }));
-
-                // Allow reactive tracking again after state update
-                setTimeout(() => set({ isInternalChange: false }), 0);
+                if (state.historyIndex > 0) {
+                    const prevState = state.history[state.historyIndex - 1];
+                    set({
+                        nodes: JSON.parse(JSON.stringify(prevState.nodes)),
+                        edges: JSON.parse(JSON.stringify(prevState.edges)),
+                        historyIndex: state.historyIndex - 1,
+                        selectedNode: null,
+                        isUndoRedo: true, // Signal subscription to skip this change
+                    });
+                }
             },
 
             // Redo action
             redo: () => {
                 const state = get();
-                const currentEvent = state.events.find(e => e.id === state.currentEventId);
-                if (!currentEvent || !currentEvent.history || currentEvent.historyIndex >= currentEvent.history.length - 1) return;
-
-                const nextIndex = currentEvent.historyIndex + 1;
-                const nextState = currentEvent.history[nextIndex];
-
-                set((state) => ({
-                    isInternalChange: true,
-                    nodes: JSON.parse(JSON.stringify(nextState.nodes)),
-                    edges: JSON.parse(JSON.stringify(nextState.edges)),
-                    selectedNode: null,
-                    events: state.events.map(e =>
-                        e.id === state.currentEventId
-                            ? { ...e, historyIndex: nextIndex }
-                            : e
-                    )
-                }));
-
-                // Allow reactive tracking again after state update
-                setTimeout(() => set({ isInternalChange: false }), 0);
+                if (state.historyIndex < state.history.length - 1) {
+                    const nextState = state.history[state.historyIndex + 1];
+                    set({
+                        nodes: JSON.parse(JSON.stringify(nextState.nodes)),
+                        edges: JSON.parse(JSON.stringify(nextState.edges)),
+                        historyIndex: state.historyIndex + 1,
+                        selectedNode: null,
+                        isUndoRedo: true, // Signal subscription to skip this change
+                    });
+                }
             },
 
             // Copy selected nodes to clipboard
@@ -363,8 +320,6 @@ const useStore = create(
                     nodes,
                     edges,
                     costumes: [],
-                    history: [],
-                    historyIndex: -1,
                     createdAt: new Date().toISOString(),
                     updatedAt: new Date().toISOString(),
                 };
@@ -375,10 +330,6 @@ const useStore = create(
                     nodes: newEvent.nodes,
                     edges: newEvent.edges,
                 }));
-
-                // Initialize history for the new event
-                get().pushToHistory();
-
                 return newEvent.id;
             },
 
@@ -391,8 +342,6 @@ const useStore = create(
                     ...JSON.parse(JSON.stringify(sourceEvent)),
                     id: uuidv4(),
                     name: `${sourceEvent.name} (Copy)`,
-                    history: sourceEvent.history ? JSON.parse(JSON.stringify(sourceEvent.history)) : [],
-                    historyIndex: sourceEvent.historyIndex ?? -1,
                     createdAt: new Date().toISOString(),
                     updatedAt: new Date().toISOString(),
                 };
@@ -437,23 +386,12 @@ const useStore = create(
                 // Load selected event
                 const event = state.events.find((e) => e.id === eventId);
                 if (event) {
-                    const eventNodes = event.nodes || [];
-                    const eventEdges = event.edges || [];
-
                     set({
-                        isInternalChange: true, // Prevent history push during load
                         currentEventId: eventId,
-                        nodes: eventNodes,
-                        edges: eventEdges,
+                        nodes: event.nodes || [],
+                        edges: event.edges || [],
                         selectedNode: null,
                     });
-
-                    // If no history exists, create the first entry
-                    if (!event.history || event.history.length === 0) {
-                        get().pushToHistory();
-                    }
-
-                    setTimeout(() => set({ isInternalChange: false }), 0);
                 }
             },
 
@@ -507,8 +445,7 @@ const useStore = create(
             },
 
             // Node Actions
-            // Internal helper: adds a node without pushing to history
-            _addNodeWithoutHistory: (type, position) => {
+            addNode: (type, position) => {
                 let newNode;
                 // Add initialFocus flag to new nodes so they can auto-focus their inputs
                 const dataWithFocus = { initialFocus: true };
@@ -539,11 +476,6 @@ const useStore = create(
                 return newNode.id;
             },
 
-            // Public addNode: adds a node
-            addNode: (type, position) => {
-                return get()._addNodeWithoutHistory(type, position);
-            },
-
             insertNodeOnEdge: (type, position, edgeId, nodeId = null) => {
                 const state = get();
                 const edge = state.edges.find((e) => e.id === edgeId);
@@ -551,7 +483,7 @@ const useStore = create(
 
                 let targetNodeId = nodeId;
                 if (!targetNodeId) {
-                    targetNodeId = state._addNodeWithoutHistory(type, position);
+                    targetNodeId = state.addNode(type, position);
                 }
 
                 const targetNode = get().nodes.find(n => n.id === targetNodeId);
@@ -1063,34 +995,82 @@ const useStore = create(
 );
 
 // ========================================
-// Reactive Auto-Save & History Subscription
+// Reactive Auto-Save Subscription
 // ========================================
 
 let autoSaveTimeout;
-let historyPushTimeout;
-
 useStore.subscribe((state, prevState) => {
     // Watch for Changes in nodes or edges
-    const nodesChanged = state.nodes !== prevState.nodes;
-    const edgesChanged = state.edges !== prevState.edges;
-
-    if (nodesChanged || edgesChanged) {
-        // 1. Reactive Auto-Save (sync to event library)
+    if (state.nodes !== prevState.nodes || state.edges !== prevState.edges) {
         clearTimeout(autoSaveTimeout);
+        // Debounce: Wait 1 second after last change before syncing to library
         autoSaveTimeout = setTimeout(() => {
             useStore.getState().saveCurrentEvent();
         }, 1000);
-
-        // 2. Reactive History Tracking
-        // Only push if it's not an internal change (undo/redo/initial load)
-        if (!state.isInternalChange) {
-            clearTimeout(historyPushTimeout);
-            // Debounce history push to group rapid changes like dragging
-            historyPushTimeout = setTimeout(() => {
-                useStore.getState().pushToHistory();
-            }, 500);
-        }
     }
 });
+
+// ========================================
+// Reactive Undo/Redo History Subscription
+// ========================================
+
+let historyTimeout;
+useStore.subscribe((state, prevState) => {
+    // Skip if this was an undo/redo action
+    if (state.isUndoRedo) {
+        useStore.setState({ isUndoRedo: false });
+        return;
+    }
+
+    // Only track changes to nodes or edges
+    if (state.nodes !== prevState.nodes || state.edges !== prevState.edges) {
+        clearTimeout(historyTimeout);
+        // Debounce: Wait 500ms after last change to batch rapid edits
+        historyTimeout = setTimeout(() => {
+            pushHistorySnapshot();
+        }, 500);
+    }
+});
+
+function pushHistorySnapshot() {
+    const state = useStore.getState();
+    const snapshot = {
+        nodes: JSON.parse(JSON.stringify(state.nodes)),
+        edges: JSON.parse(JSON.stringify(state.edges)),
+    };
+
+    // Only add if different from the last snapshot
+    const lastSnapshot = state.history[state.historyIndex];
+    if (lastSnapshot &&
+        JSON.stringify(lastSnapshot.nodes) === JSON.stringify(snapshot.nodes) &&
+        JSON.stringify(lastSnapshot.edges) === JSON.stringify(snapshot.edges)) {
+        return;
+    }
+
+    // Truncate any future history if we're not at the end (after undo)
+    const newHistory = state.history.slice(0, state.historyIndex + 1);
+    newHistory.push(snapshot);
+
+    // Limit history length
+    if (newHistory.length > state.maxHistoryLength) {
+        newHistory.shift();
+    }
+
+    useStore.setState({
+        history: newHistory,
+        historyIndex: newHistory.length - 1,
+    });
+}
+
+// Initialize history with current state on first load
+function initializeHistory() {
+    const state = useStore.getState();
+    if (state.history.length === 0 && state.nodes.length > 0) {
+        pushHistorySnapshot();
+    }
+}
+
+// Call after a short delay to ensure rehydration is complete
+setTimeout(initializeHistory, 100);
 
 export default useStore;

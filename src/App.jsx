@@ -686,7 +686,7 @@ function App() {
                         defaultEdgeOptions={{
                             type: 'smoothstep',
                             animated: true,
-                            interactionWidth: 200, // Makes edge detection much easier
+                            interactionWidth: 150, // Makes edge detection much easier
                             style: { stroke: '#C9B5FF', strokeWidth: 2 },
                         }}
                     >
