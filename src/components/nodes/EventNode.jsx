@@ -2,6 +2,7 @@ import React, { memo } from 'react';
 import { Handle, Position, NodeResizer } from '@xyflow/react';
 import useStore from '../../store/useStore';
 import ResizingTextarea from '../ResizingTextarea';
+import PromptList from '../PromptList';
 
 const EventNode = ({ id, data, selected }) => {
     const updateNode = useStore((state) => state.updateNode);
@@ -102,22 +103,11 @@ const EventNode = ({ id, data, selected }) => {
                     }}>
                         <span>🎯</span> This Event Only
                     </div>
-                    <ResizingTextarea
-                        value={data.localPrompt || ''}
-                        onChange={(e) => updateNode(id, { localPrompt: e.target.value })}
-                        onClick={(e) => e.stopPropagation()}
+                    <PromptList
+                        prompts={data.localPrompt}
+                        onChange={(newPrompts) => updateNode(id, { localPrompt: newPrompts })}
                         placeholder="Prompt for this event only..."
-                        minHeight="32px"
-                        style={{
-                            width: '100%',
-                            background: 'rgba(255, 181, 197, 0.1)',
-                            border: '1px solid rgba(255, 181, 197, 0.2)',
-                            borderRadius: '6px',
-                            padding: '6px 8px',
-                            color: 'rgba(255,255,255,0.8)',
-                            fontSize: '11px',
-                            fontFamily: 'monospace',
-                        }}
+                        color="#FFB5C5"
                     />
                 </div>
 
@@ -135,22 +125,11 @@ const EventNode = ({ id, data, selected }) => {
                     }}>
                         <span>🔗</span> Carry Forward
                     </div>
-                    <ResizingTextarea
-                        value={data.inheritedPrompt || ''}
-                        onChange={(e) => updateNode(id, { inheritedPrompt: e.target.value })}
-                        onClick={(e) => e.stopPropagation()}
+                    <PromptList
+                        prompts={data.inheritedPrompt}
+                        onChange={(newPrompts) => updateNode(id, { inheritedPrompt: newPrompts })}
                         placeholder="Prompt that carries to connected nodes..."
-                        minHeight="32px"
-                        style={{
-                            width: '100%',
-                            background: 'rgba(181, 255, 217, 0.1)',
-                            border: '1px solid rgba(181, 255, 217, 0.2)',
-                            borderRadius: '6px',
-                            padding: '6px 8px',
-                            color: 'rgba(255,255,255,0.8)',
-                            fontSize: '11px',
-                            fontFamily: 'monospace',
-                        }}
+                        color="#B5FFD9"
                     />
                 </div>
 
@@ -233,20 +212,22 @@ const EventNode = ({ id, data, selected }) => {
                         </span>
                     </div>
                 </div>
-            </div>
+            </div >
 
             {/* Output Handles */}
-            {data.outputs?.map((output, index) => (
-                <Handle
-                    key={output.id}
-                    type="source"
-                    position={Position.Right}
-                    id={output.id}
-                    style={{ top: `${30 + index * 24}%` }}
-                    title={output.label}
-                />
-            ))}
-        </div>
+            {
+                data.outputs?.map((output, index) => (
+                    <Handle
+                        key={output.id}
+                        type="source"
+                        position={Position.Right}
+                        id={output.id}
+                        style={{ top: `${30 + index * 24}%` }}
+                        title={output.label}
+                    />
+                ))
+            }
+        </div >
     );
 };
 

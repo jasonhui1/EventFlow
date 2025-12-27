@@ -14,8 +14,8 @@ const createEventNode = (position = { x: 0, y: 0 }, data = {}) => ({
     data: {
         label: data.label || 'New Event',
         content: data.content || '',
-        localPrompt: data.localPrompt || '', // Only for this event
-        inheritedPrompt: data.inheritedPrompt || '', // Carries to future nodes
+        localPrompt: data.localPrompt || [''], // Only for this event
+        inheritedPrompt: data.inheritedPrompt || [''], // Carries to future nodes
         usePerspective: data.usePerspective || true, // Add perspective/foreshortening
         disabledInheritedSources: data.disabledInheritedSources || [], // Node IDs to ignore inherited prompts from
         inputs: data.inputs || [{ id: 'trigger', label: 'Trigger' }],

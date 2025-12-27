@@ -17,6 +17,13 @@ export const getParentNodes = (nodeId, nodes, edges) => {
 /**
  * Get all inherited prompts from parent nodes (recursive)
  */
+const processPrompt = (promptData) => {
+    if (Array.isArray(promptData)) {
+        return promptData.filter(p => p && p.trim() !== '').join(', ');
+    }
+    return promptData || '';
+};
+
 export const getInheritedPrompts = (nodeId, allEvents, nodes, edges, visited = new Set(), options = {}) => {
     const { originalDisabledSources = null, selectSinglePath = false, randomize = false, allowedEdges = null } = options;
 
@@ -81,7 +88,7 @@ export const getInheritedPrompts = (nodeId, allEvents, nodes, edges, visited = n
             inheritedPrompts.push({
                 nodeId: parentNode.id,
                 nodeLabel: parentNode.data.label || 'Unknown',
-                prompt: parentNode.data.inheritedPrompt,
+                prompt: processPrompt(parentNode.data.inheritedPrompt),
                 type: parentNode.type,
             });
         }
@@ -90,7 +97,7 @@ export const getInheritedPrompts = (nodeId, allEvents, nodes, edges, visited = n
             inheritedPrompts.push({
                 nodeId: parentNode.id,
                 nodeLabel: parentNode.data.label || 'Group',
-                prompt: parentNode.data.fixedPrompt,
+                prompt: processPrompt(parentNode.data.fixedPrompt),
                 type: 'groupNode',
             });
         }
@@ -112,8 +119,8 @@ export const getComposedPrompt = (nodeId, allEvents, nodes, edges, currentEventF
         allowedEdges: options.allowedEdges
     });
 
-    const localPrompt = node.data?.localPrompt || '';
-    const nodeInheritedPrompt = node.data?.inheritedPrompt || '';
+    const localPrompt = processPrompt(node.data?.localPrompt);
+    const nodeInheritedPrompt = processPrompt(node.data?.inheritedPrompt);
 
     const parts = [];
 

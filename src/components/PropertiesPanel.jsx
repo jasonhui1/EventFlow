@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import useStore from '../store/useStore';
+import PromptList from './PromptList';
 import PromptPreview from './PromptPreview';
 import ConfirmModal from './ConfirmModal';
 
@@ -104,18 +105,11 @@ const PropertiesPanel = () => {
                             <label className="property-label" style={{ color: '#FFB5C5' }}>
                                 🎯 Local Prompt (This Event Only)
                             </label>
-                            <textarea
-                                className="property-input property-textarea"
-                                value={data.localPrompt || ''}
-                                onChange={(e) => updateNode(id, { localPrompt: e.target.value })}
+                            <PromptList
+                                prompts={data.localPrompt}
+                                onChange={(newPrompts) => updateNode(id, { localPrompt: newPrompts })}
                                 placeholder="outfit, pose, expression for this event only..."
-                                style={{
-                                    fontFamily: 'monospace',
-                                    fontSize: '11px',
-                                    minHeight: '50px',
-                                    background: 'rgba(255, 181, 197, 0.1)',
-                                    borderColor: 'rgba(255, 181, 197, 0.3)',
-                                }}
+                                color="#FFB5C5"
                             />
                             <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', marginTop: '4px' }}>
                                 Applies only to this specific event
@@ -126,18 +120,11 @@ const PropertiesPanel = () => {
                             <label className="property-label" style={{ color: '#B5FFD9' }}>
                                 🔗 Inherited Prompt (Carries Forward)
                             </label>
-                            <textarea
-                                className="property-input property-textarea"
-                                value={data.inheritedPrompt || ''}
-                                onChange={(e) => updateNode(id, { inheritedPrompt: e.target.value })}
+                            <PromptList
+                                prompts={data.inheritedPrompt}
+                                onChange={(newPrompts) => updateNode(id, { inheritedPrompt: newPrompts })}
                                 placeholder="outfit changes, location that persists..."
-                                style={{
-                                    fontFamily: 'monospace',
-                                    fontSize: '11px',
-                                    minHeight: '50px',
-                                    background: 'rgba(181, 255, 217, 0.1)',
-                                    borderColor: 'rgba(181, 255, 217, 0.3)',
-                                }}
+                                color="#B5FFD9"
                             />
                             <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', marginTop: '4px' }}>
                                 Inherits to all connected downstream nodes
@@ -437,7 +424,7 @@ const PropertiesPanel = () => {
                                                         textDecoration: isDisabled ? 'line-through' : 'none',
                                                         wordBreak: 'break-word',
                                                     }}>
-                                                        {upstream.prompt}
+                                                        {Array.isArray(upstream.prompt) ? upstream.prompt.join(', ') : upstream.prompt}
                                                     </div>
                                                 )}
                                             </div>
