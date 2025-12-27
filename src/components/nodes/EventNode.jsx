@@ -1,6 +1,7 @@
 import React, { memo } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import useStore from '../../store/useStore';
+import ResizingTextarea from '../ResizingTextarea';
 
 const EventNode = ({ id, data, selected }) => {
     const updateNode = useStore((state) => state.updateNode);
@@ -57,23 +58,22 @@ const EventNode = ({ id, data, selected }) => {
             </div>
 
             <div className="event-node-body">
-                <textarea
+                <ResizingTextarea
                     ref={inputRef}
                     className="event-node-content"
                     value={data.content || ''}
                     onChange={(e) => updateNode(id, { content: e.target.value })}
                     onClick={(e) => e.stopPropagation()}
                     placeholder="Describe this event..."
+                    minHeight="40px"
                     style={{
                         width: '100%',
-                        minHeight: '40px',
                         background: 'rgba(255,255,255,0.05)',
                         border: '1px solid rgba(255,255,255,0.1)',
                         borderRadius: '6px',
                         padding: '8px',
                         color: 'rgba(255,255,255,0.8)',
                         fontSize: '12px',
-                        resize: 'vertical',
                         marginBottom: '8px',
                     }}
                 />
@@ -93,14 +93,14 @@ const EventNode = ({ id, data, selected }) => {
                     }}>
                         <span>🎯</span> This Event Only
                     </div>
-                    <textarea
+                    <ResizingTextarea
                         value={data.localPrompt || ''}
                         onChange={(e) => updateNode(id, { localPrompt: e.target.value })}
                         onClick={(e) => e.stopPropagation()}
                         placeholder="Prompt for this event only..."
+                        minHeight="32px"
                         style={{
                             width: '100%',
-                            minHeight: '32px',
                             background: 'rgba(255, 181, 197, 0.1)',
                             border: '1px solid rgba(255, 181, 197, 0.2)',
                             borderRadius: '6px',
@@ -108,7 +108,6 @@ const EventNode = ({ id, data, selected }) => {
                             color: 'rgba(255,255,255,0.8)',
                             fontSize: '11px',
                             fontFamily: 'monospace',
-                            resize: 'vertical',
                         }}
                     />
                 </div>
@@ -127,14 +126,14 @@ const EventNode = ({ id, data, selected }) => {
                     }}>
                         <span>🔗</span> Carry Forward
                     </div>
-                    <textarea
+                    <ResizingTextarea
                         value={data.inheritedPrompt || ''}
                         onChange={(e) => updateNode(id, { inheritedPrompt: e.target.value })}
                         onClick={(e) => e.stopPropagation()}
                         placeholder="Prompt that carries to connected nodes..."
+                        minHeight="32px"
                         style={{
                             width: '100%',
-                            minHeight: '32px',
                             background: 'rgba(181, 255, 217, 0.1)',
                             border: '1px solid rgba(181, 255, 217, 0.2)',
                             borderRadius: '6px',
@@ -142,7 +141,6 @@ const EventNode = ({ id, data, selected }) => {
                             color: 'rgba(255,255,255,0.8)',
                             fontSize: '11px',
                             fontFamily: 'monospace',
-                            resize: 'vertical',
                         }}
                     />
                 </div>
