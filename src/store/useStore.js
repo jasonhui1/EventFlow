@@ -245,6 +245,55 @@ const useStore = create(
                 });
             },
 
+            // Duplicate selected nodes
+            duplicateSelectedNodes: (offset = { x: 20, y: 20 }) => {
+                const state = get();
+                const selectedNodes = state.nodes.filter(n => n.selected);
+                if (selectedNodes.length === 0) return;
+
+                state.pushToHistory();
+
+                const idMap = {};
+                const newNodes = selectedNodes.map(node => {
+                    const newId = uuidv4();
+                    idMap[node.id] = newId;
+                    return {
+                        ...JSON.parse(JSON.stringify(node)),
+                        id: newId,
+                        position: {
+                            x: node.position.x + offset.x,
+                            y: node.position.y + offset.y,
+                        },
+                        selected: true,
+                        data: { ...node.data },
+                    };
+                });
+
+                const selectedNodeIds = selectedNodes.map(n => n.id);
+                // Duplicate edges only if both source and target are selected
+                const internalEdges = state.edges.filter(
+                    e => selectedNodeIds.includes(e.source) && selectedNodeIds.includes(e.target)
+                );
+
+                const newEdges = internalEdges.map(edge => ({
+                    ...edge,
+                    id: `edge_${uuidv4()}`,
+                    source: idMap[edge.source],
+                    target: idMap[edge.target],
+                    selected: true,
+                }));
+
+                // Deselect existing
+                const updatedNodes = state.nodes.map(n => ({ ...n, selected: false }));
+                const updatedEdges = state.edges.map(e => ({ ...e, selected: false }));
+
+                set({
+                    nodes: [...updatedNodes, ...newNodes],
+                    edges: [...updatedEdges, ...newEdges],
+                    selectedNode: newNodes.length === 1 ? newNodes[0] : null
+                });
+            },
+
             // Event Actions
             addEvent: (name = 'New Event') => {
                 const startNode = createStartNode({ x: 50, y: 50 });
@@ -283,6 +332,27 @@ const useStore = create(
                     edges: newEvent.edges,
                 }));
                 return newEvent.id;
+            },
+
+            duplicateEvent: (eventId) => {
+                const state = get();
+                const sourceEvent = state.events.find(e => e.id === eventId);
+                if (!sourceEvent) return;
+
+                const newEvent = {
+                    ...JSON.parse(JSON.stringify(sourceEvent)),
+                    id: uuidv4(),
+                    name: `${sourceEvent.name} (Copy)`,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
+                };
+
+                set((state) => ({
+                    events: [...state.events, newEvent],
+                    currentEventId: newEvent.id,
+                    nodes: newEvent.nodes,
+                    edges: newEvent.edges,
+                }));
             },
 
             deleteEvent: (eventId) => {

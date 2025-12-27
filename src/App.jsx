@@ -74,6 +74,7 @@ function App() {
     const redo = useStore((state) => state.redo);
     const copySelectedNodes = useStore((state) => state.copySelectedNodes);
     const pasteNodes = useStore((state) => state.pasteNodes);
+    const duplicateSelectedNodes = useStore((state) => state.duplicateSelectedNodes);
     const pushToHistory = useStore((state) => state.pushToHistory);
 
     // Select first event if none selected
@@ -315,6 +316,12 @@ function App() {
             if ((event.ctrlKey || event.metaKey) && (event.key === 'y' || (event.key === 'z' && event.shiftKey))) {
                 event.preventDefault();
                 redo();
+            }
+
+            // Ctrl+D - Duplicate
+            if ((event.ctrlKey || event.metaKey) && event.key === 'd') {
+                event.preventDefault();
+                duplicateSelectedNodes();
             }
         };
 

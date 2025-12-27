@@ -8,6 +8,7 @@ const Sidebar = () => {
     const addEvent = useStore((state) => state.addEvent);
     const selectEvent = useStore((state) => state.selectEvent);
     const deleteEvent = useStore((state) => state.deleteEvent);
+    const duplicateEvent = useStore((state) => state.duplicateEvent);
     const sessionConfirmDelete = useStore((state) => state.sessionConfirmDelete);
     const setSessionConfirmDelete = useStore((state) => state.setSessionConfirmDelete);
 
@@ -152,6 +153,24 @@ const Sidebar = () => {
                                 <span className="event-item-name">{event.name}</span>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                     <span className="event-item-count">{event.nodes?.length || 0}</span>
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            duplicateEvent(event.id);
+                                        }}
+                                        title="Duplicate Event"
+                                        style={{
+                                            background: 'rgba(100,200,255,0.2)',
+                                            border: 'none',
+                                            borderRadius: '4px',
+                                            color: '#8ecfff',
+                                            padding: '2px 6px',
+                                            cursor: 'pointer',
+                                            fontSize: '10px',
+                                        }}
+                                    >
+                                        ❐
+                                    </button>
                                     {events.length > 1 && (
                                         <button
                                             onClick={(e) => {
@@ -203,6 +222,7 @@ const Sidebar = () => {
                         <p>• <strong>Middle mouse</strong> to pan canvas</p>
                         <p>• <strong>Delete key</strong> to remove selected</p>
                         <p>• <strong>Ctrl+C/V</strong> to copy/paste nodes</p>
+                        <p>• <strong>Ctrl+D</strong> to duplicate nodes</p>
                         <p>• <strong>Ctrl+Z/Y</strong> to undo/redo</p>
                     </div>
                 </div>
