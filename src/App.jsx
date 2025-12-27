@@ -166,11 +166,11 @@ function App() {
             const hasConnections = edges.some(e => e.source === node.id || e.target === node.id);
             if (hasConnections) {
                 console.log('Reactive extraction from flow:', node.id);
-                pushToHistory();
+                // History is now handled automatically by extractNodeFromFlow
                 extractNodeFromFlow(node.id);
             }
         }
-    }, [extractNodeFromFlow, pushToHistory, edges]);
+    }, [extractNodeFromFlow, edges]);
 
     const onNodeDragStop = useCallback((event, node) => {
         // Check if dropped on an edge using element detection
@@ -279,7 +279,7 @@ function App() {
 
                 if (selectedNodeIds.length > 0 || selectedEdgeIds.length > 0) {
                     event.preventDefault();
-                    pushToHistory();
+                    // History is now handled automatically by deleteNodes/deleteEdges/extractAndDeleteNodes
 
                     if (selectedNodeIds.length > 0) {
                         if (event.ctrlKey || event.metaKey) {
@@ -327,7 +327,7 @@ function App() {
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [nodes, edges, deleteNodes, deleteEdges, copySelectedNodes, pasteNodes, undo, redo, pushToHistory]);
+    }, [nodes, edges, deleteNodes, deleteEdges, copySelectedNodes, pasteNodes, undo, redo, extractAndDeleteNodes, duplicateSelectedNodes]);
 
     // Export handler
     const handleExport = () => {
