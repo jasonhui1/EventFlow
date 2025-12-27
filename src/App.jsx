@@ -452,6 +452,10 @@ function App() {
         };
     }, [tempConnection, nodes, onConnect, reactFlowInstance]);
 
+    const isValidConnection = useCallback((connection) => {
+        return connection.source !== connection.target;
+    }, []);
+
     return (
         <div className="app-container">
             <Sidebar />
@@ -620,6 +624,7 @@ function App() {
                         onNodesChange={onNodesChange}
                         onEdgesChange={onEdgesChange}
                         onConnect={onConnect}
+                        isValidConnection={isValidConnection}
                         onInit={setReactFlowInstance}
                         onDrop={onDrop}
                         onDragOver={onDragOver}

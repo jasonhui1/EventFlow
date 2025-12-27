@@ -623,6 +623,11 @@ const useStore = create(
                         (edge.targetHandle === connection.targetHandle || (!edge.targetHandle && !connection.targetHandle))
                 );
 
+                if (connection.source === connection.target) {
+                    console.log('Self-connection is not allowed.');
+                    return;
+                }
+
                 if (exists) {
                     console.log('Edge already exists, skipping.');
                     return;
