@@ -85,6 +85,8 @@ const ReferenceNode = ({ id, data, selected }) => {
                     >
                         <input
                             type="text"
+                            className="nodrag"
+                            onMouseDown={(e) => e.stopPropagation()}
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             placeholder="Search events..."

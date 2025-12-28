@@ -14,10 +14,11 @@ const StartNode = ({ id, data, selected }) => {
             <div className="event-node-header" style={{ borderBottom: '1px solid rgba(181, 255, 217, 0.2)' }}>
                 <span className="event-node-icon">🚀</span>
                 <input
-                    className="event-node-title"
+                    className="event-node-title nodrag"
                     value={data.label}
                     onChange={(e) => updateNode(id, { label: e.target.value })}
                     onClick={(e) => e.stopPropagation()}
+                    onMouseDown={(e) => e.stopPropagation()}
                     style={{
                         background: 'transparent',
                         border: 'none',

@@ -48,6 +48,7 @@ const BranchNode = ({ id, data, selected }) => {
                     value={data.label}
                     onChange={(e) => updateNode(id, { label: e.target.value })}
                     onClick={(e) => e.stopPropagation()}
+                    onMouseDown={(e) => e.stopPropagation()}
                     style={{
                         background: 'transparent',
                         border: 'none',
@@ -81,6 +82,7 @@ const BranchNode = ({ id, data, selected }) => {
                                         updateNode(id, { outputs: newOutputs });
                                     }}
                                     onClick={(e) => e.stopPropagation()}
+                                    onMouseDown={(e) => e.stopPropagation()}
                                     className="nodrag"
                                     style={{
                                         background: 'transparent',
@@ -129,6 +131,7 @@ const BranchNode = ({ id, data, selected }) => {
                                 value={output.weight || 50}
                                 onChange={(e) => handleWeightChange(output.id, parseInt(e.target.value))}
                                 onClick={(e) => e.stopPropagation()}
+                                onMouseDown={(e) => e.stopPropagation()}
                                 className="probability-slider nodrag"
                                 style={{
                                     height: '4px',
@@ -181,6 +184,7 @@ const BranchNode = ({ id, data, selected }) => {
                     value={data.condition || ''}
                     onChange={(e) => updateNode(id, { condition: e.target.value })}
                     onClick={(e) => e.stopPropagation()}
+                    onMouseDown={(e) => e.stopPropagation()}
                     placeholder="Condition (optional)..."
                     style={{
                         width: '100%',

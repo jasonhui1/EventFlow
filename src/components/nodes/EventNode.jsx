@@ -56,6 +56,7 @@ const EventNode = ({ id, data, selected }) => {
                     value={data.label}
                     onChange={(e) => updateNode(id, { label: e.target.value })}
                     onClick={(e) => e.stopPropagation()}
+                    onMouseDown={(e) => e.stopPropagation()}
                     style={{
                         background: 'transparent',
                         border: 'none',

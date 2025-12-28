@@ -39,6 +39,10 @@ const ResizingTextarea = forwardRef(({ value, onChange, placeholder, className, 
                 boxSizing: 'border-box',
             }}
             rows={1}
+            onMouseDown={(e) => {
+                e.stopPropagation();
+                props.onMouseDown && props.onMouseDown(e);
+            }}
             {...props}
         />
     );

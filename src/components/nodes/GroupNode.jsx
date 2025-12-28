@@ -38,10 +38,11 @@ const GroupNode = ({ id, data, selected }) => {
             <div className="group-node-header">
                 <span className="event-node-icon">📁</span>
                 <input
-                    className="event-node-title"
+                    className="event-node-title nodrag"
                     value={data.label}
                     onChange={(e) => updateNode(id, { label: e.target.value })}
                     onClick={(e) => e.stopPropagation()}
+                    onMouseDown={(e) => e.stopPropagation()}
                     style={{
                         background: 'transparent',
                         border: 'none',
@@ -61,9 +62,11 @@ const GroupNode = ({ id, data, selected }) => {
                 </div>
                 <textarea
                     ref={inputRef}
+                    className="nodrag"
                     value={data.fixedPrompt || ''}
                     onChange={(e) => updateNode(id, { fixedPrompt: e.target.value })}
                     onClick={(e) => e.stopPropagation()}
+                    onMouseDown={(e) => e.stopPropagation()}
                     placeholder="outfit, location, mood..."
                     style={{
                         width: '100%',
