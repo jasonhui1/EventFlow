@@ -17,6 +17,12 @@ const PropertiesPanel = () => {
     const sessionConfirmDeleteNode = useStore((state) => state.sessionConfirmDeleteNode);
     const setSessionConfirmDeleteNode = useStore((state) => state.setSessionConfirmDeleteNode);
 
+    // Start Node input management
+    const addStartNodeInput = useStore((state) => state.addStartNodeInput);
+    const removeStartNodeInput = useStore((state) => state.removeStartNodeInput);
+    const toggleStartNodeInput = useStore((state) => state.toggleStartNodeInput);
+    const updateStartNodeInputLabel = useStore((state) => state.updateStartNodeInputLabel);
+
     const [showPreview, setShowPreview] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
 
@@ -47,6 +53,8 @@ const PropertiesPanel = () => {
             case 'groupNode': return 'Group Node';
             case 'branchNode': return 'Branch Node';
             case 'referenceNode': return 'Reference Node';
+            case 'startNode': return 'Start Node';
+            case 'endNode': return 'End Node';
             default: return 'Node';
         }
     };
@@ -57,6 +65,8 @@ const PropertiesPanel = () => {
             case 'groupNode': return '#B5D4FF';
             case 'branchNode': return '#FFCEB5';
             case 'referenceNode': return '#E5D4FF';
+            case 'startNode': return '#B5FFD9';
+            case 'endNode': return '#FFB5B5';
             default: return '#C9B5FF';
         }
     };
@@ -86,6 +96,83 @@ const PropertiesPanel = () => {
                         onChange={(e) => updateNode(id, { label: e.target.value })}
                     />
                 </div>
+
+                {/* Start Node Inputs Configuration */}
+                {type === 'startNode' && (
+                    <div className="property-group">
+                        <label className="property-label" style={{ color: '#B5FFD9' }}>
+                            🔌 Configurable Inputs
+                        </label>
+                        <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', marginBottom: '8px' }}>
+                            Define input parameters that can be toggled on/off when this event is referenced.
+                        </p>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                            {(data.inputs || []).map((input) => (
+                                <div
+                                    key={input.id}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '8px',
+                                        padding: '8px 10px',
+                                        background: input.enabled
+                                            ? 'rgba(181, 255, 217, 0.1)'
+                                            : 'rgba(255,255,255,0.03)',
+                                        borderRadius: '6px',
+                                        border: `1px solid ${input.enabled ? 'rgba(181, 255, 217, 0.2)' : 'rgba(255,255,255,0.1)'}`,
+                                    }}
+                                >
+                                    <input
+                                        type="checkbox"
+                                        checked={input.enabled}
+                                        onChange={() => toggleStartNodeInput(id, input.id)}
+                                        style={{ cursor: 'pointer' }}
+                                    />
+                                    <input
+                                        type="text"
+                                        value={input.label}
+                                        onChange={(e) => updateStartNodeInputLabel(id, input.id, e.target.value)}
+                                        style={{
+                                            flex: 1,
+                                            background: 'transparent',
+                                            border: 'none',
+                                            color: input.enabled ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.4)',
+                                            fontSize: '12px',
+                                            textDecoration: input.enabled ? 'none' : 'line-through',
+                                        }}
+                                    />
+                                    <button
+                                        onClick={() => removeStartNodeInput(id, input.id)}
+                                        style={{
+                                            background: 'transparent',
+                                            border: 'none',
+                                            color: 'rgba(255,100,100,0.6)',
+                                            fontSize: '14px',
+                                            cursor: 'pointer',
+                                            padding: '0 4px',
+                                        }}
+                                    >
+                                        ×
+                                    </button>
+                                </div>
+                            ))}
+                            <button
+                                onClick={() => addStartNodeInput(id)}
+                                style={{
+                                    background: 'rgba(181, 255, 217, 0.1)',
+                                    border: '1px dashed rgba(181, 255, 217, 0.3)',
+                                    borderRadius: '6px',
+                                    color: '#B5FFD9',
+                                    padding: '8px',
+                                    cursor: 'pointer',
+                                    fontSize: '11px',
+                                }}
+                            >
+                                + Add Input Parameter
+                            </button>
+                        </div>
+                    </div>
+                )}
 
                 {/* Content (for Event Nodes) */}
                 {type === 'eventNode' && (

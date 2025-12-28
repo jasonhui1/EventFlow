@@ -156,6 +156,85 @@ const ReferenceNode = ({ id, data, selected }) => {
                         🔄 Reusable: Will execute "{selectedEvent.name}" flow
                     </div>
                 )}
+
+                {/* Display referenced event's Start Node inputs */}
+                {selectedEvent && (() => {
+                    const startNode = selectedEvent.nodes?.find(n => n.type === 'startNode');
+                    const startInputs = startNode?.data?.inputs || [];
+                    const inputOverrides = data.inputOverrides || {};
+
+                    if (startInputs.length === 0) return null;
+
+                    return (
+                        <div style={{
+                            marginTop: '8px',
+                            padding: '8px',
+                            background: 'rgba(181, 255, 217, 0.05)',
+                            borderRadius: '4px',
+                            border: '1px solid rgba(181, 255, 217, 0.1)',
+                        }}>
+                            <div style={{
+                                fontSize: '10px',
+                                color: '#B5FFD9',
+                                marginBottom: '6px',
+                                fontWeight: 500,
+                            }}>
+                                📥 Event Inputs
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                {startInputs.map((input) => {
+                                    // Use override if exists, otherwise use the original enabled state
+                                    const isEnabled = inputOverrides.hasOwnProperty(input.id)
+                                        ? inputOverrides[input.id]
+                                        : input.enabled;
+
+                                    return (
+                                        <label
+                                            key={input.id}
+                                            className="nodrag"
+                                            onClick={(e) => e.stopPropagation()}
+                                            onMouseDown={(e) => e.stopPropagation()}
+                                            style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '6px',
+                                                cursor: 'pointer',
+                                                padding: '4px 6px',
+                                                background: isEnabled
+                                                    ? 'rgba(181, 255, 217, 0.1)'
+                                                    : 'rgba(255,255,255,0.02)',
+                                                borderRadius: '3px',
+                                            }}
+                                        >
+                                            <input
+                                                type="checkbox"
+                                                className="nodrag"
+                                                checked={isEnabled}
+                                                onChange={() => {
+                                                    const newOverrides = {
+                                                        ...inputOverrides,
+                                                        [input.id]: !isEnabled,
+                                                    };
+                                                    updateNode(id, { inputOverrides: newOverrides });
+                                                }}
+                                                onClick={(e) => e.stopPropagation()}
+                                                onMouseDown={(e) => e.stopPropagation()}
+                                                style={{ cursor: 'pointer' }}
+                                            />
+                                            <span style={{
+                                                fontSize: '10px',
+                                                color: isEnabled ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.4)',
+                                                textDecoration: isEnabled ? 'none' : 'line-through',
+                                            }}>
+                                                {input.label}
+                                            </span>
+                                        </label>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    );
+                })()}
             </div>
 
             {/* Output Handles */}

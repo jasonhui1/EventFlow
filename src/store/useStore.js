@@ -74,6 +74,7 @@ const createStartNode = (position = { x: 0, y: 0 }, data = {}) => ({
     data: {
         label: data.label || 'Start Flow',
         outputs: [{ id: 'start_output', label: 'Start' }],
+        inputs: data.inputs || [], // Configurable inputs: [{ id, label, enabled }]
         ...data,
     },
 });
@@ -652,6 +653,77 @@ const useStore = create(
                             data: {
                                 ...node.data,
                                 inputs: [...node.data.inputs, newInput],
+                            },
+                        };
+                    }),
+                }));
+            },
+
+            // Start Node input management
+            addStartNodeInput: (nodeId) => {
+                set((state) => ({
+                    nodes: state.nodes.map((node) => {
+                        if (node.id !== nodeId || node.type !== 'startNode') return node;
+                        const inputs = node.data.inputs || [];
+                        const newInput = {
+                            id: `input_${uuidv4().slice(0, 8)}`,
+                            label: `Input ${inputs.length + 1}`,
+                            enabled: true,
+                        };
+                        return {
+                            ...node,
+                            data: {
+                                ...node.data,
+                                inputs: [...inputs, newInput],
+                            },
+                        };
+                    }),
+                }));
+            },
+
+            removeStartNodeInput: (nodeId, inputId) => {
+                set((state) => ({
+                    nodes: state.nodes.map((node) => {
+                        if (node.id !== nodeId || node.type !== 'startNode') return node;
+                        return {
+                            ...node,
+                            data: {
+                                ...node.data,
+                                inputs: (node.data.inputs || []).filter(input => input.id !== inputId),
+                            },
+                        };
+                    }),
+                }));
+            },
+
+            toggleStartNodeInput: (nodeId, inputId) => {
+                set((state) => ({
+                    nodes: state.nodes.map((node) => {
+                        if (node.id !== nodeId || node.type !== 'startNode') return node;
+                        return {
+                            ...node,
+                            data: {
+                                ...node.data,
+                                inputs: (node.data.inputs || []).map(input =>
+                                    input.id === inputId ? { ...input, enabled: !input.enabled } : input
+                                ),
+                            },
+                        };
+                    }),
+                }));
+            },
+
+            updateStartNodeInputLabel: (nodeId, inputId, label) => {
+                set((state) => ({
+                    nodes: state.nodes.map((node) => {
+                        if (node.id !== nodeId || node.type !== 'startNode') return node;
+                        return {
+                            ...node,
+                            data: {
+                                ...node.data,
+                                inputs: (node.data.inputs || []).map(input =>
+                                    input.id === inputId ? { ...input, label } : input
+                                ),
                             },
                         };
                     }),
