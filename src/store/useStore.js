@@ -1050,12 +1050,12 @@ const useStore = create(
             },
 
             // Simulation Logic (Graph Traversal)
-            simulateEvent: (currentNodes, currentEdges, incomingContextParts = [], visitedEventIds = new Set()) => {
+            simulateEvent: (currentNodes, currentEdges, incomingContextParts = [], visitedEventIds = new Set(), inputOverrides = {}) => {
                 const state = get();
                 const currentEvent = state.getCurrentEvent();
                 const fixedPrompt = currentEvent?.fixedPrompt || '';
 
-                return sim.simulateEvent(state.events, currentNodes, currentEdges, fixedPrompt, incomingContextParts, visitedEventIds);
+                return sim.simulateEvent(state.events, currentNodes, currentEdges, fixedPrompt, incomingContextParts, visitedEventIds, inputOverrides);
             },
 
             // Generate a test prompt, randomly selecting branches based on weights

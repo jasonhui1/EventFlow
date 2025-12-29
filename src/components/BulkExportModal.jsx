@@ -4,11 +4,10 @@ import useStore from '../store/useStore';
 const BulkExportModal = ({ onClose }) => {
     const events = useStore((state) => state.events);
     const simulateEventInStore = useStore((state) => state.simulateEvent);
-    const [selectedEventIds, setSelectedEventIds] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [exportResult, setExportResult] = useState(null);
     const [copied, setCopied] = useState(false);
-    const [eventOverrides, setEventOverrides] = useState({}); // { [eventId]: { [inputId]: boolean } }
+    const [selections, setSelections] = useState([]); // [{ eventId, overrides: { [inputId]: boolean } }]
     const [expandedEventId, setExpandedEventId] = useState(null);
 
     const filteredEvents = useMemo(() => {
@@ -18,59 +17,72 @@ const BulkExportModal = ({ onClose }) => {
     }, [events, searchTerm]);
 
     const toggleEventSelection = (eventId) => {
-        setSelectedEventIds(prev =>
-            prev.includes(eventId)
-                ? prev.filter(id => id !== eventId)
-                : [...prev, eventId]
-        );
+        setSelections(prev => {
+            const exists = prev.find(s => s.eventId === eventId);
+            if (exists) {
+                return prev.filter(s => s.eventId !== eventId);
+            }
+            return [...prev, { eventId, overrides: {} }];
+        });
     };
 
     const toggleInputOverride = (eventId, inputId, currentVal) => {
-        setEventOverrides(prev => ({
-            ...prev,
-            [eventId]: {
-                ...(prev[eventId] || {}),
-                [inputId]: !currentVal
+        setSelections(prev => {
+            const eventSelection = prev.find(s => s.eventId === eventId);
+
+            // If the event isn't selected yet, we should probably select it first
+            // or just update it if it exists. For bulk update flows, selecting it
+            // usually implies you want to configure it.
+            if (!eventSelection) {
+                return [...prev, {
+                    eventId,
+                    overrides: { [inputId]: !currentVal }
+                }];
             }
-        }));
+
+            return prev.map(s => {
+                if (s.eventId !== eventId) return s;
+                return {
+                    ...s,
+                    overrides: {
+                        ...s.overrides,
+                        [inputId]: !currentVal
+                    }
+                };
+            });
+        });
     };
 
     const handleSelectAll = () => {
-        if (selectedEventIds.length === filteredEvents.length) {
-            setSelectedEventIds([]);
+        if (selections.length === filteredEvents.length) {
+            setSelections([]);
         } else {
-            setSelectedEventIds(filteredEvents.map(e => e.id));
+            // Preservation logic: Keep existing overrides if they were already there
+            setSelections(filteredEvents.map(e => {
+                const existing = selections.find(s => s.eventId === e.id);
+                return existing || { eventId: e.id, overrides: {} };
+            }));
         }
     };
 
     const handleExport = () => {
-        const selectedEvents = events.filter(e => selectedEventIds.includes(e.id));
+        // Now 'selections' is our source of truth
         let allPrompts = [];
 
-        selectedEvents.forEach(event => {
+        selections.forEach(selection => {
+            const event = events.find(e => e.id === selection.eventId);
+            if (!event) return;
+
             allPrompts.push(`--- [Event: ${event.name}] ---`);
 
-            // Apply overrides if any
-            const nodesWithOverrides = (event.nodes || []).map(n => {
-                if (n.type === 'startNode' && eventOverrides[event.id]) {
-                    const nodeOverrides = eventOverrides[event.id];
-                    return {
-                        ...n,
-                        data: {
-                            ...n.data,
-                            inputs: n.data.inputs?.map(input => ({
-                                ...input,
-                                enabled: nodeOverrides.hasOwnProperty(input.id)
-                                    ? nodeOverrides[input.id]
-                                    : input.enabled
-                            }))
-                        }
-                    };
-                }
-                return n;
-            });
-
-            const simulatedNodes = simulateEventInStore(nodesWithOverrides, event.edges || []);
+            // Use native simulation overrides
+            const simulatedNodes = simulateEventInStore(
+                event.nodes || [],
+                event.edges || [],
+                [],
+                new Set(),
+                selection.overrides
+            );
             const prompts = simulatedNodes.map(node => node.prompt);
 
             if (prompts.length === 0) {
@@ -87,6 +99,16 @@ const BulkExportModal = ({ onClose }) => {
         });
 
         setExportResult(JSON.stringify(allPrompts, null, 2));
+    };
+
+    // User's mentioned "Update" button pattern
+    const handleUpdate = () => {
+        console.log("Sending the following selections to the app update function:", selections);
+        // In a real app, this might be:
+        // window.parent.postMessage({ type: 'UPDATE_EVENTS', payload: selections }, '*');
+
+        // For demonstration, we'll just show the JSON
+        setExportResult(JSON.stringify(selections, null, 2));
     };
 
     const handleCopy = async () => {
@@ -144,7 +166,7 @@ const BulkExportModal = ({ onClose }) => {
                                         Select events to simulate and extract prompts:
                                     </span>
                                     <button className="action-btn" onClick={handleSelectAll} style={{ fontSize: '11px' }}>
-                                        {selectedEventIds.length === filteredEvents.length && filteredEvents.length > 0 ? 'Deselect All' : 'Select All Filtered'}
+                                        {selections.length === filteredEvents.length && filteredEvents.length > 0 ? 'Deselect All' : 'Select All Filtered'}
                                     </button>
                                 </div>
                             </div>
@@ -153,7 +175,8 @@ const BulkExportModal = ({ onClose }) => {
                                 {filteredEvents.map((event) => {
                                     const startNode = event.nodes?.find(n => n.type === 'startNode');
                                     const inputs = startNode?.data?.inputs || [];
-                                    const isSelected = selectedEventIds.includes(event.id);
+                                    const selection = selections.find(s => s.eventId === event.id);
+                                    const isSelected = !!selection;
                                     const isExpanded = expandedEventId === event.id;
 
                                     return (
@@ -219,8 +242,8 @@ const BulkExportModal = ({ onClose }) => {
                                                     background: 'rgba(0,0,0,0.1)'
                                                 }}>
                                                     {inputs.map(input => {
-                                                        const isOverridden = eventOverrides[event.id]?.hasOwnProperty(input.id);
-                                                        const currentVal = isOverridden ? eventOverrides[event.id][input.id] : input.enabled;
+                                                        const isOverridden = selection?.overrides?.hasOwnProperty(input.id);
+                                                        const currentVal = isOverridden ? selection.overrides[input.id] : input.enabled;
 
                                                         return (
                                                             <label
@@ -289,14 +312,24 @@ const BulkExportModal = ({ onClose }) => {
 
                 <div className="modal-footer">
                     {!exportResult ? (
-                        <button
-                            className="action-btn primary"
-                            onClick={handleExport}
-                            disabled={selectedEventIds.length === 0}
-                            style={{ opacity: selectedEventIds.length === 0 ? 0.5 : 1, width: '100%' }}
-                        >
-                            Generate Simulated Prompts ({selectedEventIds.length})
-                        </button>
+                        <div style={{ display: 'flex', gap: '12px', width: '100%' }}>
+                            <button
+                                className="action-btn"
+                                onClick={handleUpdate}
+                                disabled={selections.length === 0}
+                                style={{ flex: 1, opacity: selections.length === 0 ? 0.5 : 1 }}
+                            >
+                                Update Selections ({selections.length})
+                            </button>
+                            <button
+                                className="action-btn primary"
+                                onClick={handleExport}
+                                disabled={selections.length === 0}
+                                style={{ flex: 1, opacity: selections.length === 0 ? 0.5 : 1 }}
+                            >
+                                Generate Simulated Prompts
+                            </button>
+                        </div>
                     ) : (
                         <div style={{ display: 'flex', gap: '12px', width: '100%' }}>
                             <button
@@ -304,7 +337,7 @@ const BulkExportModal = ({ onClose }) => {
                                 onClick={handleCopy}
                                 style={{ flex: 1 }}
                             >
-                                {copied ? '✓ Copied!' : '📋 Copy Array'}
+                                {copied ? '✓ Copied!' : '📋 Copy Results'}
                             </button>
                             <button
                                 className="action-btn primary"

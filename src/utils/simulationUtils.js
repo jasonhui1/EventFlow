@@ -181,8 +181,35 @@ export const getComposedPrompt = (nodeId, allEvents, nodes, edges, currentEventF
 /**
  * Simulate an event flow and return an array of resulting prompts
  */
-export const simulateEvent = (allEvents, currentNodes, currentEdges, currentEventFixedPrompt = '', incomingContextParts = [], visitedEventIds = new Set()) => {
-    const startNodes = currentNodes.filter(n => n.type === 'startNode');
+export const simulateEvent = (
+    allEvents,
+    currentNodes,
+    currentEdges,
+    currentEventFixedPrompt = '',
+    incomingContextParts = [],
+    visitedEventIds = new Set(),
+    inputOverrides = {} // New parameter for top-level input overrides
+) => {
+    // Apply input overrides to top-level start nodes if provided
+    const processedNodes = currentNodes.map(node => {
+        if (node.type === 'startNode' && inputOverrides && Object.keys(inputOverrides).length > 0) {
+            return {
+                ...node,
+                data: {
+                    ...node.data,
+                    inputs: node.data.inputs?.map(input => ({
+                        ...input,
+                        enabled: inputOverrides.hasOwnProperty(input.id)
+                            ? inputOverrides[input.id]
+                            : input.enabled
+                    }))
+                }
+            };
+        }
+        return node;
+    });
+
+    const startNodes = processedNodes.filter(n => n.type === 'startNode');
 
     if (startNodes.length === 0) return [];
 
@@ -205,7 +232,7 @@ export const simulateEvent = (allEvents, currentNodes, currentEdges, currentEven
                     const { parts: refPromptParts } = getComposedPrompt(
                         currentNode.id,
                         allEvents,
-                        currentNodes,
+                        processedNodes,
                         currentEdges,
                         currentEventFixedPrompt,
                         {
@@ -248,7 +275,7 @@ export const simulateEvent = (allEvents, currentNodes, currentEdges, currentEven
                 const { parts: localParts } = getComposedPrompt(
                     currentNode.id,
                     allEvents,
-                    currentNodes,
+                    processedNodes,
                     currentEdges,
                     currentEventFixedPrompt,
                     {
@@ -283,13 +310,13 @@ export const simulateEvent = (allEvents, currentNodes, currentEdges, currentEven
                 const selectedEdges = outgoingEdges.filter(e => e.sourceHandle === randomHandle);
                 selectedEdges.forEach(edge => {
                     visitedEdgeIds.add(edge.id);
-                    const targetNode = currentNodes.find(n => n.id === edge.target);
+                    const targetNode = processedNodes.find(n => n.id === edge.target);
                     if (targetNode) queue.push(targetNode);
                 });
             }
         } else if (currentNode.type === 'ifNode') {
             // Evaluate condition based on Start Node inputs
-            const startNode = currentNodes.find(n => n.type === 'startNode');
+            const startNode = processedNodes.find(n => n.type === 'startNode');
             const startInputs = startNode?.data?.inputs || [];
             const conditionInputIds = currentNode.data?.conditionInputIds || [];
 
@@ -305,13 +332,13 @@ export const simulateEvent = (allEvents, currentNodes, currentEdges, currentEven
 
             selectedEdges.forEach(edge => {
                 visitedEdgeIds.add(edge.id);
-                const targetNode = currentNodes.find(n => n.id === edge.target);
+                const targetNode = processedNodes.find(n => n.id === edge.target);
                 if (targetNode) queue.push(targetNode);
             });
         } else {
             outgoingEdges.forEach(edge => {
                 visitedEdgeIds.add(edge.id);
-                const targetNode = currentNodes.find(n => n.id === edge.target);
+                const targetNode = processedNodes.find(n => n.id === edge.target);
                 if (targetNode) queue.push(targetNode);
             });
         }
