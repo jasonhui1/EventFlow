@@ -469,6 +469,47 @@ const useStore = create(
                 }));
             },
 
+            // Folder Actions
+            folders: [],
+
+            addFolder: (name = 'New Folder') => {
+                const newFolder = {
+                    id: uuidv4(),
+                    name,
+                    createdAt: new Date().toISOString(),
+                };
+                set((state) => ({
+                    folders: [...(state.folders || []), newFolder]
+                }));
+                return newFolder.id;
+            },
+
+            deleteFolder: (folderId) => {
+                set((state) => ({
+                    folders: (state.folders || []).filter(f => f.id !== folderId),
+                    // Move events in this folder to root
+                    events: state.events.map(e =>
+                        e.folderId === folderId ? { ...e, folderId: null } : e
+                    )
+                }));
+            },
+
+            renameFolder: (folderId, newName) => {
+                set((state) => ({
+                    folders: (state.folders || []).map(f =>
+                        f.id === folderId ? { ...f, name: newName } : f
+                    )
+                }));
+            },
+
+            moveEventToFolder: (eventId, folderId) => {
+                set((state) => ({
+                    events: state.events.map(e =>
+                        e.id === eventId ? { ...e, folderId } : e
+                    )
+                }));
+            },
+
             getCurrentEvent: () => {
                 const state = get();
                 return state.events.find((e) => e.id === state.currentEventId);
@@ -1090,6 +1131,7 @@ const useStore = create(
             name: 'event-flow-storage',
             partialize: (state) => ({
                 events: state.events,
+                folders: state.folders,
                 currentEventId: state.currentEventId,
                 nodes: state.nodes,
                 edges: state.edges,
