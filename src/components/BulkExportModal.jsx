@@ -8,6 +8,8 @@ const BulkExportModal = ({ onClose }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [exportResult, setExportResult] = useState(null);
     const [copied, setCopied] = useState(false);
+    const [eventOverrides, setEventOverrides] = useState({}); // { [eventId]: { [inputId]: boolean } }
+    const [expandedEventId, setExpandedEventId] = useState(null);
 
     const filteredEvents = useMemo(() => {
         return events.filter(e =>
@@ -21,6 +23,16 @@ const BulkExportModal = ({ onClose }) => {
                 ? prev.filter(id => id !== eventId)
                 : [...prev, eventId]
         );
+    };
+
+    const toggleInputOverride = (eventId, inputId, currentVal) => {
+        setEventOverrides(prev => ({
+            ...prev,
+            [eventId]: {
+                ...(prev[eventId] || {}),
+                [inputId]: !currentVal
+            }
+        }));
     };
 
     const handleSelectAll = () => {
@@ -37,7 +49,28 @@ const BulkExportModal = ({ onClose }) => {
 
         selectedEvents.forEach(event => {
             allPrompts.push(`--- [Event: ${event.name}] ---`);
-            const simulatedNodes = simulateEventInStore(event.nodes || [], event.edges || []);
+
+            // Apply overrides if any
+            const nodesWithOverrides = (event.nodes || []).map(n => {
+                if (n.type === 'startNode' && eventOverrides[event.id]) {
+                    const nodeOverrides = eventOverrides[event.id];
+                    return {
+                        ...n,
+                        data: {
+                            ...n.data,
+                            inputs: n.data.inputs?.map(input => ({
+                                ...input,
+                                enabled: nodeOverrides.hasOwnProperty(input.id)
+                                    ? nodeOverrides[input.id]
+                                    : input.enabled
+                            }))
+                        }
+                    };
+                }
+                return n;
+            });
+
+            const simulatedNodes = simulateEventInStore(nodesWithOverrides, event.edges || []);
             const prompts = simulatedNodes.map(node => node.prompt);
 
             if (prompts.length === 0) {
@@ -117,36 +150,109 @@ const BulkExportModal = ({ onClose }) => {
                             </div>
 
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                {filteredEvents.map((event) => (
-                                    <div
-                                        key={event.id}
-                                        onClick={() => toggleEventSelection(event.id)}
-                                        style={{
-                                            padding: '12px',
-                                            background: selectedEventIds.includes(event.id) ? 'rgba(201, 181, 255, 0.15)' : 'rgba(255,255,255,0.03)',
-                                            border: `1px solid ${selectedEventIds.includes(event.id) ? 'rgba(201, 181, 255, 0.4)' : 'rgba(255,255,255,0.1)'}`,
-                                            borderRadius: '8px',
-                                            cursor: 'pointer',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '12px',
-                                            transition: 'all 0.2s'
-                                        }}
-                                    >
-                                        <input
-                                            type="checkbox"
-                                            checked={selectedEventIds.includes(event.id)}
-                                            onChange={() => { }}
-                                            style={{ cursor: 'pointer' }}
-                                        />
-                                        <div style={{ flex: 1 }}>
-                                            <div style={{ fontWeight: 600, color: '#fff' }}>{event.name}</div>
-                                            <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)' }}>
-                                                {event.nodes?.length || 0} nodes • {event.edges?.length || 0} edges
+                                {filteredEvents.map((event) => {
+                                    const startNode = event.nodes?.find(n => n.type === 'startNode');
+                                    const inputs = startNode?.data?.inputs || [];
+                                    const isSelected = selectedEventIds.includes(event.id);
+                                    const isExpanded = expandedEventId === event.id;
+
+                                    return (
+                                        <div
+                                            key={event.id}
+                                            style={{
+                                                background: isSelected ? 'rgba(201, 181, 255, 0.1)' : 'rgba(255,255,255,0.02)',
+                                                border: `1px solid ${isSelected ? 'rgba(201, 181, 255, 0.3)' : 'rgba(255,255,255,0.05)'}`,
+                                                borderRadius: '8px',
+                                                overflow: 'hidden',
+                                                transition: 'all 0.2s'
+                                            }}
+                                        >
+                                            <div
+                                                onClick={() => toggleEventSelection(event.id)}
+                                                style={{
+                                                    padding: '12px',
+                                                    cursor: 'pointer',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '12px',
+                                                }}
+                                            >
+                                                <input
+                                                    type="checkbox"
+                                                    checked={isSelected}
+                                                    onChange={() => { }}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    style={{ cursor: 'pointer' }}
+                                                />
+                                                <div style={{ flex: 1 }}>
+                                                    <div style={{ fontWeight: 600, color: '#fff', fontSize: '14px' }}>{event.name}</div>
+                                                    <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)' }}>
+                                                        {event.nodes?.length || 0} nodes • {event.edges?.length || 0} edges
+                                                    </div>
+                                                </div>
+                                                {inputs.length > 0 && (
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setExpandedEventId(isExpanded ? null : event.id);
+                                                        }}
+                                                        className="action-btn"
+                                                        style={{
+                                                            fontSize: '10px',
+                                                            padding: '4px 8px',
+                                                            background: isExpanded ? 'rgba(255,255,255,0.1)' : 'transparent',
+                                                            borderColor: 'rgba(255,255,255,0.1)'
+                                                        }}
+                                                    >
+                                                        {inputs.length} Inputs {isExpanded ? '▴' : '▾'}
+                                                    </button>
+                                                )}
                                             </div>
+
+                                            {isExpanded && inputs.length > 0 && (
+                                                <div style={{
+                                                    padding: '0 12px 12px 42px',
+                                                    display: 'flex',
+                                                    flexWrap: 'wrap',
+                                                    gap: '8px',
+                                                    borderTop: '1px solid rgba(255,255,255,0.05)',
+                                                    background: 'rgba(0,0,0,0.1)'
+                                                }}>
+                                                    {inputs.map(input => {
+                                                        const isOverridden = eventOverrides[event.id]?.hasOwnProperty(input.id);
+                                                        const currentVal = isOverridden ? eventOverrides[event.id][input.id] : input.enabled;
+
+                                                        return (
+                                                            <label
+                                                                key={input.id}
+                                                                style={{
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    gap: '6px',
+                                                                    padding: '4px 8px',
+                                                                    background: currentVal ? 'rgba(181, 255, 217, 0.1)' : 'rgba(255,255,255,0.05)',
+                                                                    border: `1px solid ${currentVal ? 'rgba(181, 255, 217, 0.3)' : 'rgba(255,255,255,0.1)'}`,
+                                                                    borderRadius: '4px',
+                                                                    fontSize: '11px',
+                                                                    color: currentVal ? '#B5FFD9' : 'rgba(255,255,255,0.5)',
+                                                                    cursor: 'pointer'
+                                                                }}
+                                                            >
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={currentVal}
+                                                                    onChange={() => toggleInputOverride(event.id, input.id, currentVal)}
+                                                                    style={{ width: '12px', height: '12px' }}
+                                                                />
+                                                                {input.label}
+                                                            </label>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
                                         </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                                 {filteredEvents.length === 0 && (
                                     <div style={{ textAlign: 'center', padding: '40px', color: 'rgba(255,255,255,0.3)' }}>
                                         No events match your search.
