@@ -161,6 +161,18 @@ const Sidebar = () => {
                                     <div className="palette-node-desc">Reuse other events</div>
                                 </div>
                             </div>
+
+                            <div
+                                className="palette-node"
+                                draggable
+                                onDragStart={(e) => onDragStart(e, 'carryForwardNode')}
+                            >
+                                <div className="palette-node-icon" style={{ color: '#B5FFD9' }}>⏩</div>
+                                <div className="palette-node-info">
+                                    <div className="palette-node-name">Carry Forward</div>
+                                    <div className="palette-node-desc">Pass prompt forward</div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 )}

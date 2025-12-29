@@ -106,6 +106,19 @@ const createIfNode = (position = { x: 0, y: 0 }, data = {}) => ({
     },
 });
 
+const createCarryForwardNode = (position = { x: 0, y: 0 }, data = {}) => ({
+    id: uuidv4(),
+    type: 'carryForwardNode',
+    position,
+    data: {
+        label: data.label || 'Carry Forward',
+        inheritedPrompt: data.inheritedPrompt || [''], // Use inheritedPrompt for data passing
+        inputs: data.inputs || [{ id: 'trigger', label: 'Trigger' }],
+        outputs: data.outputs || [{ id: 'next', label: 'Next' }],
+        ...data,
+    },
+});
+
 // Initial demo event
 const createInitialEvent = () => ({
     id: uuidv4(),
@@ -488,6 +501,9 @@ const useStore = create(
                         break;
                     case 'ifNode':
                         newNode = createIfNode(position, dataWithFocus);
+                        break;
+                    case 'carryForwardNode':
+                        newNode = createCarryForwardNode(position, dataWithFocus);
                         break;
                     default:
                         newNode = createEventNode(position, dataWithFocus);

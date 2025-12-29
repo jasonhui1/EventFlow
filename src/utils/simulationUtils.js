@@ -270,7 +270,7 @@ export const simulateEvent = (
                 }
             }
         } else {
-            const hiddenTypes = ['startNode', 'endNode', 'branchNode', 'referenceNode', 'ifNode'];
+            const hiddenTypes = ['startNode', 'endNode', 'branchNode', 'referenceNode', 'ifNode', 'carryForwardNode'];
             if (!hiddenTypes.includes(currentNode.type)) {
                 const { parts: localParts } = getComposedPrompt(
                     currentNode.id,

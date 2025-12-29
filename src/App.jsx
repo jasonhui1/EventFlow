@@ -21,6 +21,7 @@ import ReferenceNode from './components/nodes/ReferenceNode';
 import StartNode from './components/nodes/StartNode';
 import EndNode from './components/nodes/EndNode';
 import IfNode from './components/nodes/IfNode';
+import CarryForwardNode from './components/nodes/CarryForwardNode';
 
 // Register custom node types
 const nodeTypes = {
@@ -31,6 +32,7 @@ const nodeTypes = {
     startNode: StartNode,
     endNode: EndNode,
     ifNode: IfNode,
+    carryForwardNode: CarryForwardNode,
 };
 
 import EventSimulationModal from './components/EventSimulationModal';
