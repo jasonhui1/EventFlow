@@ -1,5 +1,5 @@
 import React, { memo } from 'react';
-import { Handle, Position } from '@xyflow/react';
+import { Handle, Position, NodeResizer } from '@xyflow/react';
 import useStore from '../../store/useStore';
 
 const StartNode = ({ id, data, selected }) => {
@@ -17,6 +17,14 @@ const StartNode = ({ id, data, selected }) => {
             background: 'linear-gradient(145deg, rgba(181, 255, 217, 0.1), rgba(181, 255, 217, 0.05))',
             minWidth: '200px'
         }}>
+            <NodeResizer
+                color="#B5FFD9"
+                isVisible={selected}
+                minWidth={200}
+                minHeight={100}
+                handleStyle={{ width: 8, height: 8, borderRadius: '50%' }}
+                lineStyle={{ border: '1px solid #B5FFD9' }}
+            />
             <div className="event-node-header" style={{ borderBottom: '1px solid rgba(181, 255, 217, 0.2)' }}>
                 <span className="event-node-icon">🚀</span>
                 <input

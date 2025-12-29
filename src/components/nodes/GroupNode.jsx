@@ -1,5 +1,5 @@
 import React, { memo } from 'react';
-import { Handle, Position } from '@xyflow/react';
+import { Handle, Position, NodeResizer } from '@xyflow/react';
 import useStore from '../../store/useStore';
 
 const GroupNode = ({ id, data, selected }) => {
@@ -23,6 +23,14 @@ const GroupNode = ({ id, data, selected }) => {
 
     return (
         <div className={`group-node ${selected ? 'selected' : ''}`}>
+            <NodeResizer
+                color="#B5D4FF"
+                isVisible={selected}
+                minWidth={250}
+                minHeight={150}
+                handleStyle={{ width: 8, height: 8, borderRadius: '50%' }}
+                lineStyle={{ border: '1px solid #B5D4FF' }}
+            />
             {/* Input Handles */}
             {data.inputs?.map((input, index) => (
                 <Handle

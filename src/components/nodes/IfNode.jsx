@@ -1,5 +1,5 @@
 import React, { memo, useState } from 'react';
-import { Handle, Position } from '@xyflow/react';
+import { Handle, Position, NodeResizer } from '@xyflow/react';
 import useStore from '../../store/useStore';
 
 const IfNode = ({ id, data, selected }) => {
@@ -30,6 +30,14 @@ const IfNode = ({ id, data, selected }) => {
             background: 'linear-gradient(145deg, rgba(255, 228, 181, 0.15), rgba(255, 228, 181, 0.05))',
             minWidth: '200px',
         }}>
+            <NodeResizer
+                color="#FFE4B5"
+                isVisible={selected}
+                minWidth={200}
+                minHeight={100}
+                handleStyle={{ width: 8, height: 8, borderRadius: '50%' }}
+                lineStyle={{ border: '1px solid #FFE4B5' }}
+            />
             {/* Input Handle */}
             {data.inputs?.map((input, index) => (
                 <Handle
