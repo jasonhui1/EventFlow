@@ -218,9 +218,22 @@ export const simulateEvent = (allEvents, currentNodes, currentEdges, currentEven
                     const newContextParts = [...incomingContextParts, ...refPromptParts];
                     const newVisitedEvents = new Set(visitedEventIds).add(currentNode.data.referenceId);
 
+                    // Deep clone nodes to avoid mutating the original store during simulation
+                    // and apply input overrides from the reference node
+                    const nodesToSimulate = refEvent.nodes.map(n => ({ ...n, data: { ...n.data } }));
+                    const overrides = currentNode.data?.inputOverrides || {};
+                    const startNode = nodesToSimulate.find(n => n.type === 'startNode');
+
+                    if (startNode && startNode.data.inputs) {
+                        startNode.data.inputs = startNode.data.inputs.map(input => ({
+                            ...input,
+                            enabled: overrides.hasOwnProperty(input.id) ? overrides[input.id] : input.enabled
+                        }));
+                    }
+
                     const innerResults = simulateEvent(
                         allEvents,
-                        refEvent.nodes,
+                        nodesToSimulate,
                         refEvent.edges || [],
                         refEvent.fixedPrompt || '',
                         newContextParts,
@@ -230,7 +243,7 @@ export const simulateEvent = (allEvents, currentNodes, currentEdges, currentEven
                 }
             }
         } else {
-            const hiddenTypes = ['startNode', 'endNode', 'branchNode', 'referenceNode'];
+            const hiddenTypes = ['startNode', 'endNode', 'branchNode', 'referenceNode', 'ifNode'];
             if (!hiddenTypes.includes(currentNode.type)) {
                 const { parts: localParts } = getComposedPrompt(
                     currentNode.id,
@@ -274,6 +287,27 @@ export const simulateEvent = (allEvents, currentNodes, currentEdges, currentEven
                     if (targetNode) queue.push(targetNode);
                 });
             }
+        } else if (currentNode.type === 'ifNode') {
+            // Evaluate condition based on Start Node inputs
+            const startNode = currentNodes.find(n => n.type === 'startNode');
+            const startInputs = startNode?.data?.inputs || [];
+            const conditionInputIds = currentNode.data?.conditionInputIds || [];
+
+            // Check if ALL selected inputs are enabled
+            const allEnabled = conditionInputIds.length > 0 && conditionInputIds.every(inputId => {
+                const input = startInputs.find(i => i.id === inputId);
+                return input?.enabled === true;
+            });
+
+            // Select the appropriate output handle based on condition result
+            const selectedHandle = allEnabled ? 'true_output' : 'false_output';
+            const selectedEdges = outgoingEdges.filter(e => e.sourceHandle === selectedHandle);
+
+            selectedEdges.forEach(edge => {
+                visitedEdgeIds.add(edge.id);
+                const targetNode = currentNodes.find(n => n.id === edge.target);
+                if (targetNode) queue.push(targetNode);
+            });
         } else {
             outgoingEdges.forEach(edge => {
                 visitedEdgeIds.add(edge.id);

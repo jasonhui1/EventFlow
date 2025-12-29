@@ -20,6 +20,7 @@ import BranchNode from './components/nodes/BranchNode';
 import ReferenceNode from './components/nodes/ReferenceNode';
 import StartNode from './components/nodes/StartNode';
 import EndNode from './components/nodes/EndNode';
+import IfNode from './components/nodes/IfNode';
 
 // Register custom node types
 const nodeTypes = {
@@ -29,6 +30,7 @@ const nodeTypes = {
     referenceNode: ReferenceNode,
     startNode: StartNode,
     endNode: EndNode,
+    ifNode: IfNode,
 };
 
 import EventSimulationModal from './components/EventSimulationModal';
@@ -710,6 +712,7 @@ function App() {
                                     case 'referenceNode': return '#E5D4FF';
                                     case 'startNode': return '#B5FFD9';
                                     case 'endNode': return '#FFB5C5';
+                                    case 'ifNode': return '#FFE4B5';
                                     default: return '#C9B5FF';
                                 }
                             }}

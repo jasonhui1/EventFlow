@@ -25,6 +25,8 @@ const ContextMenu = ({ x, y, flowPosition, sourceNodeId, sourceHandle, onClose }
                 targetHandle = 'input';
             } else if (type === 'groupNode') {
                 targetHandle = 'start';
+            } else if (type === 'ifNode') {
+                targetHandle = 'input';
             }
 
             addEdge({
@@ -91,6 +93,14 @@ const ContextMenu = ({ x, y, flowPosition, sourceNodeId, sourceHandle, onClose }
                 >
                     <span className="context-menu-item-icon">🔀</span>
                     <span>Branch Node</span>
+                </div>
+
+                <div
+                    className="context-menu-item"
+                    onClick={() => handleAddNode('ifNode')}
+                >
+                    <span className="context-menu-item-icon">❓</span>
+                    <span>If Node</span>
                 </div>
 
                 <div className="context-menu-divider" />

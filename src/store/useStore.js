@@ -90,6 +90,22 @@ const createEndNode = (position = { x: 0, y: 0 }, data = {}) => ({
     },
 });
 
+const createIfNode = (position = { x: 0, y: 0 }, data = {}) => ({
+    id: uuidv4(),
+    type: 'ifNode',
+    position,
+    data: {
+        label: data.label || 'If Condition',
+        conditionInputIds: data.conditionInputIds || [], // Array of Start Node input IDs to check
+        inputs: data.inputs || [{ id: 'input', label: 'Input' }],
+        outputs: data.outputs || [
+            { id: 'true_output', label: 'True' },
+            { id: 'false_output', label: 'False' }
+        ],
+        ...data,
+    },
+});
+
 // Initial demo event
 const createInitialEvent = () => ({
     id: uuidv4(),
@@ -469,6 +485,9 @@ const useStore = create(
                         break;
                     case 'endNode':
                         newNode = createEndNode(position, dataWithFocus);
+                        break;
+                    case 'ifNode':
+                        newNode = createIfNode(position, dataWithFocus);
                         break;
                     default:
                         newNode = createEventNode(position, dataWithFocus);
