@@ -16,6 +16,7 @@ const Sidebar = () => {
     const [showNewEventModal, setShowNewEventModal] = useState(false);
     const [deleteEventModal, setDeleteEventModal] = useState(null); // { id, name }
     const [searchTerm, setSearchTerm] = useState('');
+    const [activeTab, setActiveTab] = useState('library'); // 'nodes', 'library', 'tips'
 
     const filteredEvents = events.filter(event =>
         event.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -43,186 +44,220 @@ const Sidebar = () => {
                 <p className="sidebar-subtitle">Visual story builder</p>
             </div>
 
+            <div className="sidebar-tabs">
+
+                <button
+                    className={`sidebar-tab ${activeTab === 'nodes' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('nodes')}
+                    title="Node Palette"
+                >
+                    <span className="tab-icon">🧩</span>
+                    <span className="tab-label">Nodes</span>
+                </button>
+                <button
+                    className={`sidebar-tab ${activeTab === 'library' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('library')}
+                    title="Event Library"
+                >
+                    <span className="tab-icon">📚</span>
+                    <span className="tab-label">Library</span>
+                </button>
+                <button
+                    className={`sidebar-tab ${activeTab === 'tips' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('tips')}
+                    title="Quick Tips"
+                >
+                    <span className="tab-icon">💡</span>
+                    <span className="tab-label">Tips</span>
+                </button>
+            </div>
+
             <div className="sidebar-content">
                 {/* Node Palette */}
-                <div className="sidebar-section">
-                    <h3 className="sidebar-section-title">Node Types</h3>
-                    <div className="node-palette">
-                        <div
-                            className="palette-node"
-                            draggable
-                            onDragStart={(e) => onDragStart(e, 'startNode')}
-                        >
-                            <div className="palette-node-icon" style={{ color: '#B5FFD9' }}>🚀</div>
-                            <div className="palette-node-info">
-                                <div className="palette-node-name">Start Node</div>
-                                <div className="palette-node-desc">Begin flow</div>
-                            </div>
-                        </div>
-
-                        <div
-                            className="palette-node"
-                            draggable
-                            onDragStart={(e) => onDragStart(e, 'endNode')}
-                        >
-                            <div className="palette-node-icon" style={{ color: '#FFB5C5' }}>🏁</div>
-                            <div className="palette-node-info">
-                                <div className="palette-node-name">End Node</div>
-                                <div className="palette-node-desc">End flow</div>
-                            </div>
-                        </div>
-
-                        <div
-                            className="palette-node"
-                            draggable
-                            onDragStart={(e) => onDragStart(e, 'eventNode')}
-                        >
-                            <div className="palette-node-icon event">📌</div>
-                            <div className="palette-node-info">
-                                <div className="palette-node-name">Event Node</div>
-                                <div className="palette-node-desc">Single event/scene</div>
-                            </div>
-                        </div>
-
-                        <div
-                            className="palette-node"
-                            draggable
-                            onDragStart={(e) => onDragStart(e, 'groupNode')}
-                        >
-                            <div className="palette-node-icon group">📁</div>
-                            <div className="palette-node-info">
-                                <div className="palette-node-name">Group Node</div>
-                                <div className="palette-node-desc">Fixed prompt container</div>
-                            </div>
-                        </div>
-
-                        <div
-                            className="palette-node"
-                            draggable
-                            onDragStart={(e) => onDragStart(e, 'branchNode')}
-                        >
-                            <div className="palette-node-icon branch">🔀</div>
-                            <div className="palette-node-info">
-                                <div className="palette-node-name">Branch Node</div>
-                                <div className="palette-node-desc">Probability split</div>
-                            </div>
-                        </div>
-
-                        <div
-                            className="palette-node"
-                            draggable
-                            onDragStart={(e) => onDragStart(e, 'ifNode')}
-                        >
-                            <div className="palette-node-icon" style={{ borderColor: '#FFE4B5', color: '#FFE4B5' }}>❓</div>
-                            <div className="palette-node-info">
-                                <div className="palette-node-name">If Node</div>
-                                <div className="palette-node-desc">Conditional branching</div>
-                            </div>
-                        </div>
-
-                        <div
-                            className="palette-node"
-                            draggable
-                            onDragStart={(e) => onDragStart(e, 'referenceNode')}
-                        >
-                            <div className="palette-node-icon" style={{ background: 'linear-gradient(135deg, #E5D4FF, #B5F5FF)' }}>🔗</div>
-                            <div className="palette-node-info">
-                                <div className="palette-node-name">Reference Node</div>
-                                <div className="palette-node-desc">Reuse other events</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Event Library */}
-                <div className="sidebar-section">
-                    <h3 className="sidebar-section-title">Event Library</h3>
-
-                    <div className="sidebar-search">
-                        <span className="sidebar-search-icon">🔍</span>
-                        <input
-                            type="text"
-                            className="sidebar-search-input"
-                            placeholder="Search events..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                        />
-                    </div>
-
-                    <div className="event-library">
-                        {filteredEvents.map((event) => (
+                {activeTab === 'nodes' && (
+                    <div className="sidebar-section">
+                        <h3 className="sidebar-section-title">Node Types</h3>
+                        <div className="node-palette">
                             <div
-                                key={event.id}
-                                className={`event-item ${currentEventId === event.id ? 'active' : ''}`}
-                                onClick={() => selectEvent(event.id)}
+                                className="palette-node"
                                 draggable
-                                onDragStart={(e) => {
-                                    e.dataTransfer.setData('application/reactflow', 'referenceNode');
-                                    e.dataTransfer.setData('referenceId', event.id);
-                                    e.dataTransfer.effectAllowed = 'move';
-                                }}
+                                onDragStart={(e) => onDragStart(e, 'startNode')}
                             >
-                                <span className="event-item-name">{event.name}</span>
-                                <div className="event-item-actions">
-                                    <span className="event-item-count">{event.nodes?.length || 0}</span>
-                                    <button
-                                        className="event-action-btn duplicate"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            duplicateEvent(event.id);
-                                        }}
-                                        title="Duplicate Event"
-                                    >
-                                        ❐
-                                    </button>
-                                    {events.length > 1 && (
-                                        <button
-                                            className="event-action-btn delete"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleDeleteEvent(event.id, event.name);
-                                            }}
-                                            title="Delete Event"
-                                        >
-                                            ✕
-                                        </button>
-                                    )}
+                                <div className="palette-node-icon" style={{ color: '#B5FFD9' }}>🚀</div>
+                                <div className="palette-node-info">
+                                    <div className="palette-node-name">Start Node</div>
+                                    <div className="palette-node-desc">Begin flow</div>
                                 </div>
                             </div>
-                        ))}
 
-                        <button
-                            className="add-event-btn"
-                            onClick={() => setShowNewEventModal(true)}
-                        >
-                            <span>+</span> New Event
-                        </button>
+                            <div
+                                className="palette-node"
+                                draggable
+                                onDragStart={(e) => onDragStart(e, 'endNode')}
+                            >
+                                <div className="palette-node-icon" style={{ color: '#FFB5C5' }}>🏁</div>
+                                <div className="palette-node-info">
+                                    <div className="palette-node-name">End Node</div>
+                                    <div className="palette-node-desc">End flow</div>
+                                </div>
+                            </div>
+
+                            <div
+                                className="palette-node"
+                                draggable
+                                onDragStart={(e) => onDragStart(e, 'eventNode')}
+                            >
+                                <div className="palette-node-icon event">📌</div>
+                                <div className="palette-node-info">
+                                    <div className="palette-node-name">Event Node</div>
+                                    <div className="palette-node-desc">Single event/scene</div>
+                                </div>
+                            </div>
+
+                            <div
+                                className="palette-node"
+                                draggable
+                                onDragStart={(e) => onDragStart(e, 'groupNode')}
+                            >
+                                <div className="palette-node-icon group">📁</div>
+                                <div className="palette-node-info">
+                                    <div className="palette-node-name">Group Node</div>
+                                    <div className="palette-node-desc">Fixed prompt container</div>
+                                </div>
+                            </div>
+
+                            <div
+                                className="palette-node"
+                                draggable
+                                onDragStart={(e) => onDragStart(e, 'branchNode')}
+                            >
+                                <div className="palette-node-icon branch">🔀</div>
+                                <div className="palette-node-info">
+                                    <div className="palette-node-name">Branch Node</div>
+                                    <div className="palette-node-desc">Probability split</div>
+                                </div>
+                            </div>
+
+                            <div
+                                className="palette-node"
+                                draggable
+                                onDragStart={(e) => onDragStart(e, 'ifNode')}
+                            >
+                                <div className="palette-node-icon" style={{ borderColor: '#FFE4B5', color: '#FFE4B5' }}>❓</div>
+                                <div className="palette-node-info">
+                                    <div className="palette-node-name">If Node</div>
+                                    <div className="palette-node-desc">Conditional branching</div>
+                                </div>
+                            </div>
+
+                            <div
+                                className="palette-node"
+                                draggable
+                                onDragStart={(e) => onDragStart(e, 'referenceNode')}
+                            >
+                                <div className="palette-node-icon" style={{ background: 'linear-gradient(135deg, #E5D4FF, #B5F5FF)' }}>🔗</div>
+                                <div className="palette-node-info">
+                                    <div className="palette-node-name">Reference Node</div>
+                                    <div className="palette-node-desc">Reuse other events</div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                </div>
+                )}
+
+                {/* Event Library */}
+                {activeTab === 'library' && (
+                    <div className="sidebar-section">
+                        <h3 className="sidebar-section-title">Event Library</h3>
+
+                        <div className="sidebar-search">
+                            <span className="sidebar-search-icon">🔍</span>
+                            <input
+                                type="text"
+                                className="sidebar-search-input"
+                                placeholder="Search events..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
+                        </div>
+
+                        <div className="event-library">
+                            {filteredEvents.map((event) => (
+                                <div
+                                    key={event.id}
+                                    className={`event-item ${currentEventId === event.id ? 'active' : ''}`}
+                                    onClick={() => selectEvent(event.id)}
+                                    draggable
+                                    onDragStart={(e) => {
+                                        e.dataTransfer.setData('application/reactflow', 'referenceNode');
+                                        e.dataTransfer.setData('referenceId', event.id);
+                                        e.dataTransfer.effectAllowed = 'move';
+                                    }}
+                                >
+                                    <span className="event-item-name">{event.name}</span>
+                                    <div className="event-item-actions">
+                                        <span className="event-item-count">{event.nodes?.length || 0}</span>
+                                        <button
+                                            className="event-action-btn duplicate"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                duplicateEvent(event.id);
+                                            }}
+                                            title="Duplicate Event"
+                                        >
+                                            ❐
+                                        </button>
+                                        {events.length > 1 && (
+                                            <button
+                                                className="event-action-btn delete"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleDeleteEvent(event.id, event.name);
+                                                }}
+                                                title="Delete Event"
+                                            >
+                                                ✕
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+
+                            <button
+                                className="add-event-btn"
+                                onClick={() => setShowNewEventModal(true)}
+                            >
+                                <span>+</span> New Event
+                            </button>
+                        </div>
+                    </div>
+                )}
 
                 {/* Tips */}
-                <div className="sidebar-section">
-                    <h3 className="sidebar-section-title">Quick Tips</h3>
-                    <div style={{
-                        padding: '12px',
-                        background: 'rgba(255,255,255,0.03)',
-                        borderRadius: '8px',
-                        fontSize: '11px',
-                        color: 'rgba(255,255,255,0.5)',
-                        lineHeight: '1.6',
-                    }}>
-                        <p>• <strong>Drag</strong> nodes from palette to canvas</p>
-                        <p>• <strong>Connect</strong> outputs to inputs</p>
-                        <p>• <strong>Right-click</strong> canvas for quick actions</p>
-                        <p>• <strong>Drag edge</strong> to empty space for new node</p>
-                        <p>• <strong>Box select</strong> by dragging on canvas</p>
-                        <p>• <strong>Middle mouse</strong> to pan canvas</p>
-                        <p>• <strong>Delete key</strong> to remove selected</p>
-                        <p>• <strong>Ctrl+C/V</strong> to copy/paste nodes</p>
-                        <p>• <strong>Ctrl+D</strong> to duplicate nodes</p>
-                        <p>• <strong>Ctrl+Z/Y</strong> to undo/redo</p>
+                {activeTab === 'tips' && (
+                    <div className="sidebar-section">
+                        <h3 className="sidebar-section-title">Quick Tips</h3>
+                        <div style={{
+                            padding: '12px',
+                            background: 'rgba(255,255,255,0.03)',
+                            borderRadius: '8px',
+                            fontSize: '11px',
+                            color: 'rgba(255,255,255,0.5)',
+                            lineHeight: '1.6',
+                        }}>
+                            <p>• <strong>Drag</strong> nodes from palette to canvas</p>
+                            <p>• <strong>Connect</strong> outputs to inputs</p>
+                            <p>• <strong>Right-click</strong> canvas for quick actions</p>
+                            <p>• <strong>Drag edge</strong> to empty space for new node</p>
+                            <p>• <strong>Box select</strong> by dragging on canvas</p>
+                            <p>• <strong>Middle mouse</strong> to pan canvas</p>
+                            <p>• <strong>Delete key</strong> to remove selected</p>
+                            <p>• <strong>Ctrl+C/V</strong> to copy/paste nodes</p>
+                            <p>• <strong>Ctrl+D</strong> to duplicate nodes</p>
+                            <p>• <strong>Ctrl+Z/Y</strong> to undo/redo</p>
+                        </div>
                     </div>
-                </div>
+                )}
             </div>
 
             {/* New Event Modal */}
@@ -258,7 +293,7 @@ const Sidebar = () => {
                 showDontAskAgain={true}
                 onDontAskAgainChange={setSessionConfirmDelete}
             />
-        </div>
+        </div >
     );
 };
 
