@@ -111,6 +111,18 @@ const Sidebar = () => {
                         <div
                             className="palette-node"
                             draggable
+                            onDragStart={(e) => onDragStart(e, 'ifNode')}
+                        >
+                            <div className="palette-node-icon" style={{ borderColor: '#FFE4B5', color: '#FFE4B5' }}>❓</div>
+                            <div className="palette-node-info">
+                                <div className="palette-node-name">If Node</div>
+                                <div className="palette-node-desc">Conditional branching</div>
+                            </div>
+                        </div>
+
+                        <div
+                            className="palette-node"
+                            draggable
                             onDragStart={(e) => onDragStart(e, 'referenceNode')}
                         >
                             <div className="palette-node-icon" style={{ background: 'linear-gradient(135deg, #E5D4FF, #B5F5FF)' }}>🔗</div>
