@@ -135,35 +135,99 @@ const EventNode = ({ id, data, selected }) => {
                 </div>
 
 
-                {/* Shot Modifiers */}
-                <div style={{
-                    marginBottom: '10px',
-                    padding: '4px 8px',
-                    background: 'rgba(255, 255, 255, 0.03)',
-                    borderRadius: '6px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px'
-                }}>
-                    <label style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        cursor: 'pointer',
-                        fontSize: '11px',
-                        color: '#A0A0C0',
-                        userSelect: 'none'
-                    }}>
-                        <input
-                            type="checkbox"
-                            checked={data.usePerspective || false}
-                            onChange={(e) => updateNode(id, { usePerspective: e.target.checked })}
-                            onClick={(e) => e.stopPropagation()}
-                            style={{ cursor: 'pointer' }}
-                        />
-                        📐 Perspective & Foreshortening
-                    </label>
-                </div>
+                {/* Camera Options */}
+                {(() => {
+                    const [isCameraCollapsed, setIsCameraCollapsed] = React.useState(true);
+
+                    const toggleOption = (key) => {
+                        updateNode(id, { [key]: !data[key] });
+                    };
+
+                    const options = [
+                        { key: 'usePerspective', label: 'Perspective & Foreshortening' },
+                        { key: 'cameraAbove', label: 'From Above' },
+                        { key: 'cameraBelow', label: 'From Below' },
+                        { key: 'cameraSide', label: 'From Side' },
+                    ];
+
+                    const activeCount = options.filter(opt => data[opt.key]).length;
+
+                    return (
+                        <div style={{ marginBottom: '10px' }}>
+                            {/* Header */}
+                            <div
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setIsCameraCollapsed(!isCameraCollapsed);
+                                }}
+                                style={{
+                                    padding: '6px 8px',
+                                    background: 'rgba(255, 255, 255, 0.03)',
+                                    borderRadius: '6px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    cursor: 'pointer',
+                                    userSelect: 'none',
+                                    border: '1px solid rgba(255,255,255,0.05)'
+                                }}
+                            >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <span style={{ fontSize: '12px' }}>📷</span>
+                                    <span style={{ fontSize: '11px', color: '#A0A0C0', fontWeight: 500 }}>
+                                        Camera Options
+                                    </span>
+                                </div>
+                                <span style={{
+                                    fontSize: '10px',
+                                    color: 'rgba(255,255,255,0.4)',
+                                    transform: isCameraCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
+                                    transition: 'transform 0.2s'
+                                }}>
+                                    ▼
+                                </span>
+                            </div>
+
+                            {/* Dropdown Content */}
+                            {!isCameraCollapsed && (
+                                <div style={{
+                                    marginTop: '4px',
+                                    padding: '8px',
+                                    background: 'rgba(0, 0, 0, 0.2)',
+                                    borderRadius: '6px',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '6px'
+                                }}>
+                                    {options.map((opt) => (
+                                        <label
+                                            key={opt.key}
+                                            style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '8px',
+                                                cursor: 'pointer',
+                                                fontSize: '11px',
+                                                color: data[opt.key] ? '#E0E0FF' : '#8080A0',
+                                                userSelect: 'none',
+                                                padding: '2px 0'
+                                            }}
+                                            onClick={(e) => e.stopPropagation()}
+                                        >
+                                            <input
+                                                type="checkbox"
+                                                checked={data[opt.key] || false}
+                                                onChange={() => toggleOption(opt.key)}
+                                                style={{ cursor: 'pointer' }}
+                                            />
+                                            {opt.label}
+                                        </label>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    );
+                })()}
 
                 <div className="event-node-handles">
                     <div className="handle-group">

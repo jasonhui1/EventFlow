@@ -170,7 +170,24 @@ export const getComposedPrompt = (nodeId, allEvents, nodes, edges, currentEventF
     }
 
     if (node.data?.usePerspective) {
-        parts.push({ label: 'Perspective', prompt: 'perspective, foreshortening', type: 'shot' });
+        parts.push({ label: 'Perspective', prompt: 'perspective', type: 'shot' });
+    }
+
+    if (node.data?.cameraAbove && !node.data?.cameraBelow) {
+        parts.push({ label: 'Camera Above', prompt: '<from above$>', type: 'shot' });
+    }
+
+    if (node.data?.cameraBelow && !node.data?.cameraAbove) {
+        parts.push({ label: 'Camera Below', prompt: '<from below$>', type: 'shot' });
+    }
+
+    if (node.data?.cameraBelow && node.data?.cameraAbove) {
+        parts.push({ label: 'Camera Above or Below', prompt: '<from above$from below$>', type: 'shot' });
+    }
+
+
+    if (node.data?.cameraSide) {
+        parts.push({ label: 'Camera Side', prompt: '<from side$>', type: 'shot' });
     }
 
     const full = parts.map((p) => p.prompt).filter(Boolean).join(', ');
