@@ -42,6 +42,9 @@ function App() {
 
     const [costumeOptions, setCostumeOptions] = useState(['casual', ' school uniform']);
     const [showWeights, setShowWeights] = useState(false);
+    const [isFixedPromptCollapsed, setIsFixedPromptCollapsed] = useState(false);
+    const [isCostumesCollapsed, setIsCostumesCollapsed] = useState(false);
+    const [isTopUICollapsed, setIsTopUICollapsed] = useState(false);
 
 
     const reactFlowWrapper = useRef(null);
@@ -524,6 +527,33 @@ function App() {
                         )}
                     </div>
 
+                    {/* Top UI Collapse Toggle */}
+                    <button
+                        onClick={() => setIsTopUICollapsed(!isTopUICollapsed)}
+                        style={{
+                            background: 'rgba(255,255,255,0.05)',
+                            border: '1px solid rgba(255,255,255,0.1)',
+                            borderRadius: '6px',
+                            padding: '6px 12px',
+                            color: 'rgba(255,255,255,0.7)',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            fontSize: '12px',
+                            transition: 'all 0.2s',
+                        }}
+                        title={isTopUICollapsed ? 'Expand UI' : 'Collapse UI'}
+                    >
+                        <span style={{
+                            transition: 'transform 0.2s',
+                            transform: isTopUICollapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
+                        }}>
+                            ▼
+                        </span>
+                        {isTopUICollapsed ? 'Show Options' : 'Hide Options'}
+                    </button>
+
                     <div className="canvas-actions">
                         <button className="action-btn" onClick={autoLayout}>
                             ⚡ Auto Layout
@@ -547,79 +577,120 @@ function App() {
                 </div>
 
                 {/* Fixed Prompt for current event */}
-                {currentEvent && (
+                {currentEvent && !isTopUICollapsed && (
                     <div style={{
-                        padding: '12px 24px',
+                        padding: isFixedPromptCollapsed ? '8px 24px' : '12px 24px',
                         background: 'rgba(201, 181, 255, 0.05)',
                         borderBottom: '1px solid rgba(255,255,255,0.08)',
                     }}>
-                        <div style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '12px',
-                            marginBottom: '8px',
-                        }}>
+                        <div
+                            onClick={() => setIsFixedPromptCollapsed(!isFixedPromptCollapsed)}
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                cursor: 'pointer',
+                                userSelect: 'none',
+                            }}
+                        >
+                            <span style={{
+                                fontSize: '10px',
+                                color: 'rgba(255,255,255,0.4)',
+                                transition: 'transform 0.2s',
+                                transform: isFixedPromptCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
+                            }}>
+                                ▼
+                            </span>
                             <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '1px' }}>
                                 🎨 Event Fixed Prompt
                             </span>
                         </div>
-                        <textarea
-                            value={currentEvent.fixedPrompt || ''}
-                            onChange={(e) => updateEventFixedPrompt(currentEventId, e.target.value)}
-                            placeholder="Add a fixed prompt that applies to all nodes in this event (e.g., outfit, location, mood...)"
-                            style={{
-                                width: '100%',
-                                minHeight: '40px',
-                                background: 'rgba(255,255,255,0.03)',
-                                border: '1px solid rgba(255,255,255,0.1)',
-                                borderRadius: '8px',
-                                padding: '10px 14px',
-                                color: 'rgba(255,255,255,0.8)',
-                                fontSize: '12px',
-                                fontFamily: 'monospace',
-                                resize: 'vertical',
-                            }}
-                        />
+                        {!isFixedPromptCollapsed && (
+                            <textarea
+                                value={currentEvent.fixedPrompt || ''}
+                                onChange={(e) => updateEventFixedPrompt(currentEventId, e.target.value)}
+                                placeholder="Add a fixed prompt that applies to all nodes in this event (e.g., outfit, location, mood...)"
+                                style={{
+                                    width: '100%',
+                                    minHeight: '40px',
+                                    marginTop: '8px',
+                                    background: 'rgba(255,255,255,0.03)',
+                                    border: '1px solid rgba(255,255,255,0.1)',
+                                    borderRadius: '8px',
+                                    padding: '10px 14px',
+                                    color: 'rgba(255,255,255,0.8)',
+                                    fontSize: '12px',
+                                    fontFamily: 'monospace',
+                                    resize: 'vertical',
+                                }}
+                            />
+                        )}
                     </div>
                 )}
 
 
                 {/* Costume Selection */}
-                {currentEvent && (
-                    <div className="costume-selection-container">
-                        <div className="costume-label">
-                            <span style={{ fontSize: '14px' }}>👗</span> COSTUMES:
-                        </div>
-                        <div className="costume-tags">
-                            {costumeOptions.map(costume => {
-                                const currentCostumes = currentEvent.costumes || [];
-                                const isActive = currentCostumes.some(c => (typeof c === 'string' ? c : c.name) === costume);
-                                return (
-                                    <button
-                                        key={costume}
-                                        className={`costume-tag ${isActive ? 'active' : ''}`}
-                                        onClick={() => toggleCostume(costume)}
-                                    >
-                                        {costume}
-                                    </button>
-                                );
-                            })}
+                {currentEvent && !isTopUICollapsed && (
+                    <div className="costume-selection-container" style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
+                        <div
+                            onClick={() => setIsCostumesCollapsed(!isCostumesCollapsed)}
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                cursor: 'pointer',
+                                userSelect: 'none',
+                                marginBottom: isCostumesCollapsed ? 0 : '8px',
+                            }}
+                        >
+                            <span style={{
+                                fontSize: '10px',
+                                color: 'rgba(255,255,255,0.4)',
+                                transition: 'transform 0.2s',
+                                transform: isCostumesCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
+                            }}>
+                                ▼
+                            </span>
+                            <div className="costume-label" style={{ marginBottom: 0 }}>
+                                <span style={{ fontSize: '14px' }}>👗</span> COSTUMES:
+                            </div>
                         </div>
 
-                        {(currentEvent.costumes || []).length > 0 && (
-                            <button
-                                className={`weights-toggle-btn ${showWeights ? 'active' : ''}`}
-                                onClick={() => setShowWeights(!showWeights)}
-                                title="Configure Weights"
-                            >
-                                {showWeights ? '📊 Hide Weights' : '📊 Weights'}
-                            </button>
+                        {!isCostumesCollapsed && (
+                            <>
+                                <div className="costume-tags" style={{ marginLeft: '18px' }}>
+                                    {costumeOptions.map(costume => {
+                                        const currentCostumes = currentEvent.costumes || [];
+                                        const isActive = currentCostumes.some(c => (typeof c === 'string' ? c : c.name) === costume);
+                                        return (
+                                            <button
+                                                key={costume}
+                                                className={`costume-tag ${isActive ? 'active' : ''}`}
+                                                onClick={() => toggleCostume(costume)}
+                                            >
+                                                {costume}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+
+                                {(currentEvent.costumes || []).length > 0 && (
+                                    <button
+                                        className={`weights-toggle-btn ${showWeights ? 'active' : ''}`}
+                                        onClick={() => setShowWeights(!showWeights)}
+                                        title="Configure Weights"
+                                        style={{ marginLeft: '18px' }}
+                                    >
+                                        {showWeights ? '📊 Hide Weights' : '📊 Weights'}
+                                    </button>
+                                )}
+                            </>
                         )}
                     </div>
                 )}
 
                 {/* Costume Weight Configuration (Collapsible) */}
-                {currentEvent && showWeights && (currentEvent.costumes || []).length > 0 && (
+                {currentEvent && !isTopUICollapsed && !isCostumesCollapsed && showWeights && (currentEvent.costumes || []).length > 0 && (
                     <div className="costume-weights-panel">
                         <div className="weights-grid">
                             {(() => {
