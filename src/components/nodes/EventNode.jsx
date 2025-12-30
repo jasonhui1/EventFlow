@@ -28,7 +28,7 @@ const EventNode = ({ id, data, selected }) => {
     }, [data.initialFocus, id, updateNode]);
 
     return (
-        <div className={`event-node ${selected ? 'selected' : ''}`} style={{ height: '100%' }}>
+        <div className={`event-node ${selected ? 'selected' : ''}`}>
             <NodeResizer
                 color="#C9B5FF"
                 isVisible={selected}

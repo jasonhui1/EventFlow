@@ -10,7 +10,6 @@ const createEventNode = (position = { x: 0, y: 0 }, data = {}) => ({
     type: 'eventNode',
     position,
     width: 320,
-    height: 400,
     data: {
         label: data.label || 'New Event',
         content: data.content || '',
