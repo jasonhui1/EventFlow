@@ -81,6 +81,7 @@ const FieldNode = ({ id, data, selected, style }) => {
                     alignItems: 'center',
                     justifyContent: 'space-between',
                     zIndex: 10,
+                    pointerEvents: 'all',
                 }}
             >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -171,7 +172,9 @@ const FieldNode = ({ id, data, selected, style }) => {
                         zIndex: 100,
                         minWidth: '180px',
                         maxHeight: '200px',
+                        maxHeight: '200px',
                         overflowY: 'auto',
+                        pointerEvents: 'all',
                     }}
                 >
                     <div style={{ marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
