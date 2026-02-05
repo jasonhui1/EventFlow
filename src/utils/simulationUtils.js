@@ -238,8 +238,9 @@ export const simulateEvent = (
     fieldNodes.forEach(field => {
         const fieldX = field.position?.x || 0;
         const fieldY = field.position?.y || 0;
-        const fieldWidth = field.data?.width || field.style?.width || 400;
-        const fieldHeight = field.data?.height || field.style?.height || 300;
+        // Use top-level width/height (set by React Flow's applyNodeChanges), fallback to style
+        const fieldWidth = field.width || field.style?.width || 400;
+        const fieldHeight = field.height || field.style?.height || 300;
 
         processedNodes.forEach(node => {
             if (node.id === field.id || node.type === 'fieldNode') return;
@@ -395,11 +396,11 @@ export const simulateEvent = (
             console.log('[FieldNode Simulation] Processing fieldNode:', currentNode.id, currentNode.data?.label);
             console.log('[FieldNode Simulation] selectCount:', currentNode.data?.selectCount);
 
-            // Get field bounds - use data.width/data.height which is persisted by onResize callback
+            // Get field bounds - use top-level width/height (set by React Flow's applyNodeChanges)
             const fieldX = currentNode.position?.x || 0;
             const fieldY = currentNode.position?.y || 0;
-            const fieldWidth = currentNode.data?.width || currentNode.style?.width || 400;
-            const fieldHeight = currentNode.data?.height || currentNode.style?.height || 300;
+            const fieldWidth = currentNode.width || currentNode.style?.width || 400;
+            const fieldHeight = currentNode.height || currentNode.style?.height || 300;
 
             console.log('[FieldNode Simulation] Field bounds:', { fieldX, fieldY, fieldWidth, fieldHeight });
 
