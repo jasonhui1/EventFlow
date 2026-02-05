@@ -3,6 +3,7 @@ import useStore from '../store/useStore';
 import ConfirmModal from './ConfirmModal';
 
 const Sidebar = () => {
+    const [isCollapsed, setIsCollapsed] = useState(true);
     const events = useStore((state) => state.events);
     const folders = useStore((state) => state.folders);
     const currentEventId = useStore((state) => state.currentEventId);
@@ -113,41 +114,52 @@ const Sidebar = () => {
     });
 
     return (
-        <div className="sidebar">
+        <div className={`sidebar ${isCollapsed ? 'collapsed' : ''}`}>
             <div className="sidebar-header">
-                <h1 className="sidebar-title">Event Flow Writer</h1>
-                <p className="sidebar-subtitle">Visual story builder</p>
+                {!isCollapsed && (
+                    <>
+                        <h1 className="sidebar-title">Event Flow Writer</h1>
+                        <p className="sidebar-subtitle">Visual story builder</p>
+                    </>
+                )}
+                <button
+                    className="sidebar-collapse-btn"
+                    onClick={() => setIsCollapsed(!isCollapsed)}
+                    title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                >
+                    {isCollapsed ? '»' : '«'}
+                </button>
             </div>
 
             <div className="sidebar-tabs">
 
                 <button
                     className={`sidebar-tab ${activeTab === 'nodes' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('nodes')}
+                    onClick={() => { setActiveTab('nodes'); if (isCollapsed) setIsCollapsed(false); }}
                     title="Node Palette"
                 >
                     <span className="tab-icon">🧩</span>
-                    <span className="tab-label">Nodes</span>
+                    {!isCollapsed && <span className="tab-label">Nodes</span>}
                 </button>
                 <button
                     className={`sidebar-tab ${activeTab === 'library' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('library')}
+                    onClick={() => { setActiveTab('library'); if (isCollapsed) setIsCollapsed(false); }}
                     title="Event Library"
                 >
                     <span className="tab-icon">📚</span>
-                    <span className="tab-label">Library</span>
+                    {!isCollapsed && <span className="tab-label">Library</span>}
                 </button>
                 <button
                     className={`sidebar-tab ${activeTab === 'tips' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('tips')}
+                    onClick={() => { setActiveTab('tips'); if (isCollapsed) setIsCollapsed(false); }}
                     title="Quick Tips"
                 >
                     <span className="tab-icon">💡</span>
-                    <span className="tab-label">Tips</span>
+                    {!isCollapsed && <span className="tab-label">Tips</span>}
                 </button>
             </div>
 
-            <div className="sidebar-content">
+            {!isCollapsed && <div className="sidebar-content">
                 {/* Node Palette */}
                 {activeTab === 'nodes' && (
                     <div className="sidebar-section">
@@ -515,7 +527,7 @@ const Sidebar = () => {
                         </div>
                     </div>
                 )}
-            </div>
+            </div>}
 
             {/* New Event Modal */}
             <ConfirmModal
