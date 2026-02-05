@@ -230,16 +230,50 @@ export const simulateEvent = (
 
     if (startNodes.length === 0) return [];
 
+    // Pre-compute which nodes are inside which fieldNode
+    // Nodes inside a field should ONLY be processed via field selection, not independent edges
+    const fieldNodes = processedNodes.filter(n => n.type === 'fieldNode');
+    const nodeToFieldMap = new Map(); // Maps nodeId -> fieldNodeId that contains it
+
+    fieldNodes.forEach(field => {
+        const fieldX = field.position?.x || 0;
+        const fieldY = field.position?.y || 0;
+        const fieldWidth = field.data?.width || field.style?.width || 400;
+        const fieldHeight = field.data?.height || field.style?.height || 300;
+
+        processedNodes.forEach(node => {
+            if (node.id === field.id || node.type === 'fieldNode') return;
+            const nodeX = node.position?.x || 0;
+            const nodeY = node.position?.y || 0;
+            if (nodeX >= fieldX && nodeX < fieldX + fieldWidth &&
+                nodeY >= fieldY && nodeY < fieldY + fieldHeight) {
+                nodeToFieldMap.set(node.id, field.id);
+            }
+        });
+    });
+
+    console.log('[Simulation] Nodes inside fields:', Object.fromEntries(nodeToFieldMap));
+
     startNodes.sort((a, b) => a.position.y - b.position.y);
     const results = [];
     const visitedNodeIds = new Set();
     const visitedEdgeIds = new Set();
+    const unlockedByField = new Set(); // Nodes that have been selected by their parent field
     const queue = [...startNodes];
 
     while (queue.length > 0) {
         const currentNode = queue.shift();
 
         if (visitedNodeIds.has(currentNode.id)) continue;
+
+        // Check if this node is inside a field and hasn't been unlocked by field selection
+        const containingFieldId = nodeToFieldMap.get(currentNode.id);
+        if (containingFieldId && !unlockedByField.has(currentNode.id)) {
+            // This node is inside a field but wasn't selected by it - skip
+            console.log('[Simulation] Skipping node inside field (not selected):', currentNode.id, currentNode.data?.label);
+            continue;
+        }
+
         visitedNodeIds.add(currentNode.id);
 
         if (currentNode.type === 'referenceNode' && currentNode.data?.referenceId) {
@@ -358,11 +392,16 @@ export const simulateEvent = (
             // For now, just continue - the field's selection logic is applied
             // when we process nodes that are children of the field
 
-            // Get field bounds
+            console.log('[FieldNode Simulation] Processing fieldNode:', currentNode.id, currentNode.data?.label);
+            console.log('[FieldNode Simulation] selectCount:', currentNode.data?.selectCount);
+
+            // Get field bounds - use data.width/data.height which is persisted by onResize callback
             const fieldX = currentNode.position?.x || 0;
             const fieldY = currentNode.position?.y || 0;
-            const fieldWidth = currentNode.style?.width || 400;
-            const fieldHeight = currentNode.style?.height || 300;
+            const fieldWidth = currentNode.data?.width || currentNode.style?.width || 400;
+            const fieldHeight = currentNode.data?.height || currentNode.style?.height || 300;
+
+            console.log('[FieldNode Simulation] Field bounds:', { fieldX, fieldY, fieldWidth, fieldHeight });
 
             // Find child nodes inside this field (excluding other fields)
             const childNodes = processedNodes.filter(node => {
@@ -371,11 +410,13 @@ export const simulateEvent = (
                 const nodeY = node.position?.y || 0;
                 return (
                     nodeX >= fieldX &&
-                    nodeX <= fieldX + fieldWidth &&
+                    nodeX < fieldX + fieldWidth &&
                     nodeY >= fieldY &&
-                    nodeY <= fieldY + fieldHeight
+                    nodeY < fieldY + fieldHeight
                 );
             });
+
+            console.log('[FieldNode Simulation] Found child nodes:', childNodes.map(c => ({ id: c.id, label: c.data?.label })));
 
             if (childNodes.length === 0) {
                 // No children, just continue to outgoing edges
@@ -389,6 +430,8 @@ export const simulateEvent = (
                 const selectCount = currentNode.data?.selectCount ?? 1;
                 const randomizeOrder = currentNode.data?.randomizeOrder ?? true;
                 const childWeights = currentNode.data?.childWeights || {};
+
+                console.log('[FieldNode Simulation] Selecting', selectCount, 'from', childNodes.length, 'children');
 
                 // Build weighted pool
                 let weightedPool = [];
@@ -413,6 +456,8 @@ export const simulateEvent = (
                 // Get selected children
                 let selectedChildren = childNodes.filter(c => selectedChildIds.has(c.id));
 
+                console.log('[FieldNode Simulation] Selected children:', selectedChildren.map(c => ({ id: c.id, label: c.data?.label })));
+
                 // Shuffle order if requested
                 if (randomizeOrder) {
                     for (let i = selectedChildren.length - 1; i > 0; i--) {
@@ -422,7 +467,9 @@ export const simulateEvent = (
                 }
 
                 // Add selected children to queue for processing
+                // Mark them as unlocked so they can pass the field-exclusive check
                 selectedChildren.forEach(child => {
+                    unlockedByField.add(child.id);
                     queue.push(child);
                 });
             }

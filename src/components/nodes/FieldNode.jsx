@@ -1,4 +1,4 @@
-import React, { memo, useState, useMemo } from 'react';
+import React, { memo, useState, useMemo, useCallback } from 'react';
 import { NodeResizer } from '@xyflow/react';
 import useStore from '../../store/useStore';
 
@@ -7,10 +7,14 @@ const FieldNode = ({ id, data, selected, style }) => {
     const nodes = useStore((state) => state.nodes);
     const [showSettings, setShowSettings] = useState(false);
 
-    console.log(id)
-    console.log(data)
-    console.log(selected)
-    console.log(style)
+    // Handle resize events from NodeResizer - save dimensions to data for persistence
+    const handleResize = useCallback((event, params) => {
+        // Store dimensions in data.width/data.height which is persisted
+        updateNode(id, {
+            width: params.width,
+            height: params.height
+        });
+    }, [id, updateNode]);
 
     // Find children: nodes that overlap with this Field's bounds
     const childNodes = useMemo(() => {
@@ -20,9 +24,11 @@ const FieldNode = ({ id, data, selected, style }) => {
 
         const fieldX = fieldNode.position?.x || 0;
         const fieldY = fieldNode.position?.y || 0;
-        // Use measured dimensions (actual rendered size) or style dimensions or defaults
-        const fieldWidth = fieldNode.measured?.width || fieldNode.style?.width || 400;
-        const fieldHeight = fieldNode.measured?.height || fieldNode.style?.height || 300;
+        // Use data.width/data.height (persisted via onResize), fallback to style, then defaults
+        // Note: We don't use .measured as it's a React Flow internal runtime property
+        // that isn't reliably available during simulation or after node cloning
+        const fieldWidth = fieldNode.data?.width || fieldNode.style?.width || 400;
+        const fieldHeight = fieldNode.data?.height || fieldNode.style?.height || 300;
 
         return nodes.filter(node => {
             if (node.id === id || node.type === 'fieldNode') return false; // Skip self and other fields for now
@@ -68,6 +74,7 @@ const FieldNode = ({ id, data, selected, style }) => {
                 minHeight={150}
                 handleStyle={{ width: 8, height: 8, borderRadius: '50%' }}
                 lineStyle={{ border: '1px solid #B5F5FF' }}
+                onResize={handleResize}
             />
 
             {/* Header Bar */}
