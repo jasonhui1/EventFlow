@@ -248,6 +248,18 @@ const Sidebar = () => {
                                     <div className="palette-node-desc">Pass prompt forward</div>
                                 </div>
                             </div>
+
+                            <div
+                                className="palette-node"
+                                draggable
+                                onDragStart={(e) => onDragStart(e, 'fieldNode')}
+                            >
+                                <div className="palette-node-icon" style={{ color: '#B5F5FF', borderColor: '#B5F5FF' }}>🎲</div>
+                                <div className="palette-node-info">
+                                    <div className="palette-node-name">Field</div>
+                                    <div className="palette-node-desc">Random selection region</div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 )}

@@ -121,6 +121,23 @@ const createCarryForwardNode = (position = { x: 0, y: 0 }, data = {}) => ({
     },
 });
 
+const createFieldNode = (position = { x: 0, y: 0 }, data = {}) => ({
+    id: uuidv4(),
+    type: 'fieldNode',
+    position,
+    style: {
+        width: data.width || 400,
+        height: data.height || 300,
+    },
+    data: {
+        label: data.label || 'Field',
+        selectCount: data.selectCount ?? 1, // Number of children to select
+        randomizeOrder: data.randomizeOrder ?? true, // Whether to shuffle execution order
+        childWeights: data.childWeights || {}, // Map of { childNodeId: weight }
+        ...data,
+    },
+});
+
 // Initial demo event
 const createInitialEvent = () => ({
     id: uuidv4(),
@@ -547,6 +564,9 @@ const useStore = create(
                         break;
                     case 'carryForwardNode':
                         newNode = createCarryForwardNode(position, dataWithFocus);
+                        break;
+                    case 'fieldNode':
+                        newNode = createFieldNode(position, dataWithFocus);
                         break;
                     default:
                         newNode = createEventNode(position, dataWithFocus);

@@ -1422,3 +1422,22 @@ body {
   max-width: 300px;
   line-height: 1.6;
 }
+
+/* Field Node Container Styles */
+.field-node.field-container {
+  background: rgba(181, 245, 255, 0.03);
+  border: 2px dashed rgba(181, 245, 255, 0.3);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15), inset 0 0 30px rgba(181, 245, 255, 0.02);
+  pointer-events: all;
+}
+
+.field-node.field-container:hover {
+  border-color: rgba(181, 245, 255, 0.5);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2), inset 0 0 40px rgba(181, 245, 255, 0.04);
+}
+
+.field-node.field-container.selected {
+  border-color: #B5F5FF;
+  box-shadow: 0 0 20px rgba(181, 245, 255, 0.3);
+}

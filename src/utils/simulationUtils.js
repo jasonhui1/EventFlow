@@ -352,6 +352,81 @@ export const simulateEvent = (
                 const targetNode = processedNodes.find(n => n.id === edge.target);
                 if (targetNode) queue.push(targetNode);
             });
+        } else if (currentNode.type === 'fieldNode') {
+            // Field containers don't produce output themselves
+            // Their children are processed separately based on who enters the field
+            // For now, just continue - the field's selection logic is applied
+            // when we process nodes that are children of the field
+
+            // Get field bounds
+            const fieldX = currentNode.position?.x || 0;
+            const fieldY = currentNode.position?.y || 0;
+            const fieldWidth = currentNode.style?.width || 400;
+            const fieldHeight = currentNode.style?.height || 300;
+
+            // Find child nodes inside this field (excluding other fields)
+            const childNodes = processedNodes.filter(node => {
+                if (node.id === currentNode.id || node.type === 'fieldNode') return false;
+                const nodeX = node.position?.x || 0;
+                const nodeY = node.position?.y || 0;
+                return (
+                    nodeX >= fieldX &&
+                    nodeX <= fieldX + fieldWidth &&
+                    nodeY >= fieldY &&
+                    nodeY <= fieldY + fieldHeight
+                );
+            });
+
+            if (childNodes.length === 0) {
+                // No children, just continue to outgoing edges
+                outgoingEdges.forEach(edge => {
+                    visitedEdgeIds.add(edge.id);
+                    const targetNode = processedNodes.find(n => n.id === edge.target);
+                    if (targetNode) queue.push(targetNode);
+                });
+            } else {
+                // Apply weighted selection
+                const selectCount = currentNode.data?.selectCount ?? 1;
+                const randomizeOrder = currentNode.data?.randomizeOrder ?? true;
+                const childWeights = currentNode.data?.childWeights || {};
+
+                // Build weighted pool
+                let weightedPool = [];
+                childNodes.forEach(child => {
+                    const weight = childWeights[child.id] || 50;
+                    for (let i = 0; i < weight; i++) {
+                        weightedPool.push(child.id);
+                    }
+                });
+
+                // Select N unique children
+                const selectedChildIds = new Set();
+                const targetCount = Math.min(selectCount, childNodes.length);
+
+                while (selectedChildIds.size < targetCount && weightedPool.length > 0) {
+                    const randomIndex = Math.floor(Math.random() * weightedPool.length);
+                    const selectedId = weightedPool[randomIndex];
+                    selectedChildIds.add(selectedId);
+                    weightedPool = weightedPool.filter(id => id !== selectedId);
+                }
+
+                // Get selected children
+                let selectedChildren = childNodes.filter(c => selectedChildIds.has(c.id));
+
+                // Shuffle order if requested
+                if (randomizeOrder) {
+                    for (let i = selectedChildren.length - 1; i > 0; i--) {
+                        const j = Math.floor(Math.random() * (i + 1));
+                        [selectedChildren[i], selectedChildren[j]] = [selectedChildren[j], selectedChildren[i]];
+                    }
+                }
+
+                // Add selected children to queue for processing
+                selectedChildren.forEach(child => {
+                    queue.push(child);
+                });
+            }
+
         } else {
             outgoingEdges.forEach(edge => {
                 visitedEdgeIds.add(edge.id);
@@ -360,5 +435,6 @@ export const simulateEvent = (
             });
         }
     }
+
     return results;
 };

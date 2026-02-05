@@ -22,6 +22,7 @@ import StartNode from './components/nodes/StartNode';
 import EndNode from './components/nodes/EndNode';
 import IfNode from './components/nodes/IfNode';
 import CarryForwardNode from './components/nodes/CarryForwardNode';
+import FieldNode from './components/nodes/FieldNode';
 
 // Register custom node types
 const nodeTypes = {
@@ -33,6 +34,7 @@ const nodeTypes = {
     endNode: EndNode,
     ifNode: IfNode,
     carryForwardNode: CarryForwardNode,
+    fieldNode: FieldNode,
 };
 
 import EventSimulationModal from './components/EventSimulationModal';
@@ -43,8 +45,8 @@ function App() {
     const [costumeOptions, setCostumeOptions] = useState(['casual', ' school uniform']);
     const [showWeights, setShowWeights] = useState(false);
     const [isFixedPromptCollapsed, setIsFixedPromptCollapsed] = useState(false);
-    const [isCostumesCollapsed, setIsCostumesCollapsed] = useState(false);
-    const [isTopUICollapsed, setIsTopUICollapsed] = useState(false);
+    const [isCostumesCollapsed, setIsCostumesCollapsed] = useState(true);
+    const [isTopUICollapsed, setIsTopUICollapsed] = useState(true);
 
 
     const reactFlowWrapper = useRef(null);
@@ -839,7 +841,7 @@ function App() {
                 )}
             </div>
 
-            <PropertiesPanel />
+            {/* <PropertiesPanel /> */}
 
             {
                 showSimulationModal && (
