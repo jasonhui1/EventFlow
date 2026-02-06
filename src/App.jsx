@@ -23,6 +23,7 @@ import EndNode from './components/nodes/EndNode';
 import IfNode from './components/nodes/IfNode';
 import CarryForwardNode from './components/nodes/CarryForwardNode';
 import FieldNode from './components/nodes/FieldNode';
+import TabBar from './components/TabBar';
 
 // Register custom node types
 const nodeTypes = {
@@ -513,6 +514,9 @@ function App() {
                     e.preventDefault();
                 }}
             >
+                {/* Canvas Tab Bar */}
+                <TabBar />
+
                 {/* Header with event info */}
                 <div className="canvas-header">
                     <div className="canvas-title">

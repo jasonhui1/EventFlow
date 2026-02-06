@@ -167,6 +167,74 @@ const useStore = create(
             viewport: { x: 0, y: 0, zoom: 1 },
             setViewport: (viewport) => set({ viewport }),
 
+            // Tab state for browser-like canvas tabs
+            openTabs: [], // Array of { eventId, order }
+            activeTabId: null,
+
+            // Open a tab for an event (or focus if already open)
+            openTab: (eventId) => {
+                const state = get();
+                const existingTab = state.openTabs.find(t => t.eventId === eventId);
+                if (existingTab) {
+                    // Already open, just activate
+                    set({ activeTabId: eventId });
+                } else {
+                    // Add new tab
+                    const newTab = { eventId, order: state.openTabs.length };
+                    set({
+                        openTabs: [...state.openTabs, newTab],
+                        activeTabId: eventId,
+                    });
+                }
+            },
+
+            // Close a tab
+            closeTab: (eventId) => {
+                const state = get();
+                const tabIndex = state.openTabs.findIndex(t => t.eventId === eventId);
+                if (tabIndex === -1) return;
+
+                const newTabs = state.openTabs.filter(t => t.eventId !== eventId);
+                let newActiveId = state.activeTabId;
+
+                // If closing active tab, switch to adjacent
+                if (state.activeTabId === eventId) {
+                    if (newTabs.length > 0) {
+                        // Prefer tab to the left, or right if none
+                        const newIndex = Math.min(tabIndex, newTabs.length - 1);
+                        newActiveId = newTabs[newIndex].eventId;
+                    } else {
+                        newActiveId = null;
+                    }
+                }
+
+                set({ openTabs: newTabs, activeTabId: newActiveId });
+
+                // Switch to the new active event if there is one
+                if (newActiveId && newActiveId !== state.currentEventId) {
+                    get().selectEvent(newActiveId);
+                }
+            },
+
+            // Set active tab (and switch to that event)
+            setActiveTab: (eventId) => {
+                const state = get();
+                if (state.activeTabId === eventId) return;
+                set({ activeTabId: eventId });
+                state.selectEvent(eventId);
+            },
+
+            // Reorder tabs (for drag-and-drop support)
+            reorderTabs: (fromIndex, toIndex) => {
+                const state = get();
+                const newTabs = [...state.openTabs];
+                const [removed] = newTabs.splice(fromIndex, 1);
+                newTabs.splice(toIndex, 0, removed);
+                // Update order values
+                newTabs.forEach((tab, idx) => tab.order = idx);
+                set({ openTabs: newTabs });
+            },
+
             // Selected node for properties panel
             selectedNode: null,
 
@@ -431,6 +499,8 @@ const useStore = create(
 
                 // Skip if already selected and loaded
                 if (state.currentEventId === eventId && state.nodes.length > 0) {
+                    // Still open/activate the tab
+                    state.openTab(eventId);
                     return;
                 }
 
@@ -443,6 +513,8 @@ const useStore = create(
                         edges: event.edges || [],
                         selectedNode: null,
                     });
+                    // Open/activate tab for this event
+                    get().openTab(eventId);
                 }
             },
 
@@ -1170,6 +1242,8 @@ const useStore = create(
                 nodes: state.nodes,
                 edges: state.edges,
                 viewport: state.viewport,
+                openTabs: state.openTabs,
+                activeTabId: state.activeTabId,
             }),
             onRehydrate: () => {
                 console.log('Rehydrating from localStorage...');
