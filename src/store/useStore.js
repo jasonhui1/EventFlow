@@ -692,6 +692,16 @@ const useStore = create(
                 }));
             },
 
+            setNodeZIndex: (nodeId, zIndex) => {
+                set((state) => ({
+                    nodes: state.nodes.map((node) =>
+                        node.id === nodeId
+                            ? { ...node, zIndex }
+                            : node
+                    ),
+                }));
+            },
+
             deleteNode: (nodeId) => {
                 set((state) => ({
                     nodes: state.nodes.filter((node) => node.id !== nodeId),

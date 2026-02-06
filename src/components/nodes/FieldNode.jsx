@@ -4,6 +4,7 @@ import useStore from '../../store/useStore';
 
 const FieldNode = ({ id, data, selected, style }) => {
     const updateNode = useStore((state) => state.updateNode);
+    const setNodeZIndex = useStore((state) => state.setNodeZIndex);
     const nodes = useStore((state) => state.nodes);
     const [showSettings, setShowSettings] = useState(false);
 
@@ -137,7 +138,11 @@ const FieldNode = ({ id, data, selected, style }) => {
                     <button
                         onClick={(e) => {
                             e.stopPropagation();
-                            setShowSettings(!showSettings);
+                            const newShowSettings = !showSettings;
+                            setShowSettings(newShowSettings);
+                            // Bring to front (z: 2000) when settings overlap, back to default (z: 10) likely
+                            // We probably want a higher default for field node generally, but let's stick to simple boosting
+                            setNodeZIndex(id, newShowSettings ? 2000 : 0);
                         }}
                         className="nodrag"
                         style={{
@@ -158,9 +163,10 @@ const FieldNode = ({ id, data, selected, style }) => {
             {/* Settings Panel (collapsible) */}
             {showSettings && (
                 <div
-                    className="field-settings nodrag"
+                    className="field-settings nodrag nowheel"
                     onClick={(e) => e.stopPropagation()}
                     onMouseDown={(e) => e.stopPropagation()}
+                    onWheel={(e) => e.stopPropagation()}
                     style={{
                         position: 'absolute',
                         top: '36px',
