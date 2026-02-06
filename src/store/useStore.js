@@ -565,10 +565,11 @@ const useStore = create(
             // Folder Actions
             folders: [],
 
-            addFolder: (name = 'New Folder') => {
+            addFolder: (name = 'New Folder', parentId = null) => {
                 const newFolder = {
                     id: uuidv4(),
                     name,
+                    parentId, // Support nested folders
                     createdAt: new Date().toISOString(),
                 };
                 set((state) => ({
@@ -578,13 +579,22 @@ const useStore = create(
             },
 
             deleteFolder: (folderId) => {
-                set((state) => ({
-                    folders: (state.folders || []).filter(f => f.id !== folderId),
-                    // Move events in this folder to root
-                    events: state.events.map(e =>
-                        e.folderId === folderId ? { ...e, folderId: null } : e
-                    )
-                }));
+                set((state) => {
+                    const folderToDelete = (state.folders || []).find(f => f.id === folderId);
+                    const parentId = folderToDelete?.parentId || null;
+
+                    return {
+                        // Remove the folder
+                        folders: (state.folders || [])
+                            .filter(f => f.id !== folderId)
+                            // Move child folders up to the deleted folder's parent
+                            .map(f => f.parentId === folderId ? { ...f, parentId } : f),
+                        // Move events in this folder to the parent folder (or root)
+                        events: state.events.map(e =>
+                            e.folderId === folderId ? { ...e, folderId: parentId } : e
+                        )
+                    };
+                });
             },
 
             renameFolder: (folderId, newName) => {
@@ -601,6 +611,29 @@ const useStore = create(
                         e.id === eventId ? { ...e, folderId } : e
                     )
                 }));
+            },
+
+            moveFolderToFolder: (folderId, targetParentId) => {
+                set((state) => {
+                    // Prevent moving folder into itself or its descendants
+                    const isDescendant = (parentId, checkId) => {
+                        if (!parentId) return false;
+                        if (parentId === checkId) return true;
+                        const parent = (state.folders || []).find(f => f.id === parentId);
+                        return parent ? isDescendant(parent.parentId, checkId) : false;
+                    };
+
+                    // Don't allow moving into self or descendant
+                    if (folderId === targetParentId || isDescendant(targetParentId, folderId)) {
+                        return state;
+                    }
+
+                    return {
+                        folders: (state.folders || []).map(f =>
+                            f.id === folderId ? { ...f, parentId: targetParentId } : f
+                        )
+                    };
+                });
             },
 
             getCurrentEvent: () => {

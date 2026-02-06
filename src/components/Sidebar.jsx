@@ -19,11 +19,13 @@ const Sidebar = () => {
     const deleteFolder = useStore((state) => state.deleteFolder);
     const renameFolder = useStore((state) => state.renameFolder);
     const moveEventToFolder = useStore((state) => state.moveEventToFolder);
+    const moveFolderToFolder = useStore((state) => state.moveFolderToFolder);
 
 
     // Modal states
     const [showNewEventModal, setShowNewEventModal] = useState(false);
     const [showNewFolderModal, setShowNewFolderModal] = useState(false);
+    const [newFolderParentId, setNewFolderParentId] = useState(null); // For creating subfolders
     const [renameFolderModal, setRenameFolderModal] = useState(null); // { id, name }
     const [deleteEventModal, setDeleteEventModal] = useState(null); // { id, name }
     const [deleteFolderModal, setDeleteFolderModal] = useState(null); // { id, name }
@@ -82,21 +84,47 @@ const Sidebar = () => {
         e.stopPropagation(); // Stop propagation
         e.currentTarget.style.background = 'transparent';
         const eventId = e.dataTransfer.getData('eventId');
-        // console.log('Drop on folder:', folderId, 'Event:', eventId);
-        if (eventId) {
+        const dragFolderId = e.dataTransfer.getData('folderId');
+
+        // Handle dropping a folder into another folder
+        if (dragFolderId) {
+            moveFolderToFolder(dragFolderId, folderId);
+        }
+        // Handle dropping an event into a folder
+        else if (eventId) {
             moveEventToFolder(eventId, folderId);
         }
+    };
+
+    // Allow folders to be dragged
+    const onFolderDragStart = (e, folder) => {
+        e.dataTransfer.setData('folderId', folder.id);
+        e.dataTransfer.effectAllowed = 'move';
     };
 
     const onDropOnRoot = (e) => {
         e.preventDefault();
         // Visual feedback reset if needed
         const eventId = e.dataTransfer.getData('eventId');
-        // console.log('Drop on root:', eventId);
-        if (eventId) {
+        const folderId = e.dataTransfer.getData('folderId');
+
+        if (folderId) {
+            moveFolderToFolder(folderId, null); // Move folder to root
+        } else if (eventId) {
             moveEventToFolder(eventId, null);
         }
     };
+
+    // Get child folders for a given parent (treat undefined same as null for backwards compatibility)
+    const getChildFolders = (parentId) => {
+        return (folders || []).filter(f => {
+            const folderParent = f.parentId ?? null; // Convert undefined to null
+            return folderParent === parentId;
+        });
+    };
+
+    // Get root-level folders (no parent or parentId is undefined/null)
+    const rootFolders = getChildFolders(null);
 
     // Group events by folder
     const eventsByFolder = {}; // { folderId: [events] }
@@ -112,6 +140,166 @@ const Sidebar = () => {
             rootEvents.push(event);
         }
     });
+
+    // Recursive folder renderer component
+    const renderFolder = (folder, depth = 0) => {
+        const childFolders = getChildFolders(folder.id);
+        const folderEvents = eventsByFolder[folder.id] || [];
+        const hasChildren = childFolders.length > 0 || folderEvents.length > 0;
+
+        return (
+            <div
+                key={folder.id}
+                className="folder-item"
+                style={{
+                    marginBottom: '2px',
+                    borderRadius: '4px',
+                    transition: 'background 0.2s',
+                    marginLeft: depth > 0 ? '12px' : 0,
+                }}
+            >
+                <div
+                    className="folder-header"
+                    draggable
+                    onDragStart={(e) => onFolderDragStart(e, folder)}
+                    onDragOver={onDragOverFolder}
+                    onDragLeave={onDragLeaveFolder}
+                    onDrop={(e) => onDropOnFolder(e, folder.id)}
+                    onClick={() => toggleFolder(folder.id)}
+                    onMouseEnter={() => setHoveredFolderId(folder.id)}
+                    onMouseLeave={() => setHoveredFolderId(null)}
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        padding: '8px 10px',
+                        cursor: 'pointer',
+                        userSelect: 'none',
+                    }}
+                >
+                    <span style={{ marginRight: '6px', fontSize: '10px', color: 'rgba(255,255,255,0.5)' }}>
+                        {hasChildren ? (expandedFolders[folder.id] ? '▼' : '▶') : '•'}
+                    </span>
+                    <span style={{ marginRight: '6px' }}>📁</span>
+                    <span style={{ flex: 1, fontSize: '13px', fontWeight: 500, color: 'rgba(255,255,255,0.9)' }}>
+                        {folder.name}
+                    </span>
+                    {hoveredFolderId === folder.id && (
+                        <div className="folder-actions" style={{ display: 'flex', gap: '4px' }}>
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setNewFolderParentId(folder.id);
+                                    setShowNewFolderModal(true);
+                                }}
+                                style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    color: 'rgba(255,255,255,0.4)',
+                                    cursor: 'pointer',
+                                    fontSize: '12px',
+                                }}
+                                title="Add Subfolder"
+                            >
+                                +📁
+                            </button>
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setRenameFolderModal({ id: folder.id, name: folder.name });
+                                }}
+                                style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    color: 'rgba(255,255,255,0.4)',
+                                    cursor: 'pointer',
+                                    fontSize: '12px',
+                                }}
+                                title="Rename"
+                            >
+                                ✎
+                            </button>
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setDeleteFolderModal({ id: folder.id, name: folder.name });
+                                }}
+                                style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    color: 'rgba(255,255,255,0.4)',
+                                    cursor: 'pointer',
+                                    fontSize: '12px',
+                                }}
+                                title="Delete"
+                            >
+                                ✕
+                            </button>
+                        </div>
+                    )}
+                </div>
+
+                {/* Folder Content - expanded */}
+                {expandedFolders[folder.id] && (
+                    <div className="folder-content" style={{ paddingLeft: '8px' }}>
+                        {/* Render child folders recursively */}
+                        {childFolders.map(child => renderFolder(child, depth + 1))}
+
+                        {/* Render events in this folder */}
+                        {folderEvents.map((event) => (
+                            <div
+                                key={event.id}
+                                className={`event-item ${currentEventId === event.id ? 'active' : ''}`}
+                                onClick={() => selectEvent(event.id)}
+                                draggable
+                                onDragStart={(e) => onEventDragStart(e, event)}
+                                style={{ marginLeft: '12px' }}
+                            >
+                                <span className="event-item-name">{event.name}</span>
+                                <div className="event-item-actions">
+                                    <span className="event-item-count">{event.nodes?.length || 0}</span>
+                                    <button
+                                        className="event-action-btn duplicate"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            duplicateEvent(event.id);
+                                        }}
+                                        title="Duplicate Event"
+                                    >
+                                        ❐
+                                    </button>
+                                    {events.length > 1 && (
+                                        <button
+                                            className="event-action-btn delete"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleDeleteEvent(event.id, event.name);
+                                            }}
+                                            title="Delete Event"
+                                        >
+                                            ✕
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+
+                        {/* Empty folder message */}
+                        {childFolders.length === 0 && folderEvents.length === 0 && (
+                            <div style={{
+                                padding: '8px',
+                                fontSize: '11px',
+                                color: 'rgba(255,255,255,0.3)',
+                                fontStyle: 'italic',
+                                marginLeft: '12px',
+                            }}>
+                                Empty folder
+                            </div>
+                        )}
+                    </div>
+                )}
+            </div>
+        );
+    };
 
     return (
         <div className={`sidebar ${isCollapsed ? 'collapsed' : ''}`}>
@@ -282,7 +470,10 @@ const Sidebar = () => {
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <h3 className="sidebar-section-title">Event Library</h3>
                             <button
-                                onClick={() => setShowNewFolderModal(true)}
+                                onClick={() => {
+                                    setNewFolderParentId(null);
+                                    setShowNewFolderModal(true);
+                                }}
                                 title="New Folder"
                                 style={{
                                     background: 'none',
@@ -313,131 +504,8 @@ const Sidebar = () => {
                             onDragOver={(e) => e.preventDefault()}
                             onDrop={onDropOnRoot}
                         >
-                            {/* Render Folders */}
-                            {folders && folders.map(folder => (
-                                <div
-                                    key={folder.id}
-                                    className="folder-item"
-                                    onDragOver={onDragOverFolder}
-                                    onDragLeave={onDragLeaveFolder}
-                                    onDrop={(e) => onDropOnFolder(e, folder.id)}
-                                    style={{
-                                        marginBottom: '4px',
-                                        borderRadius: '4px',
-                                        transition: 'background 0.2s',
-                                    }}
-                                >
-                                    <div
-                                        className="folder-header"
-                                        onClick={() => toggleFolder(folder.id)}
-                                        onMouseEnter={() => setHoveredFolderId(folder.id)}
-                                        onMouseLeave={() => setHoveredFolderId(null)}
-                                        style={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            padding: '8px 10px',
-                                            cursor: 'pointer',
-                                            userSelect: 'none',
-                                        }}
-                                    >
-                                        <span style={{ marginRight: '6px', fontSize: '10px', color: 'rgba(255,255,255,0.5)' }}>
-                                            {expandedFolders[folder.id] ? '▼' : '▶'}
-                                        </span>
-                                        <span style={{ marginRight: '6px' }}>📁</span>
-                                        <span style={{ flex: 1, fontSize: '13px', fontWeight: 500, color: 'rgba(255,255,255,0.9)' }}>
-                                            {folder.name}
-                                        </span>
-                                        {hoveredFolderId === folder.id && (
-                                            <div className="folder-actions" style={{ display: 'flex', gap: '4px' }}>
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        setRenameFolderModal({ id: folder.id, name: folder.name });
-                                                    }}
-                                                    style={{
-                                                        background: 'none',
-                                                        border: 'none',
-                                                        color: 'rgba(255,255,255,0.4)',
-                                                        cursor: 'pointer',
-                                                        fontSize: '12px',
-                                                    }}
-                                                    title="Rename"
-                                                >
-                                                    ✎
-                                                </button>
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        setDeleteFolderModal({ id: folder.id, name: folder.name });
-                                                    }}
-                                                    style={{
-                                                        background: 'none',
-                                                        border: 'none',
-                                                        color: 'rgba(255,255,255,0.4)',
-                                                        cursor: 'pointer',
-                                                        fontSize: '12px',
-                                                    }}
-                                                    title="Delete"
-                                                >
-                                                    ✕
-                                                </button>
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {/* Folder Content */}
-                                    {expandedFolders[folder.id] && (
-                                        <div className="folder-content" style={{ paddingLeft: '16px' }}>
-                                            {eventsByFolder[folder.id]?.map((event) => (
-                                                <div
-                                                    key={event.id}
-                                                    className={`event-item ${currentEventId === event.id ? 'active' : ''}`}
-                                                    onClick={() => selectEvent(event.id)}
-                                                    draggable
-                                                    onDragStart={(e) => onEventDragStart(e, event)}
-                                                >
-                                                    <span className="event-item-name">{event.name}</span>
-                                                    <div className="event-item-actions">
-                                                        <span className="event-item-count">{event.nodes?.length || 0}</span>
-                                                        <button
-                                                            className="event-action-btn duplicate"
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                duplicateEvent(event.id);
-                                                            }}
-                                                            title="Duplicate Event"
-                                                        >
-                                                            ❐
-                                                        </button>
-                                                        {events.length > 1 && (
-                                                            <button
-                                                                className="event-action-btn delete"
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    handleDeleteEvent(event.id, event.name);
-                                                                }}
-                                                                title="Delete Event"
-                                                            >
-                                                                ✕
-                                                            </button>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            ))}
-                                            {(!eventsByFolder[folder.id] || eventsByFolder[folder.id].length === 0) && (
-                                                <div style={{
-                                                    padding: '8px',
-                                                    fontSize: '11px',
-                                                    color: 'rgba(255,255,255,0.3)',
-                                                    fontStyle: 'italic'
-                                                }}>
-                                                    Empty folder
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
-                            ))}
+                            {/* Render Root Folders (recursively) */}
+                            {rootFolders.map(folder => renderFolder(folder))}
 
                             {/* Root Events */}
                             {rootEvents.length > 0 && (
@@ -548,13 +616,19 @@ const Sidebar = () => {
             {/* New Folder Modal */}
             <ConfirmModal
                 isOpen={showNewFolderModal}
-                onClose={() => setShowNewFolderModal(false)}
-                onConfirm={(name) => {
-                    addFolder(name);
+                onClose={() => {
                     setShowNewFolderModal(false);
+                    setNewFolderParentId(null);
                 }}
-                title="New Folder"
-                message="Enter a name for the new folder:"
+                onConfirm={(name) => {
+                    addFolder(name, newFolderParentId);
+                    setShowNewFolderModal(false);
+                    setNewFolderParentId(null);
+                }}
+                title={newFolderParentId ? "New Subfolder" : "New Folder"}
+                message={newFolderParentId
+                    ? "Enter a name for the new subfolder:"
+                    : "Enter a name for the new folder:"}
                 type="prompt"
                 inputPlaceholder="Folder name..."
                 defaultValue="New Folder"
