@@ -164,6 +164,8 @@ const useStore = create(
             // React Flow state
             nodes: [],
             edges: [],
+            viewport: { x: 0, y: 0, zoom: 1 },
+            setViewport: (viewport) => set({ viewport }),
 
             // Selected node for properties panel
             selectedNode: null,
@@ -1157,6 +1159,7 @@ const useStore = create(
                 currentEventId: state.currentEventId,
                 nodes: state.nodes,
                 edges: state.edges,
+                viewport: state.viewport,
             }),
             onRehydrate: () => {
                 console.log('Rehydrating from localStorage...');

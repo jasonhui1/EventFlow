@@ -85,6 +85,8 @@ function App() {
     const pasteNodes = useStore((state) => state.pasteNodes);
     const duplicateSelectedNodes = useStore((state) => state.duplicateSelectedNodes);
     const pushToHistory = useStore((state) => state.pushToHistory);
+    const viewport = useStore((state) => state.viewport);
+    const setViewport = useStore((state) => state.setViewport);
 
     // Select first event if none selected
     React.useEffect(() => {
@@ -736,7 +738,17 @@ function App() {
                         onEdgesChange={onEdgesChange}
                         onConnect={onConnect}
                         isValidConnection={isValidConnection}
-                        onInit={setReactFlowInstance}
+                        onInit={(instance) => {
+                            setReactFlowInstance(instance);
+                            if (viewport.x !== 0 || viewport.y !== 0 || viewport.zoom !== 1) {
+                                instance.setViewport(viewport);
+                            } else {
+                                instance.fitView();
+                            }
+                        }}
+                        onMoveEnd={(event, vp) => {
+                            setViewport(vp);
+                        }}
                         onDrop={onDrop}
                         onDragOver={onDragOver}
                         onNodeDrag={onNodeDrag}
@@ -755,7 +767,6 @@ function App() {
                         selectionOnDrag
                         panOnDrag={[1, 2]}
                         selectionMode="partial"
-                        fitView
                         snapToGrid
                         snapGrid={[15, 15]}
                         deleteKeyCode={null}
