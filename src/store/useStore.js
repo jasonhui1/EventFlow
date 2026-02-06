@@ -438,6 +438,7 @@ const useStore = create(
                     fixedPrompt: '',
                     nodes,
                     edges,
+                    viewport: { x: 0, y: 0, zoom: 1 },
                     costumes: [],
                     createdAt: new Date().toISOString(),
                     updatedAt: new Date().toISOString(),
@@ -448,6 +449,7 @@ const useStore = create(
                     currentEventId: newEvent.id,
                     nodes: newEvent.nodes,
                     edges: newEvent.edges,
+                    viewport: newEvent.viewport,
                 }));
                 return newEvent.id;
             },
@@ -492,7 +494,7 @@ const useStore = create(
 
             selectEvent: (eventId) => {
                 const state = get();
-                // Save current event first
+                // Save current event first (including viewport)
                 if (state.currentEventId) {
                     state.saveCurrentEvent();
                 }
@@ -511,6 +513,7 @@ const useStore = create(
                         currentEventId: eventId,
                         nodes: event.nodes || [],
                         edges: event.edges || [],
+                        viewport: event.viewport || { x: 0, y: 0, zoom: 1 },
                         selectedNode: null,
                     });
                     // Open/activate tab for this event
@@ -1103,7 +1106,8 @@ const useStore = create(
                 // Reference Check: Only save if there's actually a difference to avoid loops
                 if (
                     currentEvent.nodes === state.nodes &&
-                    currentEvent.edges === state.edges
+                    currentEvent.edges === state.edges &&
+                    JSON.stringify(currentEvent.viewport) === JSON.stringify(state.viewport)
                 ) {
                     return;
                 }
@@ -1115,6 +1119,7 @@ const useStore = create(
                                 ...e,
                                 nodes: state.nodes,
                                 edges: state.edges,
+                                viewport: state.viewport,
                                 updatedAt: new Date().toISOString(),
                             }
                             : e

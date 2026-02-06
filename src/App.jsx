@@ -96,7 +96,19 @@ function App() {
         }
     }, [currentEventId, events, selectEvent]);
 
+    // Apply viewport when switching events
+    React.useEffect(() => {
+        if (reactFlowInstance && currentEventId) {
+            if (viewport.x !== 0 || viewport.y !== 0 || viewport.zoom !== 1) {
+                reactFlowInstance.setViewport(viewport);
+            } else {
+                reactFlowInstance.fitView();
+            }
+        }
+    }, [currentEventId, reactFlowInstance]);
+
     const currentEvent = getCurrentEvent();
+
 
     // Handle drag and drop from sidebar
     const onDragOver = useCallback((event) => {
