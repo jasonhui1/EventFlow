@@ -18,6 +18,7 @@ const createEventNode = (position = { x: 0, y: 0 }, data = {}) => ({
         usePerspective: data.usePerspective || true, // Add perspective/foreshortening
         cameraAbove: data.cameraAbove || true, // Add perspective/foreshortening
         cameraBelow: data.cameraBelow || true, // Add perspective/foreshortening
+        moodChange: data.moodChange ?? 0, // How this event affects mood (-100 to +100)
 
         disabledInheritedSources: data.disabledInheritedSources || [], // Node IDs to ignore inherited prompts from
         inputs: data.inputs || [{ id: 'trigger', label: 'Trigger' }],
@@ -166,6 +167,25 @@ const useStore = create(
             edges: [],
             viewport: { x: 0, y: 0, zoom: 1 },
             setViewport: (viewport) => set({ viewport }),
+
+            // Mood system configuration
+            moodConfig: {
+                tiers: [
+                    { id: 'very_negative', min: -100, max: -40, label: 'Very Negative' },
+                    { id: 'negative', min: -40, max: -10, label: 'Negative' },
+                    { id: 'neutral', min: -10, max: 10, label: 'Neutral' },
+                    { id: 'positive', min: 10, max: 40, label: 'Positive' },
+                    { id: 'very_positive', min: 40, max: 100, label: 'Very Positive' },
+                ],
+                tags: {
+                    very_negative: [{ id: 'vn1', tag: 'angry', weight: 50 }, { id: 'vn2', tag: 'crying', weight: 30 }, { id: 'vn3', tag: 'frustrated', weight: 20 }],
+                    negative: [{ id: 'n1', tag: 'annoyed', weight: 50 }, { id: 'n2', tag: 'frown', weight: 40 }, { id: 'n3', tag: 'shaded_face', weight: 30 }],
+                    neutral: [{ id: 'nu1', tag: 'calm', weight: 50 }, { id: 'nu2', tag: 'neutral_expression', weight: 50 }],
+                    positive: [{ id: 'p1', tag: 'smile', weight: 50 }, { id: 'p2', tag: 'happy', weight: 40 }, { id: 'p3', tag: 'blush', weight: 30 }],
+                    very_positive: [{ id: 'vp1', tag: 'grin', weight: 40 }, { id: 'vp2', tag: 'closed_eyes', weight: 30 }, { id: 'vp3', tag: 'wink', weight: 25 }, { id: 'vp4', tag: 'sparkle', weight: 20 }],
+                },
+                initialMoodRange: { min: -20, max: 20 },
+            },
 
             // Tab state for browser-like canvas tabs
             openTabs: [], // Array of { eventId, order }
@@ -562,6 +582,69 @@ const useStore = create(
                             }
                             : e
                     ),
+                }));
+            },
+
+            // Mood Configuration Actions
+            updateMoodTierTags: (tierId, tags) => {
+                set((state) => ({
+                    moodConfig: {
+                        ...state.moodConfig,
+                        tags: {
+                            ...state.moodConfig.tags,
+                            [tierId]: tags,
+                        },
+                    },
+                }));
+            },
+
+            addMoodTag: (tierId, tag, weight = 50) => {
+                set((state) => ({
+                    moodConfig: {
+                        ...state.moodConfig,
+                        tags: {
+                            ...state.moodConfig.tags,
+                            [tierId]: [
+                                ...(state.moodConfig.tags[tierId] || []),
+                                { id: uuidv4(), tag, weight },
+                            ],
+                        },
+                    },
+                }));
+            },
+
+            removeMoodTag: (tierId, tagId) => {
+                set((state) => ({
+                    moodConfig: {
+                        ...state.moodConfig,
+                        tags: {
+                            ...state.moodConfig.tags,
+                            [tierId]: (state.moodConfig.tags[tierId] || []).filter(t => t.id !== tagId),
+                        },
+                    },
+                }));
+            },
+
+            updateMoodTagWeight: (tierId, tagId, weight) => {
+                set((state) => ({
+                    moodConfig: {
+                        ...state.moodConfig,
+                        tags: {
+                            ...state.moodConfig.tags,
+                            [tierId]: (state.moodConfig.tags[tierId] || []).map(t =>
+                                t.id === tagId ? { ...t, weight } : t
+                            ),
+                        },
+                    },
+                }));
+            },
+
+            updateInitialMoodRange: (min, max) => {
+                set((state) => ({
+                    moodConfig: {
+                        ...state.moodConfig,
+                        initialMoodRange: { min, max },
+                    },
                 }));
             },
 
@@ -1256,7 +1339,7 @@ const useStore = create(
                 const currentEvent = state.getCurrentEvent();
                 const fixedPrompt = currentEvent?.fixedPrompt || '';
 
-                return sim.simulateEvent(state.events, currentNodes, currentEdges, fixedPrompt, incomingContextParts, visitedEventIds, inputOverrides);
+                return sim.simulateEvent(state.events, currentNodes, currentEdges, fixedPrompt, incomingContextParts, visitedEventIds, inputOverrides, state.moodConfig);
             },
 
             // Generate a test prompt, randomly selecting branches based on weights

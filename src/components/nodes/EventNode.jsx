@@ -229,6 +229,116 @@ const EventNode = ({ id, data, selected }) => {
                     );
                 })()}
 
+                {/* Mood Effect Slider - Draggable Container */}
+                {(() => {
+                    const moodRef = React.useRef(null);
+                    const [isDragging, setIsDragging] = React.useState(false);
+
+                    const calculateMood = (clientX) => {
+                        if (!moodRef.current) return;
+                        const rect = moodRef.current.getBoundingClientRect();
+                        const x = Math.max(0, Math.min(clientX - rect.left, rect.width));
+                        const percentage = x / rect.width;
+                        const mood = Math.round(-50 + percentage * 100);
+                        updateNode(id, { moodChange: Math.max(-50, Math.min(50, mood)) });
+                    };
+
+                    const handleMouseDown = (e) => {
+                        e.stopPropagation();
+                        setIsDragging(true);
+                        calculateMood(e.clientX);
+
+                        const handleMouseMove = (moveEvent) => {
+                            calculateMood(moveEvent.clientX);
+                        };
+
+                        const handleMouseUp = () => {
+                            setIsDragging(false);
+                            window.removeEventListener('mousemove', handleMouseMove);
+                            window.removeEventListener('mouseup', handleMouseUp);
+                        };
+
+                        window.addEventListener('mousemove', handleMouseMove);
+                        window.addEventListener('mouseup', handleMouseUp);
+                    };
+
+                    const moodValue = data.moodChange || 0;
+                    const fillPercentage = ((moodValue + 50) / 100) * 100;
+                    const fillColor = moodValue > 0 ? '#B5FFD9' : moodValue < 0 ? '#FFB5B5' : '#888';
+
+                    return (
+                        <div
+                            ref={moodRef}
+                            className="nodrag"
+                            onMouseDown={handleMouseDown}
+                            style={{
+                                marginBottom: '10px',
+                                padding: '8px 10px',
+                                background: 'rgba(255, 229, 181, 0.05)',
+                                borderRadius: '6px',
+                                border: `1px solid ${isDragging ? 'rgba(255, 229, 181, 0.4)' : 'rgba(255, 229, 181, 0.1)'}`,
+                                cursor: 'ew-resize',
+                                userSelect: 'none',
+                                transition: 'border-color 0.15s',
+                            }}
+                        >
+                            <div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                marginBottom: '6px',
+                                pointerEvents: 'none',
+                            }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <span style={{ fontSize: '12px' }}>😊</span>
+                                    <span style={{ fontSize: '11px', color: '#FFE5B5', fontWeight: 500 }}>
+                                        Mood Effect
+                                    </span>
+                                </div>
+                                <span style={{
+                                    fontSize: '12px',
+                                    fontWeight: 600,
+                                    color: moodValue > 0 ? '#B5FFD9' : moodValue < 0 ? '#FFB5B5' : 'rgba(255,255,255,0.5)',
+                                }}>
+                                    {moodValue > 0 ? '+' : ''}{moodValue}
+                                </span>
+                            </div>
+                            {/* Visual track */}
+                            <div style={{
+                                height: '8px',
+                                background: 'rgba(255,255,255,0.1)',
+                                borderRadius: '4px',
+                                overflow: 'hidden',
+                                position: 'relative',
+                            }}>
+                                <div style={{
+                                    position: 'absolute',
+                                    left: 0,
+                                    top: 0,
+                                    height: '100%',
+                                    width: `${fillPercentage}%`,
+                                    background: fillColor,
+                                    borderRadius: '4px',
+                                    transition: isDragging ? 'none' : 'width 0.1s',
+                                }} />
+                                {/* Handle indicator */}
+                                <div style={{
+                                    position: 'absolute',
+                                    left: `${fillPercentage}%`,
+                                    top: '50%',
+                                    transform: 'translate(-50%, -50%)',
+                                    width: '12px',
+                                    height: '12px',
+                                    borderRadius: '50%',
+                                    background: fillColor,
+                                    border: '2px solid rgba(0,0,0,0.3)',
+                                    boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+                                }} />
+                            </div>
+                        </div>
+                    );
+                })()}
+
                 <div className="event-node-handles">
                     <div className="handle-group">
                         <span className="handle-label input">

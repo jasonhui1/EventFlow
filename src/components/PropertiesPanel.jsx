@@ -55,7 +55,12 @@ const PropertiesPanel = () => {
         );
     }
 
-    const { id, type, data } = selectedNode;
+    const { id, type } = selectedNode;
+
+    // Get live node data from the nodes array (not stale selectedNode snapshot)
+    const nodes = useStore((state) => state.nodes);
+    const liveNode = nodes.find(n => n.id === id);
+    const data = liveNode?.data || selectedNode.data;
 
     const getNodeTypeName = () => {
         switch (type) {
@@ -235,6 +240,37 @@ const PropertiesPanel = () => {
                                 />
                                 <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', marginTop: '4px' }}>
                                     Inherits to all connected downstream nodes
+                                </p>
+                            </div>
+
+                            <div className="property-group">
+                                <label className="property-label" style={{ color: '#FFE5B5' }}>
+                                    😊 Mood Effect
+                                </label>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                    <input
+                                        type="range"
+                                        min="-50"
+                                        max="50"
+                                        value={data.moodChange || 0}
+                                        onChange={(e) => updateNode(id, { moodChange: parseInt(e.target.value) })}
+                                        style={{
+                                            flex: 1,
+                                            accentColor: (data.moodChange || 0) > 0 ? '#B5FFD9' : (data.moodChange || 0) < 0 ? '#FFB5B5' : '#888',
+                                        }}
+                                    />
+                                    <span style={{
+                                        minWidth: '40px',
+                                        textAlign: 'center',
+                                        fontSize: '13px',
+                                        fontWeight: 600,
+                                        color: (data.moodChange || 0) > 0 ? '#B5FFD9' : (data.moodChange || 0) < 0 ? '#FFB5B5' : 'rgba(255,255,255,0.6)',
+                                    }}>
+                                        {(data.moodChange || 0) > 0 ? '+' : ''}{data.moodChange || 0}
+                                    </span>
+                                </div>
+                                <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', marginTop: '4px' }}>
+                                    How this event affects character mood (-50 to +50)
                                 </p>
                             </div>
                         </>

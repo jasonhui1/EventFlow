@@ -40,6 +40,7 @@ const nodeTypes = {
 
 import EventSimulationModal from './components/EventSimulationModal';
 import BulkExportModal from './components/BulkExportModal';
+import MoodConfigModal from './components/MoodConfigModal';
 
 function App() {
 
@@ -55,6 +56,7 @@ function App() {
     const [contextMenu, setContextMenu] = useState(null);
     const [showSimulationModal, setShowSimulationModal] = useState(false);
     const [showBulkExportModal, setShowBulkExportModal] = useState(false);
+    const [showMoodConfigModal, setShowMoodConfigModal] = useState(false);
 
     // Store state
     const nodes = useStore((state) => state.nodes);
@@ -584,6 +586,9 @@ function App() {
                         <button className="action-btn" onClick={() => setShowBulkExportModal(true)} style={{ background: 'rgba(201, 181, 255, 0.1)', color: '#C9B5FF', border: '1px solid rgba(201, 181, 255, 0.3)' }}>
                             📤 Bulk Export
                         </button>
+                        <button className="action-btn" onClick={() => setShowMoodConfigModal(true)} style={{ background: 'rgba(255, 229, 181, 0.1)', color: '#FFE5B5', border: '1px solid rgba(255, 229, 181, 0.3)' }}>
+                            😊 Mood Tags
+                        </button>
                         <button className="action-btn" onClick={handleImport}>
                             📥 Import
                         </button>
@@ -879,6 +884,12 @@ function App() {
             {
                 showBulkExportModal && (
                     <BulkExportModal onClose={() => setShowBulkExportModal(false)} />
+                )
+            }
+
+            {
+                showMoodConfigModal && (
+                    <MoodConfigModal onClose={() => setShowMoodConfigModal(false)} />
                 )
             }
         </div >

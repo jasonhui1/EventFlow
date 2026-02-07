@@ -94,6 +94,22 @@ const EventSimulationModal = ({ onClose }) => {
                                         backgroundColor: getTypeColor(result.type)
                                     }} />
                                     <span style={{ fontWeight: 600, fontSize: '13px', color: '#fff' }}>{result.label}</span>
+                                    {result.mood !== undefined && (
+                                        <span style={{
+                                            fontSize: '11px',
+                                            padding: '2px 8px',
+                                            borderRadius: '10px',
+                                            background: result.mood > 20 ? 'rgba(181, 255, 217, 0.2)' :
+                                                result.mood < -20 ? 'rgba(255, 181, 181, 0.2)' :
+                                                    'rgba(255, 255, 255, 0.1)',
+                                            color: result.mood > 20 ? '#B5FFD9' :
+                                                result.mood < -20 ? '#FFB5B5' :
+                                                    'rgba(255,255,255,0.6)',
+                                        }}>
+                                            😊 {result.mood > 0 ? '+' : ''}{result.mood}
+                                            {result.moodTag && ` → ${result.moodTag}`}
+                                        </span>
+                                    )}
                                     <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', marginLeft: 'auto', fontFamily: 'monospace' }}>
                                         {result.type}
                                     </span>

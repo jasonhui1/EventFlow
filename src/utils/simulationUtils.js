@@ -4,6 +4,52 @@
  */
 
 /**
+ * Get the mood tier based on current mood value
+ */
+export const getMoodTier = (moodValue, tiers) => {
+    for (const tier of tiers) {
+        if (moodValue >= tier.min && moodValue < tier.max) {
+            return tier;
+        }
+    }
+    // Edge case: mood exactly at 100
+    if (moodValue >= 100) {
+        return tiers[tiers.length - 1]; // very_positive
+    }
+    // Edge case: mood exactly at -100
+    if (moodValue <= -100) {
+        return tiers[0]; // very_negative
+    }
+    return tiers[2]; // neutral fallback
+};
+
+/**
+ * Select a tag from a weighted pool
+ */
+export const selectWeightedTag = (tags) => {
+    if (!tags || tags.length === 0) return null;
+
+    // Build weighted pool
+    let weightedPool = [];
+    tags.forEach(t => {
+        const weight = t.weight || 50;
+        for (let i = 0; i < weight; i++) {
+            weightedPool.push(t.tag);
+        }
+    });
+
+    if (weightedPool.length === 0) return tags[0]?.tag || null;
+
+    const randomIndex = Math.floor(Math.random() * weightedPool.length);
+    return weightedPool[randomIndex];
+};
+
+/**
+ * Clamp a value between min and max
+ */
+export const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+
+/**
  * Get parent nodes (nodes that connect TO a specific node)
  */
 export const getParentNodes = (nodeId, nodes, edges) => {
@@ -205,7 +251,9 @@ export const simulateEvent = (
     currentEventFixedPrompt = '',
     incomingContextParts = [],
     visitedEventIds = new Set(),
-    inputOverrides = {} // New parameter for top-level input overrides
+    inputOverrides = {}, // Parameter for top-level input overrides
+    moodConfig = null, // Mood configuration: { tiers, tags, initialMoodRange }
+    incomingMood = null // Mood carried from parent simulation
 ) => {
     // Apply input overrides to top-level start nodes if provided
     const processedNodes = currentNodes.map(node => {
@@ -262,6 +310,14 @@ export const simulateEvent = (
     const unlockedByField = new Set(); // Nodes that have been selected by their parent field
     const queue = [...startNodes];
 
+    // Initialize mood state
+    let currentMood = incomingMood;
+    if (currentMood === null && moodConfig) {
+        const { min, max } = moodConfig.initialMoodRange || { min: -20, max: 20 };
+        currentMood = Math.floor(Math.random() * (max - min + 1)) + min;
+        console.log('[Simulation] Initialized mood:', currentMood);
+    }
+
     while (queue.length > 0) {
         const currentNode = queue.shift();
 
@@ -316,8 +372,15 @@ export const simulateEvent = (
                         refEvent.edges || [],
                         refEvent.fixedPrompt || '',
                         newContextParts,
-                        newVisitedEvents
+                        newVisitedEvents,
+                        {}, // inputOverrides - use default for inner simulation
+                        moodConfig,
+                        currentMood // Pass current mood to inner simulation
                     );
+                    // Update currentMood from inner results if they affected it
+                    if (innerResults.length > 0 && innerResults[innerResults.length - 1].mood !== undefined) {
+                        currentMood = innerResults[innerResults.length - 1].mood;
+                    }
                     results.push(...innerResults);
                 }
             }
@@ -338,6 +401,26 @@ export const simulateEvent = (
                 );
 
                 const finalParts = [...incomingContextParts, ...localParts];
+
+                // Apply mood change for event nodes
+                let moodTag = null;
+                if (moodConfig && currentNode.type === 'eventNode') {
+                    const moodChange = currentNode.data?.moodChange || 0;
+                    currentMood = clamp((currentMood || 0) + moodChange, -100, 100);
+
+                    // Get mood tier and select weighted tag
+                    const tier = getMoodTier(currentMood, moodConfig.tiers);
+                    const tierTags = moodConfig.tags[tier.id] || [];
+                    moodTag = selectWeightedTag(tierTags);
+
+                    console.log('[Simulation] Mood updated:', { moodChange, currentMood, tier: tier.id, moodTag });
+
+                    // Add mood tag to prompt if present
+                    if (moodTag) {
+                        finalParts.push({ label: 'Mood Expression', prompt: moodTag, type: 'mood' });
+                    }
+                }
+
                 const fullPrompt = finalParts.map(p => p.prompt).filter(Boolean).join(', ');
 
                 results.push({
@@ -346,7 +429,9 @@ export const simulateEvent = (
                     label: currentNode.data?.label || currentNode.type,
                     type: currentNode.type,
                     prompt: fullPrompt,
-                    parts: finalParts
+                    parts: finalParts,
+                    mood: currentMood,
+                    moodTag: moodTag
                 });
             }
         }
