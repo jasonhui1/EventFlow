@@ -241,6 +241,154 @@ export const getComposedPrompt = (nodeId, allEvents, nodes, edges, currentEventF
     return { parts, full };
 };
 
+// ============================================================================
+// SIMULATION HELPER FUNCTIONS
+// ============================================================================
+
+/**
+ * Process all Field Nodes upfront - compute containment and weighted selection
+ * @returns {{ nodeToFieldMap: Map, unlockedByField: Set, fieldSettings: Map }}
+ */
+const processFields = (nodes) => {
+    const fieldNodes = nodes.filter(n => n.type === 'fieldNode');
+    const nodeToFieldMap = new Map();  // Maps nodeId -> fieldNodeId
+    const unlockedByField = new Set(); // Selected node IDs
+    const fieldSettings = new Map();   // Maps fieldId -> { randomizeOrder }
+
+    fieldNodes.forEach(field => {
+        const fieldBounds = {
+            x: field.position?.x || 0,
+            y: field.position?.y || 0,
+            width: field.width || field.style?.width || 400,
+            height: field.height || field.style?.height || 300
+        };
+
+        // Find child nodes inside this field
+        const childNodes = nodes.filter(node => {
+            if (node.id === field.id || node.type === 'fieldNode') return false;
+            const nodeX = node.position?.x || 0;
+            const nodeY = node.position?.y || 0;
+            return (
+                nodeX >= fieldBounds.x && nodeX < fieldBounds.x + fieldBounds.width &&
+                nodeY >= fieldBounds.y && nodeY < fieldBounds.y + fieldBounds.height
+            );
+        });
+
+        // Map children to their field
+        childNodes.forEach(node => nodeToFieldMap.set(node.id, field.id));
+
+        if (childNodes.length === 0) return;
+
+        // Store field settings
+        const selectCount = field.data?.selectCount ?? 1;
+        const randomizeOrder = field.data?.randomizeOrder ?? true;
+        const childWeights = field.data?.childWeights || {};
+        fieldSettings.set(field.id, { randomizeOrder });
+
+        // Build weighted pool and select
+        let weightedPool = [];
+        childNodes.forEach(child => {
+            const weight = childWeights[child.id] || 50;
+            for (let i = 0; i < weight; i++) {
+                weightedPool.push(child.id);
+            }
+        });
+
+        // Select N unique children
+        const targetCount = Math.min(selectCount, childNodes.length);
+        while (unlockedByField.size < targetCount && weightedPool.length > 0) {
+            const idx = Math.floor(Math.random() * weightedPool.length);
+            const selectedId = weightedPool[idx];
+            if (!nodeToFieldMap.has(selectedId) || nodeToFieldMap.get(selectedId) !== field.id) {
+                weightedPool = weightedPool.filter(id => id !== selectedId);
+                continue;
+            }
+            unlockedByField.add(selectedId);
+            weightedPool = weightedPool.filter(id => id !== selectedId);
+        }
+
+        console.log('[Field]', field.data?.label, '→ selected', [...unlockedByField].filter(id => nodeToFieldMap.get(id) === field.id));
+    });
+
+    return { nodeToFieldMap, unlockedByField, fieldSettings };
+};
+
+/**
+ * Shuffle consecutive results from fields with randomizeOrder enabled
+ */
+const shuffleFieldResults = (results, fieldSettings) => {
+    let i = 0;
+    while (i < results.length) {
+        const fieldId = results[i].fieldId;
+        if (fieldId && fieldSettings.get(fieldId)?.randomizeOrder) {
+            // Find run of consecutive results from this field
+            let j = i + 1;
+            while (j < results.length && results[j].fieldId === fieldId) j++;
+
+            // Fisher-Yates shuffle for results[i..j-1]
+            if (j - i > 1) {
+                for (let k = j - 1; k > i; k--) {
+                    const m = i + Math.floor(Math.random() * (k - i + 1));
+                    [results[k], results[m]] = [results[m], results[k]];
+                }
+            }
+            i = j;
+        } else {
+            i++;
+        }
+    }
+};
+
+/**
+ * Build a result object for an event node
+ */
+const buildNodeResult = (node, context) => {
+    const { allEvents, processedNodes, currentEdges, currentEventFixedPrompt,
+        visitedEdgeIds, incomingContextParts, moodConfig, currentMood, containingFieldId } = context;
+
+    const { parts: localParts } = getComposedPrompt(
+        node.id, allEvents, processedNodes, currentEdges, currentEventFixedPrompt,
+        { allowedEdges: visitedEdgeIds, randomize: false, resolveReferences: false }
+    );
+
+    const finalParts = [...incomingContextParts, ...localParts];
+    let moodTag = null;
+    let newMood = currentMood;
+
+    // Apply mood change for event nodes
+    if (moodConfig && node.type === 'eventNode' && !node.data?.moodDisabled) {
+        const moodMin = node.data?.moodChangeMin || 0;
+        const moodMax = node.data?.moodChangeMax || 10;
+        const moodChange = moodMin === moodMax
+            ? moodMin
+            : Math.floor(Math.random() * (moodMax - moodMin + 1)) + moodMin;
+        newMood = clamp((currentMood || 0) + moodChange, -100, 100);
+
+        const tier = getMoodTier(newMood, moodConfig.tiers);
+        const tierTags = moodConfig.tags[tier.id] || [];
+        moodTag = selectWeightedTag(tierTags);
+
+        if (moodTag) {
+            finalParts.push({ label: 'Mood Expression', prompt: moodTag, type: 'mood' });
+        }
+    }
+
+    return {
+        result: {
+            id: `${node.id}-${Math.random().toString(36).substr(2, 9)}`,
+            originalId: node.id,
+            label: node.data?.label || node.type,
+            type: node.type,
+            prompt: finalParts.map(p => p.prompt).filter(Boolean).join(', '),
+            parts: finalParts,
+            mood: newMood,
+            moodTag,
+            fieldId: containingFieldId || null
+        },
+        newMood
+    };
+};
+
 /**
  * Simulate an event flow and return an array of resulting prompts
  */
@@ -278,78 +426,8 @@ export const simulateEvent = (
 
     if (startNodes.length === 0) return [];
 
-    // Pre-compute which nodes are inside which fieldNode
-    // Nodes inside a field should ONLY be processed via field selection, not independent edges
-    const fieldNodes = processedNodes.filter(n => n.type === 'fieldNode');
-    const nodeToFieldMap = new Map(); // Maps nodeId -> fieldNodeId that contains it
-    const unlockedByField = new Set(); // Nodes selected by their parent field (populated upfront)
-    const fieldSettings = new Map(); // Maps fieldId -> { randomizeOrder }
-
-
-    // Process all Field Nodes upfront - they are purely spatial containers with no edges
-    fieldNodes.forEach(field => {
-        const fieldX = field.position?.x || 0;
-        const fieldY = field.position?.y || 0;
-        const fieldWidth = field.width || field.style?.width || 400;
-        const fieldHeight = field.height || field.style?.height || 300;
-
-        // Find child nodes inside this field
-        const childNodes = processedNodes.filter(node => {
-            if (node.id === field.id || node.type === 'fieldNode') return false;
-            const nodeX = node.position?.x || 0;
-            const nodeY = node.position?.y || 0;
-            return (
-                nodeX >= fieldX && nodeX < fieldX + fieldWidth &&
-                nodeY >= fieldY && nodeY < fieldY + fieldHeight
-            );
-        });
-
-        // Map children to their field
-        childNodes.forEach(node => {
-            nodeToFieldMap.set(node.id, field.id);
-        });
-
-        console.log('[FieldNode Simulation] Processing field:', field.id, field.data?.label, 'with', childNodes.length, 'children');
-
-        if (childNodes.length === 0) return;
-
-        // Apply weighted selection upfront
-        const selectCount = field.data?.selectCount ?? 1;
-        const randomizeOrder = field.data?.randomizeOrder ?? true;
-        const childWeights = field.data?.childWeights || {};
-
-        // Store field settings for post-processing
-        fieldSettings.set(field.id, { randomizeOrder });
-
-        // Build weighted pool
-        let weightedPool = [];
-        childNodes.forEach(child => {
-            const weight = childWeights[child.id] || 50;
-            for (let i = 0; i < weight; i++) {
-                weightedPool.push(child.id);
-            }
-        });
-
-        // Select N unique children
-        const selectedChildIds = new Set();
-        const targetCount = Math.min(selectCount, childNodes.length);
-
-        while (selectedChildIds.size < targetCount && weightedPool.length > 0) {
-            const randomIndex = Math.floor(Math.random() * weightedPool.length);
-            const selectedId = weightedPool[randomIndex];
-            selectedChildIds.add(selectedId);
-            weightedPool = weightedPool.filter(id => id !== selectedId);
-        }
-
-        // Unlock selected children - they'll be reached via normal edge traversal
-        selectedChildIds.forEach(childId => {
-            unlockedByField.add(childId);
-        });
-
-        console.log('[FieldNode Simulation] Selected:', [...selectedChildIds]);
-    });
-
-    console.log('[Simulation] Nodes inside fields:', Object.fromEntries(nodeToFieldMap));
+    // Phase 1: Process Field Nodes upfront (spatial containers with weighted selection)
+    const { nodeToFieldMap, unlockedByField, fieldSettings } = processFields(processedNodes);
 
     startNodes.sort((a, b) => a.position.y - b.position.y);
     const results = [];
@@ -436,58 +514,12 @@ export const simulateEvent = (
             const hiddenTypes = ['startNode', 'endNode', 'branchNode', 'referenceNode', 'ifNode', 'carryForwardNode', 'fieldNode'];
             // Skip adding to results if blocked by field, but still process outgoing edges below
             if (!hiddenTypes.includes(currentNode.type) && !isBlockedByField) {
-                const { parts: localParts } = getComposedPrompt(
-                    currentNode.id,
-                    allEvents,
-                    processedNodes,
-                    currentEdges,
-                    currentEventFixedPrompt,
-                    {
-                        allowedEdges: visitedEdgeIds,
-                        randomize: false,
-                        resolveReferences: false
-                    }
-                );
-
-                const finalParts = [...incomingContextParts, ...localParts];
-
-                // Apply mood change for event nodes (skip if mood disabled)
-                let moodTag = null;
-                if (moodConfig && currentNode.type === 'eventNode' && !currentNode.data?.moodDisabled) {
-                    const moodMin = currentNode.data?.moodChangeMin || 0;
-                    const moodMax = currentNode.data?.moodChangeMax || 10;
-                    // Pick random value within range (inclusive)
-                    const moodChange = moodMin === moodMax
-                        ? moodMin
-                        : Math.floor(Math.random() * (moodMax - moodMin + 1)) + moodMin;
-                    currentMood = clamp((currentMood || 0) + moodChange, -100, 100);
-
-                    // Get mood tier and select weighted tag
-                    const tier = getMoodTier(currentMood, moodConfig.tiers);
-                    const tierTags = moodConfig.tags[tier.id] || [];
-                    moodTag = selectWeightedTag(tierTags);
-
-                    console.log('[Simulation] Mood updated:', { moodChange, currentMood, tier: tier.id, moodTag });
-
-                    // Add mood tag to prompt if present
-                    if (moodTag) {
-                        finalParts.push({ label: 'Mood Expression', prompt: moodTag, type: 'mood' });
-                    }
-                }
-
-                const fullPrompt = finalParts.map(p => p.prompt).filter(Boolean).join(', ');
-
-                results.push({
-                    id: `${currentNode.id}-${Math.random().toString(36).substr(2, 9)}`,
-                    originalId: currentNode.id,
-                    label: currentNode.data?.label || currentNode.type,
-                    type: currentNode.type,
-                    prompt: fullPrompt,
-                    parts: finalParts,
-                    mood: currentMood,
-                    moodTag: moodTag,
-                    fieldId: containingFieldId || null // Track which field this result came from
+                const { result, newMood } = buildNodeResult(currentNode, {
+                    allEvents, processedNodes, currentEdges, currentEventFixedPrompt,
+                    visitedEdgeIds, incomingContextParts, moodConfig, currentMood, containingFieldId
                 });
+                currentMood = newMood;
+                results.push(result);
             }
         }
 
@@ -536,28 +568,8 @@ export const simulateEvent = (
         }
     }
 
-    // Post-processing: shuffle consecutive results from fields with randomizeOrder enabled
-    let i = 0;
-    while (i < results.length) {
-        const fieldId = results[i].fieldId;
-        if (fieldId && fieldSettings.get(fieldId)?.randomizeOrder) {
-            // Find the run of consecutive results from this field
-            let j = i + 1;
-            while (j < results.length && results[j].fieldId === fieldId) {
-                j++;
-            }
-            // Shuffle results[i..j-1]
-            if (j - i > 1) {
-                for (let k = j - 1; k > i; k--) {
-                    const m = i + Math.floor(Math.random() * (k - i + 1));
-                    [results[k], results[m]] = [results[m], results[k]];
-                }
-            }
-            i = j;
-        } else {
-            i++;
-        }
-    }
+    // Phase 5: Post-processing - shuffle field results if enabled
+    shuffleFieldResults(results, fieldSettings);
 
     return results;
 };
