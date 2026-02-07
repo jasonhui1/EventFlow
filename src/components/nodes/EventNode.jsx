@@ -236,6 +236,7 @@ const EventNode = ({ id, data, selected }) => {
 
                     const moodMin = data.moodChangeMin ?? 0;
                     const moodMax = data.moodChangeMax ?? 10;
+                    const moodDisabled = data.moodDisabled ?? false;
 
                     const calculateValue = (clientX) => {
                         if (!moodRef.current) return 0;
@@ -246,6 +247,7 @@ const EventNode = ({ id, data, selected }) => {
                     };
 
                     const handleMouseDown = (handle) => (e) => {
+                        if (moodDisabled) return; // Don't allow dragging when disabled
                         e.stopPropagation();
                         setDraggingHandle(handle);
 
@@ -283,7 +285,8 @@ const EventNode = ({ id, data, selected }) => {
                                 borderRadius: '6px',
                                 border: `1px solid ${draggingHandle ? 'rgba(255, 229, 181, 0.4)' : 'rgba(255, 229, 181, 0.1)'}`,
                                 userSelect: 'none',
-                                transition: 'border-color 0.15s',
+                                transition: 'border-color 0.15s, opacity 0.15s',
+                                opacity: moodDisabled ? 0.4 : 1,
                             }}
                         >
                             <div style={{
@@ -293,8 +296,30 @@ const EventNode = ({ id, data, selected }) => {
                                 marginBottom: '6px',
                             }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                    <span style={{ fontSize: '12px' }}>😊</span>
-                                    <span style={{ fontSize: '11px', color: '#FFE5B5', fontWeight: 500 }}>
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            updateNode(id, { moodDisabled: !moodDisabled });
+                                        }}
+                                        style={{
+                                            background: moodDisabled ? 'rgba(255,255,255,0.1)' : 'rgba(255, 229, 181, 0.2)',
+                                            border: 'none',
+                                            borderRadius: '4px',
+                                            padding: '2px 4px',
+                                            cursor: 'pointer',
+                                            fontSize: '12px',
+                                            opacity: moodDisabled ? 0.6 : 1,
+                                        }}
+                                        title={moodDisabled ? 'Enable mood effect' : 'Disable mood effect'}
+                                    >
+                                        {moodDisabled ? '🚫' : '😊'}
+                                    </button>
+                                    <span style={{
+                                        fontSize: '11px',
+                                        color: moodDisabled ? 'rgba(255,255,255,0.4)' : '#FFE5B5',
+                                        fontWeight: 500,
+                                        textDecoration: moodDisabled ? 'line-through' : 'none',
+                                    }}>
                                         Mood Effect
                                     </span>
                                 </div>

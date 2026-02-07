@@ -402,9 +402,9 @@ export const simulateEvent = (
 
                 const finalParts = [...incomingContextParts, ...localParts];
 
-                // Apply mood change for event nodes
+                // Apply mood change for event nodes (skip if mood disabled)
                 let moodTag = null;
-                if (moodConfig && currentNode.type === 'eventNode') {
+                if (moodConfig && currentNode.type === 'eventNode' && !currentNode.data?.moodDisabled) {
                     const moodMin = currentNode.data?.moodChangeMin || 0;
                     const moodMax = currentNode.data?.moodChangeMax || 10;
                     // Pick random value within range (inclusive)
