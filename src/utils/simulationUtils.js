@@ -282,23 +282,67 @@ export const simulateEvent = (
     // Nodes inside a field should ONLY be processed via field selection, not independent edges
     const fieldNodes = processedNodes.filter(n => n.type === 'fieldNode');
     const nodeToFieldMap = new Map(); // Maps nodeId -> fieldNodeId that contains it
+    const unlockedByField = new Set(); // Nodes selected by their parent field (populated upfront)
 
+
+    // Process all Field Nodes upfront - they are purely spatial containers with no edges
     fieldNodes.forEach(field => {
         const fieldX = field.position?.x || 0;
         const fieldY = field.position?.y || 0;
-        // Use top-level width/height (set by React Flow's applyNodeChanges), fallback to style
         const fieldWidth = field.width || field.style?.width || 400;
         const fieldHeight = field.height || field.style?.height || 300;
 
-        processedNodes.forEach(node => {
-            if (node.id === field.id || node.type === 'fieldNode') return;
+        // Find child nodes inside this field
+        const childNodes = processedNodes.filter(node => {
+            if (node.id === field.id || node.type === 'fieldNode') return false;
             const nodeX = node.position?.x || 0;
             const nodeY = node.position?.y || 0;
-            if (nodeX >= fieldX && nodeX < fieldX + fieldWidth &&
-                nodeY >= fieldY && nodeY < fieldY + fieldHeight) {
-                nodeToFieldMap.set(node.id, field.id);
+            return (
+                nodeX >= fieldX && nodeX < fieldX + fieldWidth &&
+                nodeY >= fieldY && nodeY < fieldY + fieldHeight
+            );
+        });
+
+        // Map children to their field
+        childNodes.forEach(node => {
+            nodeToFieldMap.set(node.id, field.id);
+        });
+
+        console.log('[FieldNode Simulation] Processing field:', field.id, field.data?.label, 'with', childNodes.length, 'children');
+
+        if (childNodes.length === 0) return;
+
+        // Apply weighted selection upfront
+        const selectCount = field.data?.selectCount ?? 1;
+
+        const childWeights = field.data?.childWeights || {};
+
+        // Build weighted pool
+        let weightedPool = [];
+        childNodes.forEach(child => {
+            const weight = childWeights[child.id] || 50;
+            for (let i = 0; i < weight; i++) {
+                weightedPool.push(child.id);
             }
         });
+
+        // Select N unique children
+        const selectedChildIds = new Set();
+        const targetCount = Math.min(selectCount, childNodes.length);
+
+        while (selectedChildIds.size < targetCount && weightedPool.length > 0) {
+            const randomIndex = Math.floor(Math.random() * weightedPool.length);
+            const selectedId = weightedPool[randomIndex];
+            selectedChildIds.add(selectedId);
+            weightedPool = weightedPool.filter(id => id !== selectedId);
+        }
+
+        // Unlock selected children - they'll be reached via normal edge traversal
+        selectedChildIds.forEach(childId => {
+            unlockedByField.add(childId);
+        });
+
+        console.log('[FieldNode Simulation] Selected:', [...selectedChildIds]);
     });
 
     console.log('[Simulation] Nodes inside fields:', Object.fromEntries(nodeToFieldMap));
@@ -307,8 +351,7 @@ export const simulateEvent = (
     const results = [];
     const visitedNodeIds = new Set();
     const visitedEdgeIds = new Set();
-    const unlockedByField = new Set(); // Nodes that have been selected by their parent field
-    const queue = [...startNodes];
+    const queue = [...startNodes]; // Field children are reached via edges, filtered by unlockedByField
 
     // Initialize mood state
     let currentMood = incomingMood;
@@ -324,11 +367,12 @@ export const simulateEvent = (
         if (visitedNodeIds.has(currentNode.id)) continue;
 
         // Check if this node is inside a field and hasn't been unlocked by field selection
+        // Instead of skipping entirely, we flag it - blocked nodes still traverse edges but don't appear in results
         const containingFieldId = nodeToFieldMap.get(currentNode.id);
-        if (containingFieldId && !unlockedByField.has(currentNode.id)) {
-            // This node is inside a field but wasn't selected by it - skip
-            console.log('[Simulation] Skipping node inside field (not selected):', currentNode.id, currentNode.data?.label);
-            continue;
+        const isBlockedByField = containingFieldId && !unlockedByField.has(currentNode.id);
+
+        if (isBlockedByField) {
+            console.log('[Simulation] Node blocked by field (will traverse but not output):', currentNode.id, currentNode.data?.label);
         }
 
         visitedNodeIds.add(currentNode.id);
@@ -385,8 +429,9 @@ export const simulateEvent = (
                 }
             }
         } else {
-            const hiddenTypes = ['startNode', 'endNode', 'branchNode', 'referenceNode', 'ifNode', 'carryForwardNode'];
-            if (!hiddenTypes.includes(currentNode.type)) {
+            const hiddenTypes = ['startNode', 'endNode', 'branchNode', 'referenceNode', 'ifNode', 'carryForwardNode', 'fieldNode'];
+            // Skip adding to results if blocked by field, but still process outgoing edges below
+            if (!hiddenTypes.includes(currentNode.type) && !isBlockedByField) {
                 const { parts: localParts } = getComposedPrompt(
                     currentNode.id,
                     allEvents,
@@ -477,94 +522,6 @@ export const simulateEvent = (
                 const targetNode = processedNodes.find(n => n.id === edge.target);
                 if (targetNode) queue.push(targetNode);
             });
-        } else if (currentNode.type === 'fieldNode') {
-            // Field containers don't produce output themselves
-            // Their children are processed separately based on who enters the field
-            // For now, just continue - the field's selection logic is applied
-            // when we process nodes that are children of the field
-
-            console.log('[FieldNode Simulation] Processing fieldNode:', currentNode.id, currentNode.data?.label);
-            console.log('[FieldNode Simulation] selectCount:', currentNode.data?.selectCount);
-
-            // Get field bounds - use top-level width/height (set by React Flow's applyNodeChanges)
-            const fieldX = currentNode.position?.x || 0;
-            const fieldY = currentNode.position?.y || 0;
-            const fieldWidth = currentNode.width || currentNode.style?.width || 400;
-            const fieldHeight = currentNode.height || currentNode.style?.height || 300;
-
-            console.log('[FieldNode Simulation] Field bounds:', { fieldX, fieldY, fieldWidth, fieldHeight });
-
-            // Find child nodes inside this field (excluding other fields)
-            const childNodes = processedNodes.filter(node => {
-                if (node.id === currentNode.id || node.type === 'fieldNode') return false;
-                const nodeX = node.position?.x || 0;
-                const nodeY = node.position?.y || 0;
-                return (
-                    nodeX >= fieldX &&
-                    nodeX < fieldX + fieldWidth &&
-                    nodeY >= fieldY &&
-                    nodeY < fieldY + fieldHeight
-                );
-            });
-
-            console.log('[FieldNode Simulation] Found child nodes:', childNodes.map(c => ({ id: c.id, label: c.data?.label })));
-
-            if (childNodes.length === 0) {
-                // No children, just continue to outgoing edges
-                outgoingEdges.forEach(edge => {
-                    visitedEdgeIds.add(edge.id);
-                    const targetNode = processedNodes.find(n => n.id === edge.target);
-                    if (targetNode) queue.push(targetNode);
-                });
-            } else {
-                // Apply weighted selection
-                const selectCount = currentNode.data?.selectCount ?? 1;
-                const randomizeOrder = currentNode.data?.randomizeOrder ?? true;
-                const childWeights = currentNode.data?.childWeights || {};
-
-                console.log('[FieldNode Simulation] Selecting', selectCount, 'from', childNodes.length, 'children');
-
-                // Build weighted pool
-                let weightedPool = [];
-                childNodes.forEach(child => {
-                    const weight = childWeights[child.id] || 50;
-                    for (let i = 0; i < weight; i++) {
-                        weightedPool.push(child.id);
-                    }
-                });
-
-                // Select N unique children
-                const selectedChildIds = new Set();
-                const targetCount = Math.min(selectCount, childNodes.length);
-
-                while (selectedChildIds.size < targetCount && weightedPool.length > 0) {
-                    const randomIndex = Math.floor(Math.random() * weightedPool.length);
-                    const selectedId = weightedPool[randomIndex];
-                    selectedChildIds.add(selectedId);
-                    weightedPool = weightedPool.filter(id => id !== selectedId);
-                }
-
-                // Get selected children
-                let selectedChildren = childNodes.filter(c => selectedChildIds.has(c.id));
-
-                console.log('[FieldNode Simulation] Selected children:', selectedChildren.map(c => ({ id: c.id, label: c.data?.label })));
-
-                // Shuffle order if requested
-                if (randomizeOrder) {
-                    for (let i = selectedChildren.length - 1; i > 0; i--) {
-                        const j = Math.floor(Math.random() * (i + 1));
-                        [selectedChildren[i], selectedChildren[j]] = [selectedChildren[j], selectedChildren[i]];
-                    }
-                }
-
-                // Add selected children to queue for processing
-                // Mark them as unlocked so they can pass the field-exclusive check
-                selectedChildren.forEach(child => {
-                    unlockedByField.add(child.id);
-                    queue.push(child);
-                });
-            }
-
         } else {
             outgoingEdges.forEach(edge => {
                 visitedEdgeIds.add(edge.id);
