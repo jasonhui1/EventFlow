@@ -405,7 +405,12 @@ export const simulateEvent = (
                 // Apply mood change for event nodes
                 let moodTag = null;
                 if (moodConfig && currentNode.type === 'eventNode') {
-                    const moodChange = currentNode.data?.moodChange || 0;
+                    const moodMin = currentNode.data?.moodChangeMin || 0;
+                    const moodMax = currentNode.data?.moodChangeMax || 10;
+                    // Pick random value within range (inclusive)
+                    const moodChange = moodMin === moodMax
+                        ? moodMin
+                        : Math.floor(Math.random() * (moodMax - moodMin + 1)) + moodMin;
                     currentMood = clamp((currentMood || 0) + moodChange, -100, 100);
 
                     // Get mood tier and select weighted tag

@@ -23,6 +23,9 @@ const PropertiesPanel = () => {
     const toggleStartNodeInput = useStore((state) => state.toggleStartNodeInput);
     const updateStartNodeInputLabel = useStore((state) => state.updateStartNodeInputLabel);
 
+    // Get nodes for live data updates (must be before any conditional returns)
+    const nodes = useStore((state) => state.nodes);
+
     const [showPreview, setShowPreview] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [isCollapsed, setIsCollapsed] = useState(false);
@@ -58,7 +61,6 @@ const PropertiesPanel = () => {
     const { id, type } = selectedNode;
 
     // Get live node data from the nodes array (not stale selectedNode snapshot)
-    const nodes = useStore((state) => state.nodes);
     const liveNode = nodes.find(n => n.id === id);
     const data = liveNode?.data || selectedNode.data;
 
@@ -245,32 +247,59 @@ const PropertiesPanel = () => {
 
                             <div className="property-group">
                                 <label className="property-label" style={{ color: '#FFE5B5' }}>
-                                    😊 Mood Effect
+                                    😊 Mood Effect Range
                                 </label>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                    <input
-                                        type="range"
-                                        min="-50"
-                                        max="50"
-                                        value={data.moodChange || 0}
-                                        onChange={(e) => updateNode(id, { moodChange: parseInt(e.target.value) })}
-                                        style={{
-                                            flex: 1,
-                                            accentColor: (data.moodChange || 0) > 0 ? '#B5FFD9' : (data.moodChange || 0) < 0 ? '#FFB5B5' : '#888',
-                                        }}
-                                    />
-                                    <span style={{
-                                        minWidth: '40px',
-                                        textAlign: 'center',
-                                        fontSize: '13px',
-                                        fontWeight: 600,
-                                        color: (data.moodChange || 0) > 0 ? '#B5FFD9' : (data.moodChange || 0) < 0 ? '#FFB5B5' : 'rgba(255,255,255,0.6)',
-                                    }}>
-                                        {(data.moodChange || 0) > 0 ? '+' : ''}{data.moodChange || 0}
-                                    </span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <div style={{ flex: 1 }}>
+                                        <label style={{ fontSize: '10px', color: 'rgba(255,255,255,0.5)', marginBottom: '2px', display: 'block' }}>Min</label>
+                                        <input
+                                            type="number"
+                                            min="-50"
+                                            max="50"
+                                            value={data.moodChangeMin ?? 0}
+                                            onChange={(e) => {
+                                                const val = Math.max(-50, Math.min(50, parseInt(e.target.value) || 0));
+                                                updateNode(id, { moodChangeMin: Math.min(val, data.moodChangeMax ?? 0) });
+                                            }}
+                                            style={{
+                                                width: '100%',
+                                                padding: '6px 8px',
+                                                background: 'rgba(255, 181, 181, 0.1)',
+                                                border: '1px solid rgba(255, 181, 181, 0.3)',
+                                                borderRadius: '6px',
+                                                color: '#FFB5B5',
+                                                fontSize: '13px',
+                                                textAlign: 'center',
+                                            }}
+                                        />
+                                    </div>
+                                    <span style={{ color: 'rgba(255,255,255,0.4)', paddingTop: '14px' }}>to</span>
+                                    <div style={{ flex: 1 }}>
+                                        <label style={{ fontSize: '10px', color: 'rgba(255,255,255,0.5)', marginBottom: '2px', display: 'block' }}>Max</label>
+                                        <input
+                                            type="number"
+                                            min="-50"
+                                            max="50"
+                                            value={data.moodChangeMax ?? 0}
+                                            onChange={(e) => {
+                                                const val = Math.max(-50, Math.min(50, parseInt(e.target.value) || 0));
+                                                updateNode(id, { moodChangeMax: Math.max(val, data.moodChangeMin ?? 0) });
+                                            }}
+                                            style={{
+                                                width: '100%',
+                                                padding: '6px 8px',
+                                                background: 'rgba(181, 255, 217, 0.1)',
+                                                border: '1px solid rgba(181, 255, 217, 0.3)',
+                                                borderRadius: '6px',
+                                                color: '#B5FFD9',
+                                                fontSize: '13px',
+                                                textAlign: 'center',
+                                            }}
+                                        />
+                                    </div>
                                 </div>
                                 <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', marginTop: '4px' }}>
-                                    How this event affects character mood (-50 to +50)
+                                    Random value picked between min and max during simulation
                                 </p>
                             </div>
                         </>

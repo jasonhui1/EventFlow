@@ -18,7 +18,8 @@ const createEventNode = (position = { x: 0, y: 0 }, data = {}) => ({
         usePerspective: data.usePerspective || true, // Add perspective/foreshortening
         cameraAbove: data.cameraAbove || true, // Add perspective/foreshortening
         cameraBelow: data.cameraBelow || true, // Add perspective/foreshortening
-        moodChange: data.moodChange ?? 0, // How this event affects mood (-100 to +100)
+        moodChangeMin: data.moodChangeMin ?? 0, // Min mood change for this event
+        moodChangeMax: data.moodChangeMax ?? 10, // Max mood change for this event (random picked between min/max)
 
         disabledInheritedSources: data.disabledInheritedSources || [], // Node IDs to ignore inherited prompts from
         inputs: data.inputs || [{ id: 'trigger', label: 'Trigger' }],

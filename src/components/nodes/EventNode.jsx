@@ -229,31 +229,37 @@ const EventNode = ({ id, data, selected }) => {
                     );
                 })()}
 
-                {/* Mood Effect Slider - Draggable Container */}
+                {/* Mood Effect Range Slider - Min/Max */}
                 {(() => {
                     const moodRef = React.useRef(null);
-                    const [isDragging, setIsDragging] = React.useState(false);
+                    const [draggingHandle, setDraggingHandle] = React.useState(null); // 'min' | 'max' | null
 
-                    const calculateMood = (clientX) => {
-                        if (!moodRef.current) return;
+                    const moodMin = data.moodChangeMin ?? 0;
+                    const moodMax = data.moodChangeMax ?? 10;
+
+                    const calculateValue = (clientX) => {
+                        if (!moodRef.current) return 0;
                         const rect = moodRef.current.getBoundingClientRect();
                         const x = Math.max(0, Math.min(clientX - rect.left, rect.width));
                         const percentage = x / rect.width;
-                        const mood = Math.round(-50 + percentage * 100);
-                        updateNode(id, { moodChange: Math.max(-50, Math.min(50, mood)) });
+                        return Math.round(-50 + percentage * 100);
                     };
 
-                    const handleMouseDown = (e) => {
+                    const handleMouseDown = (handle) => (e) => {
                         e.stopPropagation();
-                        setIsDragging(true);
-                        calculateMood(e.clientX);
+                        setDraggingHandle(handle);
 
                         const handleMouseMove = (moveEvent) => {
-                            calculateMood(moveEvent.clientX);
+                            const value = calculateValue(moveEvent.clientX);
+                            if (handle === 'min') {
+                                updateNode(id, { moodChangeMin: Math.min(value, moodMax) });
+                            } else {
+                                updateNode(id, { moodChangeMax: Math.max(value, moodMin) });
+                            }
                         };
 
                         const handleMouseUp = () => {
-                            setIsDragging(false);
+                            setDraggingHandle(null);
                             window.removeEventListener('mousemove', handleMouseMove);
                             window.removeEventListener('mouseup', handleMouseUp);
                         };
@@ -262,22 +268,20 @@ const EventNode = ({ id, data, selected }) => {
                         window.addEventListener('mouseup', handleMouseUp);
                     };
 
-                    const moodValue = data.moodChange || 0;
-                    const fillPercentage = ((moodValue + 50) / 100) * 100;
-                    const fillColor = moodValue > 0 ? '#B5FFD9' : moodValue < 0 ? '#FFB5B5' : '#888';
+                    const minPos = ((moodMin + 50) / 100) * 100;
+                    const maxPos = ((moodMax + 50) / 100) * 100;
+                    const rangeColor = (moodMin + moodMax) / 2 > 0 ? '#B5FFD9' : (moodMin + moodMax) / 2 < 0 ? '#FFB5B5' : '#888';
 
                     return (
                         <div
                             ref={moodRef}
                             className="nodrag"
-                            onMouseDown={handleMouseDown}
                             style={{
                                 marginBottom: '10px',
                                 padding: '8px 10px',
                                 background: 'rgba(255, 229, 181, 0.05)',
                                 borderRadius: '6px',
-                                border: `1px solid ${isDragging ? 'rgba(255, 229, 181, 0.4)' : 'rgba(255, 229, 181, 0.1)'}`,
-                                cursor: 'ew-resize',
+                                border: `1px solid ${draggingHandle ? 'rgba(255, 229, 181, 0.4)' : 'rgba(255, 229, 181, 0.1)'}`,
                                 userSelect: 'none',
                                 transition: 'border-color 0.15s',
                             }}
@@ -287,7 +291,6 @@ const EventNode = ({ id, data, selected }) => {
                                 alignItems: 'center',
                                 justifyContent: 'space-between',
                                 marginBottom: '6px',
-                                pointerEvents: 'none',
                             }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                     <span style={{ fontSize: '12px' }}>😊</span>
@@ -296,11 +299,15 @@ const EventNode = ({ id, data, selected }) => {
                                     </span>
                                 </div>
                                 <span style={{
-                                    fontSize: '12px',
+                                    fontSize: '11px',
                                     fontWeight: 600,
-                                    color: moodValue > 0 ? '#B5FFD9' : moodValue < 0 ? '#FFB5B5' : 'rgba(255,255,255,0.5)',
+                                    color: rangeColor,
                                 }}>
-                                    {moodValue > 0 ? '+' : ''}{moodValue}
+                                    {moodMin === moodMax ? (
+                                        <>{moodMin > 0 ? '+' : ''}{moodMin}</>
+                                    ) : (
+                                        <>{moodMin > 0 ? '+' : ''}{moodMin} to {moodMax > 0 ? '+' : ''}{moodMax}</>
+                                    )}
                                 </span>
                             </div>
                             {/* Visual track */}
@@ -308,32 +315,55 @@ const EventNode = ({ id, data, selected }) => {
                                 height: '8px',
                                 background: 'rgba(255,255,255,0.1)',
                                 borderRadius: '4px',
-                                overflow: 'hidden',
                                 position: 'relative',
                             }}>
+                                {/* Range fill between min and max */}
                                 <div style={{
                                     position: 'absolute',
-                                    left: 0,
+                                    left: `${minPos}%`,
                                     top: 0,
                                     height: '100%',
-                                    width: `${fillPercentage}%`,
-                                    background: fillColor,
+                                    width: `${maxPos - minPos}%`,
+                                    background: rangeColor,
                                     borderRadius: '4px',
-                                    transition: isDragging ? 'none' : 'width 0.1s',
+                                    opacity: 0.6,
                                 }} />
-                                {/* Handle indicator */}
-                                <div style={{
-                                    position: 'absolute',
-                                    left: `${fillPercentage}%`,
-                                    top: '50%',
-                                    transform: 'translate(-50%, -50%)',
-                                    width: '12px',
-                                    height: '12px',
-                                    borderRadius: '50%',
-                                    background: fillColor,
-                                    border: '2px solid rgba(0,0,0,0.3)',
-                                    boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
-                                }} />
+                                {/* Min handle */}
+                                <div
+                                    onMouseDown={handleMouseDown('min')}
+                                    style={{
+                                        position: 'absolute',
+                                        left: `${minPos}%`,
+                                        top: '50%',
+                                        transform: 'translate(-50%, -50%)',
+                                        width: '14px',
+                                        height: '14px',
+                                        borderRadius: '50%',
+                                        background: draggingHandle === 'min' ? '#FFE5B5' : '#FFB5B5',
+                                        border: '2px solid rgba(0,0,0,0.3)',
+                                        boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+                                        cursor: 'ew-resize',
+                                        zIndex: draggingHandle === 'min' ? 2 : 1,
+                                    }}
+                                />
+                                {/* Max handle */}
+                                <div
+                                    onMouseDown={handleMouseDown('max')}
+                                    style={{
+                                        position: 'absolute',
+                                        left: `${maxPos}%`,
+                                        top: '50%',
+                                        transform: 'translate(-50%, -50%)',
+                                        width: '14px',
+                                        height: '14px',
+                                        borderRadius: '50%',
+                                        background: draggingHandle === 'max' ? '#FFE5B5' : '#B5FFD9',
+                                        border: '2px solid rgba(0,0,0,0.3)',
+                                        boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+                                        cursor: 'ew-resize',
+                                        zIndex: draggingHandle === 'max' ? 2 : 1,
+                                    }}
+                                />
                             </div>
                         </div>
                     );
