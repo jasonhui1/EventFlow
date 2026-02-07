@@ -868,7 +868,7 @@ function App() {
                 )}
             </div>
 
-            {/* <PropertiesPanel /> */}
+            <PropertiesPanel />
 
             {
                 showSimulationModal && (

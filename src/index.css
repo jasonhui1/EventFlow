@@ -857,17 +857,46 @@ body {
 
 .properties-panel {
   width: 320px;
-  height: 100%;
+  height: 100vh;
   background: var(--bg-secondary);
   border-left: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  transition: width var(--transition-normal);
+}
+
+.properties-panel.collapsed {
+  width: 50px;
 }
 
 .properties-header {
   padding: 20px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  position: relative;
+  min-height: 60px;
+}
+
+.properties-panel.collapsed .properties-header {
+  padding: 12px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.properties-panel .sidebar-collapse-btn {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.properties-panel.collapsed .sidebar-collapse-btn {
+  position: relative;
+  right: auto;
+  top: auto;
+  transform: none;
+  margin: 0 auto;
 }
 
 .properties-title {
