@@ -452,6 +452,56 @@ const getSelectedEdges = (node, outgoingEdges, processedNodes) => {
 };
 
 /**
+ * Process a reference node by recursively simulating the referenced event
+ * Returns { results: [], newMood } or null if reference should be skipped
+ */
+const processReferenceNode = (refNode, context) => {
+    const { allEvents, processedNodes, currentEdges, currentEventFixedPrompt,
+        visitedEdgeIds, incomingContextParts, visitedEventIds, moodConfig, currentMood } = context;
+
+    if (!refNode.data?.referenceId || visitedEventIds.has(refNode.data.referenceId)) {
+        return null; // Skip if no reference or already visited
+    }
+
+    const refEvent = allEvents.find(e => e.id === refNode.data.referenceId);
+    if (!refEvent?.nodes) return null;
+
+    // Get context parts from current position
+    const { parts: refPromptParts } = getComposedPrompt(
+        refNode.id, allEvents, processedNodes, currentEdges, currentEventFixedPrompt,
+        { allowedEdges: visitedEdgeIds, randomize: false, resolveReferences: false }
+    );
+
+    const newContextParts = [...incomingContextParts, ...refPromptParts];
+    const newVisitedEvents = new Set(visitedEventIds).add(refNode.data.referenceId);
+
+    // Deep clone and apply input overrides
+    const nodesToSimulate = refEvent.nodes.map(n => ({ ...n, data: { ...n.data } }));
+    const overrides = refNode.data?.inputOverrides || {};
+    const startNode = nodesToSimulate.find(n => n.type === 'startNode');
+
+    if (startNode?.data?.inputs) {
+        startNode.data.inputs = startNode.data.inputs.map(input => ({
+            ...input,
+            enabled: overrides.hasOwnProperty(input.id) ? overrides[input.id] : input.enabled
+        }));
+    }
+
+    // Recursively simulate
+    const innerResults = simulateEvent(
+        allEvents, nodesToSimulate, refEvent.edges || [], refEvent.fixedPrompt || '',
+        newContextParts, newVisitedEvents, {}, moodConfig, currentMood
+    );
+
+    // Get updated mood from inner simulation
+    const newMood = innerResults.length > 0 && innerResults[innerResults.length - 1].mood !== undefined
+        ? innerResults[innerResults.length - 1].mood
+        : currentMood;
+
+    return { results: innerResults, newMood };
+};
+
+/**
  * Simulate an event flow and return an array of resulting prompts
  */
 export const simulateEvent = (
@@ -505,61 +555,23 @@ export const simulateEvent = (
 
         visitedNodeIds.add(currentNode.id);
 
-        if (currentNode.type === 'referenceNode' && currentNode.data?.referenceId) {
-            if (!visitedEventIds.has(currentNode.data.referenceId)) {
-                const refEvent = allEvents.find(e => e.id === currentNode.data.referenceId);
-                if (refEvent && refEvent.nodes) {
-                    const { parts: refPromptParts } = getComposedPrompt(
-                        currentNode.id,
-                        allEvents,
-                        processedNodes,
-                        currentEdges,
-                        currentEventFixedPrompt,
-                        {
-                            allowedEdges: visitedEdgeIds,
-                            randomize: false,
-                            resolveReferences: false
-                        }
-                    );
-
-                    const newContextParts = [...incomingContextParts, ...refPromptParts];
-                    const newVisitedEvents = new Set(visitedEventIds).add(currentNode.data.referenceId);
-
-                    // Deep clone nodes to avoid mutating the original store during simulation
-                    // and apply input overrides from the reference node
-                    const nodesToSimulate = refEvent.nodes.map(n => ({ ...n, data: { ...n.data } }));
-                    const overrides = currentNode.data?.inputOverrides || {};
-                    const startNode = nodesToSimulate.find(n => n.type === 'startNode');
-
-                    if (startNode && startNode.data.inputs) {
-                        startNode.data.inputs = startNode.data.inputs.map(input => ({
-                            ...input,
-                            enabled: overrides.hasOwnProperty(input.id) ? overrides[input.id] : input.enabled
-                        }));
-                    }
-
-                    const innerResults = simulateEvent(
-                        allEvents,
-                        nodesToSimulate,
-                        refEvent.edges || [],
-                        refEvent.fixedPrompt || '',
-                        newContextParts,
-                        newVisitedEvents,
-                        {}, // inputOverrides - use default for inner simulation
-                        moodConfig,
-                        currentMood // Pass current mood to inner simulation
-                    );
-                    // Update currentMood from inner results if they affected it
-                    if (innerResults.length > 0 && innerResults[innerResults.length - 1].mood !== undefined) {
-                        currentMood = innerResults[innerResults.length - 1].mood;
-                    }
-                    results.push(...innerResults);
-                }
+        // Phase 2: Handle reference nodes (recursive simulation)
+        if (currentNode.type === 'referenceNode') {
+            const refResult = processReferenceNode(currentNode, {
+                allEvents, processedNodes, currentEdges, currentEventFixedPrompt,
+                visitedEdgeIds, incomingContextParts, visitedEventIds, moodConfig, currentMood
+            });
+            if (refResult) {
+                currentMood = refResult.newMood;
+                results.push(...refResult.results);
             }
-        } else {
-            const hiddenTypes = ['startNode', 'endNode', 'branchNode', 'referenceNode', 'ifNode', 'carryForwardNode', 'fieldNode'];
-            // Skip adding to results if blocked by field, but still process outgoing edges below
-            if (!hiddenTypes.includes(currentNode.type) && !isBlockedByField) {
+        }
+        // Phase 3: Build result for visible nodes
+
+        else if (currentNode.type === 'referenceNode') {
+            // const hiddenTypes = ['startNode', 'endNode', 'branchNode', 'referenceNode', 'ifNode', 'carryForwardNode', 'fieldNode'];
+            // if (!hiddenTypes.includes(currentNode.type) && !isBlockedByField) {
+            if (!isBlockedByField) {
                 const { result, newMood } = buildNodeResult(currentNode, {
                     allEvents, processedNodes, currentEdges, currentEventFixedPrompt,
                     visitedEdgeIds, incomingContextParts, moodConfig, currentMood, containingFieldId
