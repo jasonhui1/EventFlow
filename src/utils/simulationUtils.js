@@ -390,6 +390,68 @@ const buildNodeResult = (node, context) => {
 };
 
 /**
+ * Apply input overrides to start nodes
+ */
+const applyInputOverrides = (nodes, inputOverrides) => {
+    if (!inputOverrides || Object.keys(inputOverrides).length === 0) return nodes;
+
+    return nodes.map(node => {
+        if (node.type !== 'startNode') return node;
+        return {
+            ...node,
+            data: {
+                ...node.data,
+                inputs: node.data.inputs?.map(input => ({
+                    ...input,
+                    enabled: inputOverrides.hasOwnProperty(input.id)
+                        ? inputOverrides[input.id]
+                        : input.enabled
+                }))
+            }
+        };
+    });
+};
+
+/**
+ * Queue target nodes from edges
+ */
+const followEdges = (edges, nodes, queue, visitedEdgeIds) => {
+    edges.forEach(edge => {
+        visitedEdgeIds.add(edge.id);
+        const targetNode = nodes.find(n => n.id === edge.target);
+        if (targetNode) queue.push(targetNode);
+    });
+};
+
+/**
+ * Get selected edges based on node type (branch picks random, if evaluates condition, default follows all)
+ */
+const getSelectedEdges = (node, outgoingEdges, processedNodes) => {
+    if (node.type === 'branchNode') {
+        if (outgoingEdges.length === 0) return [];
+        const uniqueHandles = [...new Set(outgoingEdges.map(e => e.sourceHandle))];
+        const randomHandle = uniqueHandles[Math.floor(Math.random() * uniqueHandles.length)];
+        return outgoingEdges.filter(e => e.sourceHandle === randomHandle);
+    }
+
+    if (node.type === 'ifNode') {
+        const startNode = processedNodes.find(n => n.type === 'startNode');
+        const startInputs = startNode?.data?.inputs || [];
+        const conditionInputIds = node.data?.conditionInputIds || [];
+
+        const allEnabled = conditionInputIds.length > 0 && conditionInputIds.every(inputId => {
+            const input = startInputs.find(i => i.id === inputId);
+            return input?.enabled === true;
+        });
+
+        const selectedHandle = allEnabled ? 'true_output' : 'false_output';
+        return outgoingEdges.filter(e => e.sourceHandle === selectedHandle);
+    }
+
+    return outgoingEdges; // Default: follow all edges
+};
+
+/**
  * Simulate an event flow and return an array of resulting prompts
  */
 export const simulateEvent = (
@@ -403,24 +465,8 @@ export const simulateEvent = (
     moodConfig = null, // Mood configuration: { tiers, tags, initialMoodRange }
     incomingMood = null // Mood carried from parent simulation
 ) => {
-    // Apply input overrides to top-level start nodes if provided
-    const processedNodes = currentNodes.map(node => {
-        if (node.type === 'startNode' && inputOverrides && Object.keys(inputOverrides).length > 0) {
-            return {
-                ...node,
-                data: {
-                    ...node.data,
-                    inputs: node.data.inputs?.map(input => ({
-                        ...input,
-                        enabled: inputOverrides.hasOwnProperty(input.id)
-                            ? inputOverrides[input.id]
-                            : input.enabled
-                    }))
-                }
-            };
-        }
-        return node;
-    });
+    // Phase 0: Apply input overrides to start nodes
+    const processedNodes = applyInputOverrides(currentNodes, inputOverrides);
 
     const startNodes = processedNodes.filter(n => n.type === 'startNode');
 
@@ -525,47 +571,10 @@ export const simulateEvent = (
 
         if (currentNode.type === 'endNode') continue;
 
+        // Phase 4: Follow edges to next nodes
         const outgoingEdges = currentEdges.filter(e => e.source === currentNode.id);
-
-        if (currentNode.type === 'branchNode') {
-            if (outgoingEdges.length > 0) {
-                const uniqueHandles = [...new Set(outgoingEdges.map(e => e.sourceHandle))];
-                const randomHandle = uniqueHandles[Math.floor(Math.random() * uniqueHandles.length)];
-                const selectedEdges = outgoingEdges.filter(e => e.sourceHandle === randomHandle);
-                selectedEdges.forEach(edge => {
-                    visitedEdgeIds.add(edge.id);
-                    const targetNode = processedNodes.find(n => n.id === edge.target);
-                    if (targetNode) queue.push(targetNode);
-                });
-            }
-        } else if (currentNode.type === 'ifNode') {
-            // Evaluate condition based on Start Node inputs
-            const startNode = processedNodes.find(n => n.type === 'startNode');
-            const startInputs = startNode?.data?.inputs || [];
-            const conditionInputIds = currentNode.data?.conditionInputIds || [];
-
-            // Check if ALL selected inputs are enabled
-            const allEnabled = conditionInputIds.length > 0 && conditionInputIds.every(inputId => {
-                const input = startInputs.find(i => i.id === inputId);
-                return input?.enabled === true;
-            });
-
-            // Select the appropriate output handle based on condition result
-            const selectedHandle = allEnabled ? 'true_output' : 'false_output';
-            const selectedEdges = outgoingEdges.filter(e => e.sourceHandle === selectedHandle);
-
-            selectedEdges.forEach(edge => {
-                visitedEdgeIds.add(edge.id);
-                const targetNode = processedNodes.find(n => n.id === edge.target);
-                if (targetNode) queue.push(targetNode);
-            });
-        } else {
-            outgoingEdges.forEach(edge => {
-                visitedEdgeIds.add(edge.id);
-                const targetNode = processedNodes.find(n => n.id === edge.target);
-                if (targetNode) queue.push(targetNode);
-            });
-        }
+        const selectedEdges = getSelectedEdges(currentNode, outgoingEdges, processedNodes);
+        followEdges(selectedEdges, processedNodes, queue, visitedEdgeIds);
     }
 
     // Phase 5: Post-processing - shuffle field results if enabled
