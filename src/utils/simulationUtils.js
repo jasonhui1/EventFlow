@@ -283,6 +283,7 @@ export const simulateEvent = (
     const fieldNodes = processedNodes.filter(n => n.type === 'fieldNode');
     const nodeToFieldMap = new Map(); // Maps nodeId -> fieldNodeId that contains it
     const unlockedByField = new Set(); // Nodes selected by their parent field (populated upfront)
+    const fieldSettings = new Map(); // Maps fieldId -> { randomizeOrder }
 
 
     // Process all Field Nodes upfront - they are purely spatial containers with no edges
@@ -314,8 +315,11 @@ export const simulateEvent = (
 
         // Apply weighted selection upfront
         const selectCount = field.data?.selectCount ?? 1;
-
+        const randomizeOrder = field.data?.randomizeOrder ?? true;
         const childWeights = field.data?.childWeights || {};
+
+        // Store field settings for post-processing
+        fieldSettings.set(field.id, { randomizeOrder });
 
         // Build weighted pool
         let weightedPool = [];
@@ -481,7 +485,8 @@ export const simulateEvent = (
                     prompt: fullPrompt,
                     parts: finalParts,
                     mood: currentMood,
-                    moodTag: moodTag
+                    moodTag: moodTag,
+                    fieldId: containingFieldId || null // Track which field this result came from
                 });
             }
         }
@@ -528,6 +533,29 @@ export const simulateEvent = (
                 const targetNode = processedNodes.find(n => n.id === edge.target);
                 if (targetNode) queue.push(targetNode);
             });
+        }
+    }
+
+    // Post-processing: shuffle consecutive results from fields with randomizeOrder enabled
+    let i = 0;
+    while (i < results.length) {
+        const fieldId = results[i].fieldId;
+        if (fieldId && fieldSettings.get(fieldId)?.randomizeOrder) {
+            // Find the run of consecutive results from this field
+            let j = i + 1;
+            while (j < results.length && results[j].fieldId === fieldId) {
+                j++;
+            }
+            // Shuffle results[i..j-1]
+            if (j - i > 1) {
+                for (let k = j - 1; k > i; k--) {
+                    const m = i + Math.floor(Math.random() * (k - i + 1));
+                    [results[k], results[m]] = [results[m], results[k]];
+                }
+            }
+            i = j;
+        } else {
+            i++;
         }
     }
 
