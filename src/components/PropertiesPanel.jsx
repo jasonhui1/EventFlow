@@ -28,7 +28,7 @@ const PropertiesPanel = () => {
 
     const [showPreview, setShowPreview] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
-    const [isCollapsed, setIsCollapsed] = useState(false);
+    const [isCollapsed, setIsCollapsed] = useState(true);
 
     if (!selectedNode) {
         return (

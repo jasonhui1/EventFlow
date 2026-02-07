@@ -1,4 +1,4 @@
-import React, { useRef, useLayoutEffect, forwardRef, useImperativeHandle } from 'react';
+import React, { useRef, useLayoutEffect, forwardRef, useImperativeHandle, useEffect } from 'react';
 
 const ResizingTextarea = forwardRef(({ value, onChange, placeholder, className, style, minHeight, ...props }, ref) => {
     const innerRef = useRef(null);
@@ -18,6 +18,26 @@ const ResizingTextarea = forwardRef(({ value, onChange, placeholder, className, 
     useLayoutEffect(() => {
         autoResize();
     }, [value]);
+
+    // Re-resize when container animations complete (e.g., panel open/close)
+    useEffect(() => {
+        const textarea = innerRef.current;
+        if (!textarea) return;
+
+        // Use ResizeObserver on parent to detect container size changes
+        const observer = new ResizeObserver(() => {
+            // Debounce resize to avoid excessive calls during animation
+            requestAnimationFrame(autoResize);
+        });
+
+        // Observe the nearest scrollable parent or the document body
+        const parent = textarea.closest('.properties-content') || textarea.parentElement;
+        if (parent) {
+            observer.observe(parent);
+        }
+
+        return () => observer.disconnect();
+    }, []);
 
     return (
         <textarea
