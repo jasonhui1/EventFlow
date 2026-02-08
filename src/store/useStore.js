@@ -435,7 +435,7 @@ const useStore = create(
             },
 
             // Event Actions
-            addEvent: (name = 'New Event') => {
+            addEvent: (name = 'New Event', folderId = null) => {
                 const startNode = createStartNode({ x: 50, y: 50 });
                 const event1 = createEventNode({ x: 400, y: 50 }, { label: 'Event 1' });
                 const event2 = createEventNode({ x: 750, y: 50 }, { label: 'Event 2' });
@@ -458,6 +458,7 @@ const useStore = create(
                     name,
                     description: '',
                     fixedPrompt: '',
+                    folderId, // Associate with folder if provided
                     nodes,
                     edges,
                     viewport: { x: 0, y: 0, zoom: 1 },
@@ -473,6 +474,8 @@ const useStore = create(
                     edges: newEvent.edges,
                     viewport: newEvent.viewport,
                 }));
+                // Open a tab for the new event
+                get().openTab(newEvent.id);
                 return newEvent.id;
             },
 
@@ -495,6 +498,8 @@ const useStore = create(
                     nodes: newEvent.nodes,
                     edges: newEvent.edges,
                 }));
+                // Open a tab for the duplicated event
+                get().openTab(newEvent.id);
             },
 
             deleteEvent: (eventId) => {

@@ -24,6 +24,7 @@ const Sidebar = () => {
 
     // Modal states
     const [showNewEventModal, setShowNewEventModal] = useState(false);
+    const [newEventFolderId, setNewEventFolderId] = useState(null); // For creating events in folders
     const [showNewFolderModal, setShowNewFolderModal] = useState(false);
     const [newFolderParentId, setNewFolderParentId] = useState(null); // For creating subfolders
     const [renameFolderModal, setRenameFolderModal] = useState(null); // { id, name }
@@ -185,6 +186,23 @@ const Sidebar = () => {
                     </span>
                     {hoveredFolderId === folder.id && (
                         <div className="folder-actions" style={{ display: 'flex', gap: '4px' }}>
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setNewEventFolderId(folder.id);
+                                    setShowNewEventModal(true);
+                                }}
+                                style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    color: 'rgba(255,255,255,0.4)',
+                                    cursor: 'pointer',
+                                    fontSize: '12px',
+                                }}
+                                title="Add Event"
+                            >
+                                +📌
+                            </button>
                             <button
                                 onClick={(e) => {
                                     e.stopPropagation();
@@ -600,10 +618,14 @@ const Sidebar = () => {
             {/* New Event Modal */}
             <ConfirmModal
                 isOpen={showNewEventModal}
-                onClose={() => setShowNewEventModal(false)}
-                onConfirm={(name) => {
-                    addEvent(name);
+                onClose={() => {
                     setShowNewEventModal(false);
+                    setNewEventFolderId(null);
+                }}
+                onConfirm={(name) => {
+                    addEvent(name, newEventFolderId);
+                    setShowNewEventModal(false);
+                    setNewEventFolderId(null);
                 }}
                 title="New Event"
                 message="Enter a name for the new event:"
