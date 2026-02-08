@@ -163,6 +163,22 @@ body {
   color: var(--text-muted);
 }
 
+.sidebar-resize-handle {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  cursor: col-resize;
+  z-index: 100;
+  transition: background-color 0.2s;
+}
+
+.sidebar-resize-handle:hover,
+.sidebar-resize-handle.dragging {
+  background-color: var(--pastel-purple);
+}
+
 /* Sidebar Tabs */
 .sidebar-tabs {
   display: flex;

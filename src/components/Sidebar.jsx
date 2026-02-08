@@ -1,8 +1,15 @@
-import React, { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import useStore from '../store/useStore';
 import ConfirmModal from './ConfirmModal';
 
+const DEFAULT_SIDEBAR_WIDTH = 300;
+const MIN_SIDEBAR_WIDTH = 200;
+const MAX_SIDEBAR_WIDTH = 800;
+
 const Sidebar = () => {
+    const dragStartX = useRef(0);
+    const dragStartWidth = useRef(0);
+    const [isDragging, setIsDragging] = useState(false)
     const [isCollapsed, setIsCollapsed] = useState(true);
     const events = useStore((state) => state.events);
     const folders = useStore((state) => state.folders);
@@ -34,6 +41,40 @@ const Sidebar = () => {
     const [activeTab, setActiveTab] = useState('library'); // 'nodes', 'library', 'tips'
     const [expandedFolders, setExpandedFolders] = useState({}); // { folderId: boolean }
     const [hoveredFolderId, setHoveredFolderId] = useState(null);
+
+    const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR_WIDTH)
+
+    // Handle drag resize
+    useEffect(() => {
+        if (!isDragging) return
+
+        const handleMouseMove = (e) => {
+            // Dragging right increases width (since sidebar is on the left)
+            const deltaX = e.clientX - dragStartX.current
+            const newWidth = Math.min(MAX_SIDEBAR_WIDTH, Math.max(MIN_SIDEBAR_WIDTH, dragStartWidth.current + deltaX))
+            setSidebarWidth(newWidth)
+        }
+
+        const handleMouseUp = () => {
+            setIsDragging(false)
+        }
+
+        document.addEventListener('mousemove', handleMouseMove)
+        document.addEventListener('mouseup', handleMouseUp)
+
+        return () => {
+            document.removeEventListener('mousemove', handleMouseMove)
+            document.removeEventListener('mouseup', handleMouseUp)
+        }
+    }, [isDragging])
+
+    const handleDragStart = (e) => {
+        e.preventDefault()
+        dragStartX.current = e.clientX
+        dragStartWidth.current = sidebarWidth
+        setIsDragging(true)
+    }
+
 
     const toggleFolder = (folderId) => {
         setExpandedFolders(prev => ({
@@ -320,12 +361,24 @@ const Sidebar = () => {
     };
 
     return (
-        <div className={`sidebar ${isCollapsed ? 'collapsed' : ''}`}>
+        <div className={`sidebar ${isCollapsed ? 'collapsed' : ''}`}
+            style={{
+                ...(isCollapsed ? {} : { width: `${sidebarWidth}px` }),
+                transition: isDragging ? 'none' : 'width 0.2s',
+                position: 'relative',
+            }}
+        >
+            <div
+                onMouseDown={handleDragStart}
+                className={`sidebar-resize-handle ${isDragging ? 'dragging' : ''}`}
+                title="Drag to resize"
+            />
             <div className="sidebar-header">
                 {!isCollapsed && (
                     <>
                         <h1 className="sidebar-title">Event Flow Writer</h1>
                         <p className="sidebar-subtitle">Visual story builder</p>
+
                     </>
                 )}
                 <button
@@ -336,6 +389,9 @@ const Sidebar = () => {
                     {isCollapsed ? '»' : '«'}
                 </button>
             </div>
+
+
+
 
             <div className="sidebar-tabs">
 
@@ -365,255 +421,257 @@ const Sidebar = () => {
                 </button>
             </div>
 
-            {!isCollapsed && <div className="sidebar-content">
-                {/* Node Palette */}
-                {activeTab === 'nodes' && (
-                    <div className="sidebar-section">
-                        <h3 className="sidebar-section-title">Node Types</h3>
-                        <div className="node-palette">
-                            <div
-                                className="palette-node"
-                                draggable
-                                onDragStart={(e) => onDragStart(e, 'startNode')}
-                            >
-                                <div className="palette-node-icon" style={{ color: '#B5FFD9' }}>🚀</div>
-                                <div className="palette-node-info">
-                                    <div className="palette-node-name">Start Node</div>
-                                    <div className="palette-node-desc">Begin flow</div>
+            {
+                !isCollapsed && <div className="sidebar-content">
+                    {/* Node Palette */}
+                    {activeTab === 'nodes' && (
+                        <div className="sidebar-section">
+                            <h3 className="sidebar-section-title">Node Types</h3>
+                            <div className="node-palette">
+                                <div
+                                    className="palette-node"
+                                    draggable
+                                    onDragStart={(e) => onDragStart(e, 'startNode')}
+                                >
+                                    <div className="palette-node-icon" style={{ color: '#B5FFD9' }}>🚀</div>
+                                    <div className="palette-node-info">
+                                        <div className="palette-node-name">Start Node</div>
+                                        <div className="palette-node-desc">Begin flow</div>
+                                    </div>
                                 </div>
-                            </div>
 
-                            <div
-                                className="palette-node"
-                                draggable
-                                onDragStart={(e) => onDragStart(e, 'endNode')}
-                            >
-                                <div className="palette-node-icon" style={{ color: '#FFB5C5' }}>🏁</div>
-                                <div className="palette-node-info">
-                                    <div className="palette-node-name">End Node</div>
-                                    <div className="palette-node-desc">End flow</div>
+                                <div
+                                    className="palette-node"
+                                    draggable
+                                    onDragStart={(e) => onDragStart(e, 'endNode')}
+                                >
+                                    <div className="palette-node-icon" style={{ color: '#FFB5C5' }}>🏁</div>
+                                    <div className="palette-node-info">
+                                        <div className="palette-node-name">End Node</div>
+                                        <div className="palette-node-desc">End flow</div>
+                                    </div>
                                 </div>
-                            </div>
 
-                            <div
-                                className="palette-node"
-                                draggable
-                                onDragStart={(e) => onDragStart(e, 'eventNode')}
-                            >
-                                <div className="palette-node-icon event">📌</div>
-                                <div className="palette-node-info">
-                                    <div className="palette-node-name">Event Node</div>
-                                    <div className="palette-node-desc">Single event/scene</div>
+                                <div
+                                    className="palette-node"
+                                    draggable
+                                    onDragStart={(e) => onDragStart(e, 'eventNode')}
+                                >
+                                    <div className="palette-node-icon event">📌</div>
+                                    <div className="palette-node-info">
+                                        <div className="palette-node-name">Event Node</div>
+                                        <div className="palette-node-desc">Single event/scene</div>
+                                    </div>
                                 </div>
-                            </div>
 
-                            <div
-                                className="palette-node"
-                                draggable
-                                onDragStart={(e) => onDragStart(e, 'groupNode')}
-                            >
-                                <div className="palette-node-icon group">📁</div>
-                                <div className="palette-node-info">
-                                    <div className="palette-node-name">Group Node</div>
-                                    <div className="palette-node-desc">Fixed prompt container</div>
+                                <div
+                                    className="palette-node"
+                                    draggable
+                                    onDragStart={(e) => onDragStart(e, 'groupNode')}
+                                >
+                                    <div className="palette-node-icon group">📁</div>
+                                    <div className="palette-node-info">
+                                        <div className="palette-node-name">Group Node</div>
+                                        <div className="palette-node-desc">Fixed prompt container</div>
+                                    </div>
                                 </div>
-                            </div>
 
-                            <div
-                                className="palette-node"
-                                draggable
-                                onDragStart={(e) => onDragStart(e, 'branchNode')}
-                            >
-                                <div className="palette-node-icon branch">🔀</div>
-                                <div className="palette-node-info">
-                                    <div className="palette-node-name">Branch Node</div>
-                                    <div className="palette-node-desc">Probability split</div>
+                                <div
+                                    className="palette-node"
+                                    draggable
+                                    onDragStart={(e) => onDragStart(e, 'branchNode')}
+                                >
+                                    <div className="palette-node-icon branch">🔀</div>
+                                    <div className="palette-node-info">
+                                        <div className="palette-node-name">Branch Node</div>
+                                        <div className="palette-node-desc">Probability split</div>
+                                    </div>
                                 </div>
-                            </div>
 
-                            <div
-                                className="palette-node"
-                                draggable
-                                onDragStart={(e) => onDragStart(e, 'ifNode')}
-                            >
-                                <div className="palette-node-icon" style={{ borderColor: '#FFE4B5', color: '#FFE4B5' }}>❓</div>
-                                <div className="palette-node-info">
-                                    <div className="palette-node-name">If Node</div>
-                                    <div className="palette-node-desc">Conditional branching</div>
+                                <div
+                                    className="palette-node"
+                                    draggable
+                                    onDragStart={(e) => onDragStart(e, 'ifNode')}
+                                >
+                                    <div className="palette-node-icon" style={{ borderColor: '#FFE4B5', color: '#FFE4B5' }}>❓</div>
+                                    <div className="palette-node-info">
+                                        <div className="palette-node-name">If Node</div>
+                                        <div className="palette-node-desc">Conditional branching</div>
+                                    </div>
                                 </div>
-                            </div>
 
-                            <div
-                                className="palette-node"
-                                draggable
-                                onDragStart={(e) => onDragStart(e, 'referenceNode')}
-                            >
-                                <div className="palette-node-icon" style={{ background: 'linear-gradient(135deg, #E5D4FF, #B5F5FF)' }}>🔗</div>
-                                <div className="palette-node-info">
-                                    <div className="palette-node-name">Reference Node</div>
-                                    <div className="palette-node-desc">Reuse other events</div>
+                                <div
+                                    className="palette-node"
+                                    draggable
+                                    onDragStart={(e) => onDragStart(e, 'referenceNode')}
+                                >
+                                    <div className="palette-node-icon" style={{ background: 'linear-gradient(135deg, #E5D4FF, #B5F5FF)' }}>🔗</div>
+                                    <div className="palette-node-info">
+                                        <div className="palette-node-name">Reference Node</div>
+                                        <div className="palette-node-desc">Reuse other events</div>
+                                    </div>
                                 </div>
-                            </div>
 
-                            <div
-                                className="palette-node"
-                                draggable
-                                onDragStart={(e) => onDragStart(e, 'carryForwardNode')}
-                            >
-                                <div className="palette-node-icon" style={{ color: '#B5FFD9' }}>⏩</div>
-                                <div className="palette-node-info">
-                                    <div className="palette-node-name">Carry Forward</div>
-                                    <div className="palette-node-desc">Pass prompt forward</div>
+                                <div
+                                    className="palette-node"
+                                    draggable
+                                    onDragStart={(e) => onDragStart(e, 'carryForwardNode')}
+                                >
+                                    <div className="palette-node-icon" style={{ color: '#B5FFD9' }}>⏩</div>
+                                    <div className="palette-node-info">
+                                        <div className="palette-node-name">Carry Forward</div>
+                                        <div className="palette-node-desc">Pass prompt forward</div>
+                                    </div>
                                 </div>
-                            </div>
 
-                            <div
-                                className="palette-node"
-                                draggable
-                                onDragStart={(e) => onDragStart(e, 'fieldNode')}
-                            >
-                                <div className="palette-node-icon" style={{ color: '#B5F5FF', borderColor: '#B5F5FF' }}>🎲</div>
-                                <div className="palette-node-info">
-                                    <div className="palette-node-name">Field</div>
-                                    <div className="palette-node-desc">Random selection region</div>
+                                <div
+                                    className="palette-node"
+                                    draggable
+                                    onDragStart={(e) => onDragStart(e, 'fieldNode')}
+                                >
+                                    <div className="palette-node-icon" style={{ color: '#B5F5FF', borderColor: '#B5F5FF' }}>🎲</div>
+                                    <div className="palette-node-info">
+                                        <div className="palette-node-name">Field</div>
+                                        <div className="palette-node-desc">Random selection region</div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                )}
+                    )}
 
-                {/* Event Library */}
-                {activeTab === 'library' && (
-                    <div className="sidebar-section">
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <h3 className="sidebar-section-title">Event Library</h3>
-                            <button
-                                onClick={() => {
-                                    setNewFolderParentId(null);
-                                    setShowNewFolderModal(true);
-                                }}
-                                title="New Folder"
-                                style={{
-                                    background: 'none',
-                                    border: 'none',
-                                    color: 'rgba(255,255,255,0.6)',
-                                    cursor: 'pointer',
-                                    fontSize: '14px',
-                                    padding: '4px',
-                                }}
+                    {/* Event Library */}
+                    {activeTab === 'library' && (
+                        <div className="sidebar-section">
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <h3 className="sidebar-section-title">Event Library</h3>
+                                <button
+                                    onClick={() => {
+                                        setNewFolderParentId(null);
+                                        setShowNewFolderModal(true);
+                                    }}
+                                    title="New Folder"
+                                    style={{
+                                        background: 'none',
+                                        border: 'none',
+                                        color: 'rgba(255,255,255,0.6)',
+                                        cursor: 'pointer',
+                                        fontSize: '14px',
+                                        padding: '4px',
+                                    }}
+                                >
+                                    📁+
+                                </button>
+                            </div>
+
+                            <div className="sidebar-search">
+                                <span className="sidebar-search-icon">🔍</span>
+                                <input
+                                    type="text"
+                                    className="sidebar-search-input"
+                                    placeholder="Search events..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                />
+                            </div>
+
+                            <div
+                                className="event-library"
+                                onDragOver={(e) => e.preventDefault()}
+                                onDrop={onDropOnRoot}
                             >
-                                📁+
-                            </button>
-                        </div>
+                                {/* Render Root Folders (recursively) */}
+                                {rootFolders.map(folder => renderFolder(folder))}
 
-                        <div className="sidebar-search">
-                            <span className="sidebar-search-icon">🔍</span>
-                            <input
-                                type="text"
-                                className="sidebar-search-input"
-                                placeholder="Search events..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                            />
-                        </div>
-
-                        <div
-                            className="event-library"
-                            onDragOver={(e) => e.preventDefault()}
-                            onDrop={onDropOnRoot}
-                        >
-                            {/* Render Root Folders (recursively) */}
-                            {rootFolders.map(folder => renderFolder(folder))}
-
-                            {/* Root Events */}
-                            {rootEvents.length > 0 && (
-                                <div className="root-events">
-                                    {folders.length > 0 && (
-                                        <div style={{
-                                            padding: '8px 10px',
-                                            fontSize: '11px',
-                                            color: 'rgba(255,255,255,0.4)',
-                                            textTransform: 'uppercase',
-                                            marginTop: '8px'
-                                        }}>
-                                            Uncategorized
-                                        </div>
-                                    )}
-                                    {rootEvents.map((event) => (
-                                        <div
-                                            key={event.id}
-                                            className={`event-item ${currentEventId === event.id ? 'active' : ''}`}
-                                            onClick={() => selectEvent(event.id)}
-                                            draggable
-                                            onDragStart={(e) => onEventDragStart(e, event)}
-                                        >
-                                            <span className="event-item-name">{event.name}</span>
-                                            <div className="event-item-actions">
-                                                <span className="event-item-count">{event.nodes?.length || 0}</span>
-                                                <button
-                                                    className="event-action-btn duplicate"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        duplicateEvent(event.id);
-                                                    }}
-                                                    title="Duplicate Event"
-                                                >
-                                                    ❐
-                                                </button>
-                                                {events.length > 1 && (
+                                {/* Root Events */}
+                                {rootEvents.length > 0 && (
+                                    <div className="root-events">
+                                        {folders.length > 0 && (
+                                            <div style={{
+                                                padding: '8px 10px',
+                                                fontSize: '11px',
+                                                color: 'rgba(255,255,255,0.4)',
+                                                textTransform: 'uppercase',
+                                                marginTop: '8px'
+                                            }}>
+                                                Uncategorized
+                                            </div>
+                                        )}
+                                        {rootEvents.map((event) => (
+                                            <div
+                                                key={event.id}
+                                                className={`event-item ${currentEventId === event.id ? 'active' : ''}`}
+                                                onClick={() => selectEvent(event.id)}
+                                                draggable
+                                                onDragStart={(e) => onEventDragStart(e, event)}
+                                            >
+                                                <span className="event-item-name">{event.name}</span>
+                                                <div className="event-item-actions">
+                                                    <span className="event-item-count">{event.nodes?.length || 0}</span>
                                                     <button
-                                                        className="event-action-btn delete"
+                                                        className="event-action-btn duplicate"
                                                         onClick={(e) => {
                                                             e.stopPropagation();
-                                                            handleDeleteEvent(event.id, event.name);
+                                                            duplicateEvent(event.id);
                                                         }}
-                                                        title="Delete Event"
+                                                        title="Duplicate Event"
                                                     >
-                                                        ✕
+                                                        ❐
                                                     </button>
-                                                )}
+                                                    {events.length > 1 && (
+                                                        <button
+                                                            className="event-action-btn delete"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleDeleteEvent(event.id, event.name);
+                                                            }}
+                                                            title="Delete Event"
+                                                        >
+                                                            ✕
+                                                        </button>
+                                                    )}
+                                                </div>
                                             </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
+                                        ))}
+                                    </div>
+                                )}
 
-                            <button
-                                className="add-event-btn"
-                                onClick={() => setShowNewEventModal(true)}
-                            >
-                                <span>+</span> New Event
-                            </button>
+                                <button
+                                    className="add-event-btn"
+                                    onClick={() => setShowNewEventModal(true)}
+                                >
+                                    <span>+</span> New Event
+                                </button>
+                            </div>
                         </div>
-                    </div>
-                )}
+                    )}
 
-                {/* Tips */}
-                {activeTab === 'tips' && (
-                    <div className="sidebar-section">
-                        <h3 className="sidebar-section-title">Quick Tips</h3>
-                        <div style={{
-                            padding: '12px',
-                            background: 'rgba(255,255,255,0.03)',
-                            borderRadius: '8px',
-                            fontSize: '11px',
-                            color: 'rgba(255,255,255,0.5)',
-                            lineHeight: '1.6',
-                        }}>
-                            <p>• <strong>Drag</strong> nodes from palette to canvas</p>
-                            <p>• <strong>Connect</strong> outputs to inputs</p>
-                            <p>• <strong>Right-click</strong> canvas for quick actions</p>
-                            <p>• <strong>Drag edge</strong> to empty space for new node</p>
-                            <p>• <strong>Box select</strong> by dragging on canvas</p>
-                            <p>• <strong>Middle mouse</strong> to pan canvas</p>
-                            <p>• <strong>Delete key</strong> to remove selected</p>
-                            <p>• <strong>Ctrl+C/V</strong> to copy/paste nodes</p>
-                            <p>• <strong>Ctrl+D</strong> to duplicate nodes</p>
-                            <p>• <strong>Ctrl+Z/Y</strong> to undo/redo</p>
+                    {/* Tips */}
+                    {activeTab === 'tips' && (
+                        <div className="sidebar-section">
+                            <h3 className="sidebar-section-title">Quick Tips</h3>
+                            <div style={{
+                                padding: '12px',
+                                background: 'rgba(255,255,255,0.03)',
+                                borderRadius: '8px',
+                                fontSize: '11px',
+                                color: 'rgba(255,255,255,0.5)',
+                                lineHeight: '1.6',
+                            }}>
+                                <p>• <strong>Drag</strong> nodes from palette to canvas</p>
+                                <p>• <strong>Connect</strong> outputs to inputs</p>
+                                <p>• <strong>Right-click</strong> canvas for quick actions</p>
+                                <p>• <strong>Drag edge</strong> to empty space for new node</p>
+                                <p>• <strong>Box select</strong> by dragging on canvas</p>
+                                <p>• <strong>Middle mouse</strong> to pan canvas</p>
+                                <p>• <strong>Delete key</strong> to remove selected</p>
+                                <p>• <strong>Ctrl+C/V</strong> to copy/paste nodes</p>
+                                <p>• <strong>Ctrl+D</strong> to duplicate nodes</p>
+                                <p>• <strong>Ctrl+Z/Y</strong> to undo/redo</p>
+                            </div>
                         </div>
-                    </div>
-                )}
-            </div>}
+                    )}
+                </div>
+            }
 
             {/* New Event Modal */}
             <ConfirmModal
