@@ -69,6 +69,7 @@ const Sidebar = () => {
     }, [isDragging])
 
     const handleDragStart = (e) => {
+        if (isCollapsed) return
         e.preventDefault()
         dragStartX.current = e.clientX
         dragStartWidth.current = sidebarWidth
@@ -368,11 +369,13 @@ const Sidebar = () => {
                 position: 'relative',
             }}
         >
-            <div
-                onMouseDown={handleDragStart}
-                className={`sidebar-resize-handle ${isDragging ? 'dragging' : ''}`}
-                title="Drag to resize"
-            />
+            {!isCollapsed && (
+                <div
+                    onMouseDown={handleDragStart}
+                    className={`sidebar-resize-handle ${isDragging ? 'dragging' : ''}`}
+                    title="Drag to resize"
+                />
+            )}
             <div className="sidebar-header">
                 {!isCollapsed && (
                     <>
