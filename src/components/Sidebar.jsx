@@ -184,8 +184,19 @@ const Sidebar = () => {
         }
     });
 
+    const folderHasContent = (folderId) => {
+        const folderEvents = eventsByFolder[folderId] || [];
+        if (folderEvents.length > 0) return true;
+
+        const childFolders = getChildFolders(folderId);
+        return childFolders.some(child => folderHasContent(child.id));
+    };
+
+
     // Recursive folder renderer component
     const renderFolder = (folder, depth = 0) => {
+        if (!folderHasContent(folder.id)) return null;
+
         const childFolders = getChildFolders(folder.id);
         const folderEvents = eventsByFolder[folder.id] || [];
         const hasChildren = childFolders.length > 0 || folderEvents.length > 0;
