@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import useStore from '../store/useStore';
 import ConfirmModal from './ConfirmModal';
 
@@ -184,18 +184,74 @@ const Sidebar = () => {
         }
     });
 
-    const folderHasContent = (folderId) => {
-        const folderEvents = eventsByFolder[folderId] || [];
-        if (folderEvents.length > 0) return true;
 
-        const childFolders = getChildFolders(folderId);
-        return childFolders.some(child => folderHasContent(child.id));
-    };
+    const foldersById = useMemo(() => {
+        const map = {};
+        folders.forEach(folder => {
+            map[folder.id] = folder;
+        });
+        return map;
+    }, [folders]);
 
+
+    const folderVisibleMap = useMemo(() => {
+        const cache = {};
+        const term = searchTerm.toLowerCase();
+
+        const compute = (folderId) => {
+            if (cache[folderId] !== undefined) return cache[folderId];
+
+            const folder = foldersById[folderId];
+            if (!folder) {
+                cache[folderId] = false;
+                return false;
+            }
+
+            const folderMatches =
+                folder.name.toLowerCase().includes(term);
+
+            const eventMatches =
+                (eventsByFolder[folderId] || []).some(e =>
+                    e.name.toLowerCase().includes(term)
+                );
+
+            const childMatches = getChildFolders(folderId)
+                .some(child => compute(child.id));
+
+            const visible = folderMatches || eventMatches || childMatches;
+            cache[folderId] = visible;
+            return visible;
+        };
+
+        folders.forEach(f => compute(f.id));
+        return cache;
+    }, [folders, foldersById, eventsByFolder, searchTerm]);
+
+
+    filteredEvents.forEach(event => {
+        if (event.folderId && folders.find(f => f.id === event.folderId)) {
+            if (!eventsByFolder[event.folderId]) {
+                eventsByFolder[event.folderId] = [];
+            }
+            eventsByFolder[event.folderId].push(event);
+        } else {
+            rootEvents.push(event);
+        }
+    });
+
+
+    // Check for empty folders
+    // const folderHasContent = (folderId) => {
+    //     const folderEvents = eventsByFolder[folderId] || [];
+    //     if (folderEvents.length > 0) return true;
+
+    //     const childFolders = getChildFolders(folderId);
+    //     return childFolders.some(child => folderHasContent(child.id));
+    // };
 
     // Recursive folder renderer component
     const renderFolder = (folder, depth = 0) => {
-        if (!folderHasContent(folder.id)) return null;
+        if (!folderVisibleMap[folder.id]) return null;
 
         const childFolders = getChildFolders(folder.id);
         const folderEvents = eventsByFolder[folder.id] || [];
@@ -310,7 +366,7 @@ const Sidebar = () => {
                 </div>
 
                 {/* Folder Content - expanded */}
-                {expandedFolders[folder.id] && (
+                {(searchTerm !== '' || expandedFolders[folder.id]) && (
                     <div className="folder-content" style={{ paddingLeft: '8px' }}>
                         {/* Render child folders recursively */}
                         {childFolders.map(child => renderFolder(child, depth + 1))}
