@@ -17,6 +17,11 @@ const PropertiesPanel = () => {
     const sessionConfirmDeleteNode = useStore((state) => state.sessionConfirmDeleteNode);
     const setSessionConfirmDeleteNode = useStore((state) => state.setSessionConfirmDeleteNode);
 
+    // Event-level metadata
+    const events = useStore((state) => state.events);
+    const currentEventId = useStore((state) => state.currentEventId);
+    const updateEventMetadata = useStore((state) => state.updateEventMetadata);
+
     // Start Node input management
     const addStartNodeInput = useStore((state) => state.addStartNodeInput);
     const removeStartNodeInput = useStore((state) => state.removeStartNodeInput);
@@ -31,10 +36,12 @@ const PropertiesPanel = () => {
     const [isCollapsed, setIsCollapsed] = useState(true);
 
     if (!selectedNode) {
+        const currentEvent = events.find(e => e.id === currentEventId);
+
         return (
             <div className={`properties-panel ${isCollapsed ? 'collapsed' : ''}`}>
                 <div className="properties-header">
-                    {!isCollapsed && <h3 className="properties-title">Properties</h3>}
+                    {!isCollapsed && <h3 className="properties-title">📋 Event Properties</h3>}
                     <button
                         className="sidebar-collapse-btn"
                         onClick={() => setIsCollapsed(!isCollapsed)}
@@ -43,13 +50,88 @@ const PropertiesPanel = () => {
                         {isCollapsed ? '«' : '»'}
                     </button>
                 </div>
-                {!isCollapsed && (
+                {!isCollapsed && currentEvent && (
+                    <div className="properties-content">
+                        {/* Tags */}
+                        <div className="property-group">
+                            <label className="property-label" style={{ color: '#B5D4FF' }}>
+                                🏷️ Tags
+                            </label>
+                            <input
+                                type="text"
+                                className="property-input"
+                                value={(currentEvent.tags || []).join(', ')}
+                                onChange={(e) => {
+                                    const tags = e.target.value.split(',').map(t => t.trim()).filter(Boolean);
+                                    updateEventMetadata(currentEventId, { tags });
+                                }}
+                                placeholder="romance, outdoor, day..."
+                            />
+                            <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', marginTop: '4px' }}>
+                                Defines what this event <em>is</em>. Used by Playlist mode.
+                            </p>
+                        </div>
+
+                        {/* Incompatible Tags */}
+                        <div className="property-group">
+                            <label className="property-label" style={{ color: '#FFB5B5' }}>
+                                🚫 Incompatible With
+                            </label>
+                            <input
+                                type="text"
+                                className="property-input"
+                                value={(currentEvent.incompatibleTags || []).join(', ')}
+                                onChange={(e) => {
+                                    const incompatibleTags = e.target.value.split(',').map(t => t.trim()).filter(Boolean);
+                                    updateEventMetadata(currentEventId, { incompatibleTags });
+                                }}
+                                placeholder="horror, night..."
+                            />
+                            <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', marginTop: '4px' }}>
+                                Events with these tags cannot appear in the same playlist.
+                            </p>
+                        </div>
+
+                        {/* Required Tags */}
+                        <div className="property-group">
+                            <label className="property-label" style={{ color: '#B5FFD9' }}>
+                                🔗 Requires
+                            </label>
+                            <input
+                                type="text"
+                                className="property-input"
+                                value={(currentEvent.requiredTags || []).join(', ')}
+                                onChange={(e) => {
+                                    const requiredTags = e.target.value.split(',').map(t => t.trim()).filter(Boolean);
+                                    updateEventMetadata(currentEventId, { requiredTags });
+                                }}
+                                placeholder="first_date, intro..."
+                            />
+                            <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', marginTop: '4px' }}>
+                                This event can only appear after events with these tags have been selected.
+                            </p>
+                        </div>
+
+                        <div style={{
+                            padding: '12px',
+                            background: 'rgba(255,255,255,0.03)',
+                            borderRadius: '6px',
+                            fontSize: '11px',
+                            color: 'rgba(255,255,255,0.4)',
+                            lineHeight: '1.6',
+                            marginTop: '8px',
+                        }}>
+                            💡 Select a node on the canvas to edit node properties.
+                        </div>
+                    </div>
+                )}
+                {!isCollapsed && !currentEvent && (
                     <div className="properties-content">
                         <div className="empty-state">
                             <div className="empty-state-icon">🎯</div>
-                            <h4 className="empty-state-title">Select a Node</h4>
+                            <h4 className="empty-state-title">No Event Open</h4>
                             <p className="empty-state-desc">
-                                Click on a node to view and edit its properties
+                                Open an event from the library to view its properties
                             </p>
                         </div>
                     </div>

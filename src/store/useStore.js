@@ -147,6 +147,9 @@ const createInitialEvent = () => ({
     name: 'Date Event',
     description: 'A romantic date sequence',
     fixedPrompt: 'casual outfit, sunny day, happy expression',
+    tags: [],
+    incompatibleTags: [],
+    requiredTags: [],
     nodes: [
         createStartNode({ x: 50, y: 150 }),
         createEndNode({ x: 600, y: 150 })
@@ -458,6 +461,9 @@ const useStore = create(
                     name,
                     description: '',
                     fixedPrompt: '',
+                    tags: [],
+                    incompatibleTags: [],
+                    requiredTags: [],
                     folderId, // Associate with folder if provided
                     nodes,
                     edges,
@@ -560,6 +566,14 @@ const useStore = create(
                 set((state) => ({
                     events: state.events.map((e) =>
                         e.id === eventId ? { ...e, fixedPrompt, updatedAt: new Date().toISOString() } : e
+                    ),
+                }));
+            },
+
+            updateEventMetadata: (eventId, metadata) => {
+                set((state) => ({
+                    events: state.events.map((e) =>
+                        e.id === eventId ? { ...e, ...metadata, updatedAt: new Date().toISOString() } : e
                     ),
                 }));
             },
