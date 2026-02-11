@@ -32,16 +32,121 @@ const PropertiesPanel = () => {
     const nodes = useStore((state) => state.nodes);
 
     const [showPreview, setShowPreview] = useState(false);
+    // Folder-level metadata
+    const folders = useStore((state) => state.folders);
+    const selectedFolderId = useStore((state) => state.selectedFolderId);
+    const updateFolderMetadata = useStore((state) => state.updateFolderMetadata);
+    const setSelectedFolderId = useStore((state) => state.setSelectedFolderId);
+
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [isCollapsed, setIsCollapsed] = useState(true);
 
+    // Helper to render tag fields (reused for event and folder)
+    const renderTagFields = (entity, updateFn, entityId, showWeight = false) => (
+        <>
+            {/* Tags */}
+            <div className="property-group">
+                <label className="property-label" style={{ color: '#B5D4FF' }}>
+                    🏷️ Tags
+                </label>
+                <input
+                    type="text"
+                    className="property-input"
+                    value={(entity.tags || []).join(', ')}
+                    onChange={(e) => {
+                        const tags = e.target.value.split(',').map(t => t.trim()).filter(Boolean);
+                        updateFn(entityId, { tags });
+                    }}
+                    placeholder="romance, outdoor, day..."
+                />
+                <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', marginTop: '4px' }}>
+                    Defines what this {showWeight ? 'event' : 'folder (and its children)'} <em>is</em>.
+                </p>
+            </div>
+
+            {/* Incompatible Tags */}
+            <div className="property-group">
+                <label className="property-label" style={{ color: '#FFB5B5' }}>
+                    🚫 Incompatible With
+                </label>
+                <input
+                    type="text"
+                    className="property-input"
+                    value={(entity.incompatibleTags || []).join(', ')}
+                    onChange={(e) => {
+                        const incompatibleTags = e.target.value.split(',').map(t => t.trim()).filter(Boolean);
+                        updateFn(entityId, { incompatibleTags });
+                    }}
+                    placeholder="horror, night..."
+                />
+                <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', marginTop: '4px' }}>
+                    Events with these tags cannot appear in the same playlist.
+                </p>
+            </div>
+
+            {/* Required Tags */}
+            <div className="property-group">
+                <label className="property-label" style={{ color: '#B5FFD9' }}>
+                    🔗 Requires
+                </label>
+                <input
+                    type="text"
+                    className="property-input"
+                    value={(entity.requiredTags || []).join(', ')}
+                    onChange={(e) => {
+                        const requiredTags = e.target.value.split(',').map(t => t.trim()).filter(Boolean);
+                        updateFn(entityId, { requiredTags });
+                    }}
+                    placeholder="first_date, intro..."
+                />
+                <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', marginTop: '4px' }}>
+                    Only appears after events with these tags have been selected.
+                </p>
+            </div>
+
+            {/* Weight (event only) */}
+            {showWeight && (
+                <div className="property-group">
+                    <label className="property-label" style={{ color: '#FFE5B5' }}>
+                        ⚖️ Weight (Rarity)
+                    </label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <input
+                            type="range"
+                            min="1"
+                            max="100"
+                            value={entity.weight || 10}
+                            onChange={(e) => {
+                                updateFn(entityId, { weight: parseInt(e.target.value) });
+                            }}
+                            style={{ flex: 1, accentColor: '#FFE5B5' }}
+                        />
+                        <span style={{
+                            fontSize: '13px',
+                            fontWeight: 600,
+                            color: '#FFE5B5',
+                            minWidth: '30px',
+                            textAlign: 'right',
+                        }}>{entity.weight || 10}</span>
+                    </div>
+                    <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', marginTop: '4px' }}>
+                        Higher weight = more likely. Default: 10.
+                    </p>
+                </div>
+            )}
+        </>
+    );
+
     if (!selectedNode) {
         const currentEvent = events.find(e => e.id === currentEventId);
+        const selectedFolder = selectedFolderId ? (folders || []).find(f => f.id === selectedFolderId) : null;
 
         return (
             <div className={`properties-panel ${isCollapsed ? 'collapsed' : ''}`}>
                 <div className="properties-header">
-                    {!isCollapsed && <h3 className="properties-title">📋 Event Properties</h3>}
+                    {!isCollapsed && <h3 className="properties-title">
+                        {selectedFolder ? '📁 Folder Properties' : '📋 Event Properties'}
+                    </h3>}
                     <button
                         className="sidebar-collapse-btn"
                         onClick={() => setIsCollapsed(!isCollapsed)}
@@ -50,68 +155,52 @@ const PropertiesPanel = () => {
                         {isCollapsed ? '«' : '»'}
                     </button>
                 </div>
-                {!isCollapsed && currentEvent && (
+
+                {/* Folder Properties */}
+                {!isCollapsed && selectedFolder && (
                     <div className="properties-content">
-                        {/* Tags */}
-                        <div className="property-group">
-                            <label className="property-label" style={{ color: '#B5D4FF' }}>
-                                🏷️ Tags
-                            </label>
-                            <input
-                                type="text"
-                                className="property-input"
-                                value={(currentEvent.tags || []).join(', ')}
-                                onChange={(e) => {
-                                    const tags = e.target.value.split(',').map(t => t.trim()).filter(Boolean);
-                                    updateEventMetadata(currentEventId, { tags });
+                        <div style={{
+                            padding: '8px 12px',
+                            background: 'rgba(255,255,255,0.05)',
+                            borderRadius: '6px',
+                            marginBottom: '12px',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                        }}>
+                            <span style={{ fontSize: '13px', fontWeight: 600, color: '#fff' }}>
+                                📁 {selectedFolder.name}
+                            </span>
+                            <button
+                                onClick={() => setSelectedFolderId(null)}
+                                style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    color: 'rgba(255,255,255,0.4)',
+                                    cursor: 'pointer',
+                                    fontSize: '11px',
                                 }}
-                                placeholder="romance, outdoor, day..."
-                            />
-                            <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', marginTop: '4px' }}>
-                                Defines what this event <em>is</em>. Used by Playlist mode.
-                            </p>
+                            >✕ Close</button>
                         </div>
-
-                        {/* Incompatible Tags */}
-                        <div className="property-group">
-                            <label className="property-label" style={{ color: '#FFB5B5' }}>
-                                🚫 Incompatible With
-                            </label>
-                            <input
-                                type="text"
-                                className="property-input"
-                                value={(currentEvent.incompatibleTags || []).join(', ')}
-                                onChange={(e) => {
-                                    const incompatibleTags = e.target.value.split(',').map(t => t.trim()).filter(Boolean);
-                                    updateEventMetadata(currentEventId, { incompatibleTags });
-                                }}
-                                placeholder="horror, night..."
-                            />
-                            <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', marginTop: '4px' }}>
-                                Events with these tags cannot appear in the same playlist.
-                            </p>
+                        {renderTagFields(selectedFolder, updateFolderMetadata, selectedFolderId, false)}
+                        <div style={{
+                            padding: '10px',
+                            background: 'rgba(181, 212, 255, 0.05)',
+                            borderRadius: '6px',
+                            fontSize: '11px',
+                            color: 'rgba(255,255,255,0.4)',
+                            lineHeight: '1.6',
+                            marginTop: '8px',
+                        }}>
+                            📌 Tags set here are <strong style={{ color: '#B5D4FF' }}>inherited</strong> by all events inside this folder.
                         </div>
+                    </div>
+                )}
 
-                        {/* Required Tags */}
-                        <div className="property-group">
-                            <label className="property-label" style={{ color: '#B5FFD9' }}>
-                                🔗 Requires
-                            </label>
-                            <input
-                                type="text"
-                                className="property-input"
-                                value={(currentEvent.requiredTags || []).join(', ')}
-                                onChange={(e) => {
-                                    const requiredTags = e.target.value.split(',').map(t => t.trim()).filter(Boolean);
-                                    updateEventMetadata(currentEventId, { requiredTags });
-                                }}
-                                placeholder="first_date, intro..."
-                            />
-                            <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', marginTop: '4px' }}>
-                                This event can only appear after events with these tags have been selected.
-                            </p>
-                        </div>
-
+                {/* Event Properties */}
+                {!isCollapsed && !selectedFolder && currentEvent && (
+                    <div className="properties-content">
+                        {renderTagFields(currentEvent, updateEventMetadata, currentEventId, true)}
                         <div style={{
                             padding: '12px',
                             background: 'rgba(255,255,255,0.03)',
@@ -125,7 +214,9 @@ const PropertiesPanel = () => {
                         </div>
                     </div>
                 )}
-                {!isCollapsed && !currentEvent && (
+
+                {/* No event open */}
+                {!isCollapsed && !selectedFolder && !currentEvent && (
                     <div className="properties-content">
                         <div className="empty-state">
                             <div className="empty-state-icon">🎯</div>

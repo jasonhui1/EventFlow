@@ -150,6 +150,7 @@ const createInitialEvent = () => ({
     tags: [],
     incompatibleTags: [],
     requiredTags: [],
+    weight: 10,
     nodes: [
         createStartNode({ x: 50, y: 150 }),
         createEndNode({ x: 600, y: 150 })
@@ -464,6 +465,7 @@ const useStore = create(
                     tags: [],
                     incompatibleTags: [],
                     requiredTags: [],
+                    weight: 10,
                     folderId, // Associate with folder if provided
                     nodes,
                     edges,
@@ -671,12 +673,20 @@ const useStore = create(
 
             // Folder Actions
             folders: [],
+            selectedFolderId: null,
+
+            setSelectedFolderId: (folderId) => {
+                set({ selectedFolderId: folderId });
+            },
 
             addFolder: (name = 'New Folder', parentId = null) => {
                 const newFolder = {
                     id: uuidv4(),
                     name,
                     parentId, // Support nested folders
+                    tags: [],
+                    incompatibleTags: [],
+                    requiredTags: [],
                     createdAt: new Date().toISOString(),
                 };
                 set((state) => ({
@@ -708,6 +718,14 @@ const useStore = create(
                 set((state) => ({
                     folders: (state.folders || []).map(f =>
                         f.id === folderId ? { ...f, name: newName } : f
+                    )
+                }));
+            },
+
+            updateFolderMetadata: (folderId, metadata) => {
+                set((state) => ({
+                    folders: (state.folders || []).map(f =>
+                        f.id === folderId ? { ...f, ...metadata } : f
                     )
                 }));
             },

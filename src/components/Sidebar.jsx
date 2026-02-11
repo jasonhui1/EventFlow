@@ -27,6 +27,7 @@ const Sidebar = () => {
     const renameFolder = useStore((state) => state.renameFolder);
     const moveEventToFolder = useStore((state) => state.moveEventToFolder);
     const moveFolderToFolder = useStore((state) => state.moveFolderToFolder);
+    const setSelectedFolderId = useStore((state) => state.setSelectedFolderId);
 
 
     // Modal states
@@ -227,19 +228,6 @@ const Sidebar = () => {
         return cache;
     }, [folders, foldersById, eventsByFolder, searchTerm]);
 
-
-    filteredEvents.forEach(event => {
-        if (event.folderId && folders.find(f => f.id === event.folderId)) {
-            if (!eventsByFolder[event.folderId]) {
-                eventsByFolder[event.folderId] = [];
-            }
-            eventsByFolder[event.folderId].push(event);
-        } else {
-            rootEvents.push(event);
-        }
-    });
-
-
     // Check for empty folders
     // const folderHasContent = (folderId) => {
     //     const folderEvents = eventsByFolder[folderId] || [];
@@ -344,6 +332,22 @@ const Sidebar = () => {
                                 title="Rename"
                             >
                                 ✎
+                            </button>
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedFolderId(folder.id);
+                                }}
+                                style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    color: 'rgba(255,255,255,0.4)',
+                                    cursor: 'pointer',
+                                    fontSize: '12px',
+                                }}
+                                title="Edit Tags"
+                            >
+                                ⚙️
                             </button>
                             <button
                                 onClick={(e) => {

@@ -7,6 +7,7 @@ const EventSimulationModal = ({ onClose }) => {
     const edges = useStore((state) => state.edges);
     const events = useStore((state) => state.events);
     const simulateEvent = useStore((state) => state.simulateEvent);
+    const folders = useStore((state) => state.folders);
     const [copied, setCopied] = useState(false);
     const [seed, setSeed] = useState(0); // Used to trigger refresh
     const [mode, setMode] = useState('single'); // 'single' or 'playlist'
@@ -26,7 +27,7 @@ const EventSimulationModal = ({ onClose }) => {
     };
 
     const handleGeneratePlaylist = useCallback(() => {
-        const playlist = generatePlaylist(events, playlistLength);
+        const playlist = generatePlaylist(events, playlistLength, folders || []);
 
         // Simulate each event in the playlist
         const results = playlist.map(event => {
@@ -41,7 +42,7 @@ const EventSimulationModal = ({ onClose }) => {
         });
 
         setPlaylistResults(results);
-    }, [events, playlistLength, simulateEvent]);
+    }, [events, playlistLength, simulateEvent, folders]);
 
     const handleCopyAll = async () => {
         try {
