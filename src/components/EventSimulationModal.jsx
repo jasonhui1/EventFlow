@@ -13,6 +13,8 @@ const EventSimulationModal = ({ onClose }) => {
     const [mode, setMode] = useState('single'); // 'single' or 'playlist'
     const [playlistLength, setPlaylistLength] = useState(3);
     const [playlistResults, setPlaylistResults] = useState(null);
+    const [slotTemplates, setSlotTemplates] = useState([]);
+    const [showAdvanced, setShowAdvanced] = useState(false);
 
     const simulatedResults = useMemo(() => {
         if (mode !== 'single') return [];
@@ -27,7 +29,7 @@ const EventSimulationModal = ({ onClose }) => {
     };
 
     const handleGeneratePlaylist = useCallback(() => {
-        const playlist = generatePlaylist(events, playlistLength, folders || []);
+        const playlist = generatePlaylist(events, playlistLength, folders || [], slotTemplates);
 
         // Simulate each event in the playlist
         const results = playlist.map(event => {
@@ -42,7 +44,18 @@ const EventSimulationModal = ({ onClose }) => {
         });
 
         setPlaylistResults(results);
-    }, [events, playlistLength, simulateEvent, folders]);
+    }, [events, playlistLength, simulateEvent, folders, slotTemplates]);
+
+    const updateSlotTemplate = (index, field, value) => {
+        setSlotTemplates(prev => {
+            const next = [...prev];
+            if (!next[index]) next[index] = {};
+            // Handle comma-separated tags
+            const tags = value.split(',').map(t => t.trim()).filter(Boolean);
+            next[index] = { ...next[index], [field]: tags };
+            return next;
+        });
+    };
 
     const handleCopyAll = async () => {
         try {
@@ -276,6 +289,96 @@ const EventSimulationModal = ({ onClose }) => {
                                 >
                                     🎲 Generate
                                 </button>
+                            </div>
+
+                            {/* Advanced Slot Targeting */}
+                            <div style={{ marginBottom: '16px' }}>
+                                <button
+                                    onClick={() => setShowAdvanced(!showAdvanced)}
+                                    style={{
+                                        background: 'none',
+                                        border: 'none',
+                                        color: '#B5D4FF',
+                                        cursor: 'pointer',
+                                        fontSize: '12px',
+                                        padding: '0',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '4px',
+                                        marginBottom: '8px'
+                                    }}
+                                >
+                                    {showAdvanced ? '🔽' : '▶'} Advanced: Slot Templates (Targeting)
+                                </button>
+
+                                {showAdvanced && (
+                                    <div style={{
+                                        background: 'rgba(0,0,0,0.2)',
+                                        borderRadius: '8px',
+                                        padding: '12px',
+                                        border: '1px solid rgba(255,255,255,0.05)',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        gap: '12px'
+                                    }}>
+                                        <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', margin: 0 }}>
+                                            Define specific rules for each event position. Left empty = any valid event.
+                                        </p>
+
+                                        {Array.from({ length: playlistLength }).map((_, i) => {
+                                            const template = slotTemplates[i] || {};
+                                            return (
+                                                <div key={i} style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                                                    <span style={{
+                                                        width: '20px',
+                                                        height: '20px',
+                                                        borderRadius: '50%',
+                                                        background: 'rgba(255,255,255,0.1)',
+                                                        color: '#fff',
+                                                        fontSize: '11px',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center'
+                                                    }}>{i + 1}</span>
+
+                                                    {/* Required Tags */}
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Required Tags (Hard)"
+                                                        value={(template.requiredTags || []).join(', ')}
+                                                        onChange={(e) => updateSlotTemplate(i, 'requiredTags', e.target.value)}
+                                                        style={{
+                                                            flex: 1,
+                                                            background: 'rgba(255,255,255,0.05)',
+                                                            border: '1px solid rgba(181, 200, 255, 0.2)',
+                                                            borderRadius: '4px',
+                                                            color: '#B5D4FF',
+                                                            fontSize: '11px',
+                                                            padding: '6px'
+                                                        }}
+                                                    />
+
+                                                    {/* Preferred Tags */}
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Preferred Tags (Soft)"
+                                                        value={(template.preferredTags || []).join(', ')}
+                                                        onChange={(e) => updateSlotTemplate(i, 'preferredTags', e.target.value)}
+                                                        style={{
+                                                            flex: 1,
+                                                            background: 'rgba(255,255,255,0.05)',
+                                                            border: '1px solid rgba(181, 255, 217, 0.2)',
+                                                            borderRadius: '4px',
+                                                            color: '#B5FFD9',
+                                                            fontSize: '11px',
+                                                            padding: '6px'
+                                                        }}
+                                                    />
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
                             </div>
 
                             {/* Tag summary */}

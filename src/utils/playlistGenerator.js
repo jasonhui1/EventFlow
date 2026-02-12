@@ -88,15 +88,82 @@ const weightedRandomSelect = (candidates) => {
     // Fallback (shouldn't happen)
     return candidates[candidates.length - 1];
 };
+/**
+ * Check if an event matches a set of tag constraints
+ * @param {Object} effective - Effective tags for the event
+ * @param {Array} requiredTags - Tags that MUST be present (at least one)
+ * @param {Array} excludedTags - Tags that MUST NOT be present
+ * @returns {boolean}
+ */
+const matchesConstraints = (effective, requiredTags = [], excludedTags = []) => {
+    // 1. Excluded tags: if any present, fail
+    if (excludedTags.length > 0) {
+        const hasExcluded = effective.tags.some(tag => excludedTags.includes(tag));
+        if (hasExcluded) return false;
+    }
+
+    // 2. Required tags: if defined, at least one must be present
+    if (requiredTags.length > 0) {
+        const hasRequired = effective.tags.some(tag => requiredTags.includes(tag));
+        if (!hasRequired) return false;
+    }
+
+    return true;
+};
+
+/**
+ * Check if event matches folder constraints
+ * @param {Object} event
+ * @param {Array} requiredFolderIds
+ * @returns {boolean}
+ */
+const matchesFolderConstraints = (event, requiredFolderIds = []) => {
+    if (!requiredFolderIds || requiredFolderIds.length === 0) return true;
+    return requiredFolderIds.includes(event.folderId);
+};
+
+/**
+ * Weighted random selection with probability-based soft targeting
+ * @param {Array} candidates - All valid candidates
+ * @param {Object} slotConfig - Configuration for this slot (preferredTags, etc.)
+ * @returns {Object} - Selected candidate
+ */
+const selectCandidate = (candidates, slotConfig = {}) => {
+    const { preferredTags = [], preferredFolders = [] } = slotConfig;
+    const hasPreferences = preferredTags.length > 0 || preferredFolders.length > 0;
+
+    if (!hasPreferences) {
+        return weightedRandomSelect(candidates);
+    }
+
+    // Split into preferred and standard pools
+    const preferredPool = candidates.filter(({ event, effective }) => {
+        const matchesTag = preferredTags.some(tag => effective.tags.includes(tag));
+        const matchesFolder = preferredFolders.includes(event.folderId);
+        return matchesTag || matchesFolder;
+    });
+
+    // Strategy: 75% chance to pick from preferred pool (if not empty)
+    // 25% chance (or if preferred is empty) to pick from all valid candidates
+    const PREFERRED_CHANCE = 0.75;
+
+    if (preferredPool.length > 0 && Math.random() < PREFERRED_CHANCE) {
+        // console.log(`[Playlist] Promoting preferred pool (${preferredPool.length} candidates)`);
+        return weightedRandomSelect(preferredPool);
+    }
+
+    return weightedRandomSelect(candidates);
+};
 
 /**
  * Generate a playlist of events respecting compatibility constraints.
  * @param {Array} events - All available events
  * @param {number} length - Desired playlist length
  * @param {Array} folders - All folders (for tag inheritance)
+ * @param {Array} slotTemplates - Optional array of slot configuration objects
  * @returns {Array} - Array of selected event objects (in order)
  */
-export const generatePlaylist = (events, length, folders = []) => {
+export const generatePlaylist = (events, length, folders = [], slotTemplates = []) => {
     const playlist = [];
     const activeTags = new Set();
     const activeExclusions = new Set();
@@ -108,29 +175,91 @@ export const generatePlaylist = (events, length, folders = []) => {
         effective: getEffectiveTags(event, folders),
     }));
 
-    for (let i = 0; i < length; i++) {
-        // Find valid candidates
-        const candidates = eventsWithEffective.filter(({ event, effective }) =>
-            isValidCandidate(event, effective, activeTags, activeExclusions, pickedIds)
-        );
+    // Track dynamic forward constraints from the *previously selected* event
+    let currentForwardConstraints = {
+        nextPreferredTags: [],
+        nextRequiredTags: [],
+        nextExcludedTags: []
+    };
 
+    for (let i = 0; i < length; i++) {
+        // 1. Combine Slot Template + Forward Constraints
+        const template = slotTemplates[i] || {};
+
+        // Merge constraints (arrays)
+        const combinedRequiredTags = [
+            ...(template.requiredTags || []),
+            ...(currentForwardConstraints.nextRequiredTags || [])
+        ];
+
+        const combinedExcludedTags = [
+            ...(currentForwardConstraints.nextExcludedTags || []) // Templates don't usually have exclusions, but could add if needed
+        ];
+
+        const combinedPreferredTags = [
+            ...(template.preferredTags || []),
+            ...(currentForwardConstraints.nextPreferredTags || [])
+        ];
+
+        const requiredFolders = template.requiredFolders || [];
+        const preferredFolders = template.preferredFolders || [];
+
+        // 2. Filter valid candidates (Hard Constraints + Logic)
+        let candidates = eventsWithEffective.filter(({ event, effective }) => {
+            // Base logic (dupes, incompatibility)
+            if (!isValidCandidate(event, effective, activeTags, activeExclusions, pickedIds)) return false;
+
+            // Folder Hard Constraint
+            if (!matchesFolderConstraints(event, requiredFolders)) return false;
+
+            // Tag Hard Constraints
+            if (!matchesConstraints(effective, combinedRequiredTags, combinedExcludedTags)) return false;
+
+            return true;
+        });
+
+        // 3. Fallback Mechanism: If hard constraints result in 0 candidates, relax them
         if (candidates.length === 0) {
-            console.log(`[Playlist] No valid candidates at step ${i + 1}. Stopping.`);
-            break;
+            // Check if it was the hard constraints that killed it
+            const looseCandidates = eventsWithEffective.filter(({ event, effective }) =>
+                isValidCandidate(event, effective, activeTags, activeExclusions, pickedIds)
+            );
+
+            if (looseCandidates.length > 0) {
+                console.warn(`[Playlist] Step ${i + 1}: No candidates matched HARD constraints. Falling back to soft preferences.`);
+                candidates = looseCandidates;
+                // Treat the required tags as preferred now so we still try to pick them if possible
+                combinedPreferredTags.push(...combinedRequiredTags);
+            } else {
+                console.log(`[Playlist] No valid candidates at step ${i + 1} even after relaxing constraints. Stopping.`);
+                break;
+            }
         }
 
-        // Weighted random selection
-        const selected = weightedRandomSelect(candidates);
+        // 4. Selection (Soft Preferences via Probability)
+        const selectionConfig = {
+            preferredTags: combinedPreferredTags,
+            preferredFolders: preferredFolders
+        };
+
+        const selected = selectCandidate(candidates, selectionConfig);
         playlist.push(selected.event);
         pickedIds.add(selected.event.id);
 
-        // Update state with effective tags (includes folder inheritance)
+        // 5. Update State
         selected.effective.tags.forEach(tag => activeTags.add(tag));
         selected.effective.incompatibleTags.forEach(tag => activeExclusions.add(tag));
 
-        console.log(`[Playlist] Step ${i + 1}: Selected "${selected.event.name}" (weight: ${selected.event.weight || 10})`,
-            `| Active Tags: [${[...activeTags]}]`,
-            `| Exclusions: [${[...activeExclusions]}]`);
+        // 6. Update Forward Constraints for NEXT step
+        currentForwardConstraints = {
+            nextPreferredTags: selected.event.nextPreferredTags || [],
+            nextRequiredTags: selected.event.nextRequiredTags || [],
+            nextExcludedTags: selected.event.nextExcludedTags || []
+        };
+
+        console.log(`[Playlist] Step ${i + 1}: Selected "${selected.event.name}"`,
+            `| ReqTags: [${combinedRequiredTags}] PrefTags: [${combinedPreferredTags}]`,
+            `| Next Constraints:`, currentForwardConstraints);
     }
 
     return playlist;

@@ -134,6 +134,69 @@ const PropertiesPanel = () => {
                     </p>
                 </div>
             )}
+            {/* Forward Constraints Section (Event Only) */}
+            {showWeight && (
+                <div className="property-group">
+                    <label className="property-label" style={{ color: '#C9B5FF', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span>⏭️ Forward Constraints</span>
+                        <span style={{ fontSize: '9px', opacity: 0.7, fontWeight: 'normal' }}>Targets NEXT event</span>
+                    </label>
+
+                    {/* Next Preferred */}
+                    <div style={{ marginBottom: '8px' }}>
+                        <label style={{ fontSize: '10px', color: 'rgba(255,255,255,0.5)', marginBottom: '4px', display: 'block' }}>
+                            Preferred (75% Chance)
+                        </label>
+                        <input
+                            type="text"
+                            className="property-input"
+                            value={(entity.nextPreferredTags || []).join(', ')}
+                            onChange={(e) => {
+                                const nextPreferredTags = e.target.value.split(',').map(t => t.trim()).filter(Boolean);
+                                updateFn(entityId, { nextPreferredTags });
+                            }}
+                            placeholder="sunny, happy..."
+                            style={{ borderColor: 'rgba(181, 255, 217, 0.3)', color: '#B5FFD9' }}
+                        />
+                    </div>
+
+                    {/* Next Required */}
+                    <div style={{ marginBottom: '8px' }}>
+                        <label style={{ fontSize: '10px', color: 'rgba(255,255,255,0.5)', marginBottom: '4px', display: 'block' }}>
+                            Required (Must Match or Fallback)
+                        </label>
+                        <input
+                            type="text"
+                            className="property-input"
+                            value={(entity.nextRequiredTags || []).join(', ')}
+                            onChange={(e) => {
+                                const nextRequiredTags = e.target.value.split(',').map(t => t.trim()).filter(Boolean);
+                                updateFn(entityId, { nextRequiredTags });
+                            }}
+                            placeholder="location_x..."
+                            style={{ borderColor: 'rgba(255, 206, 181, 0.3)', color: '#FFCEB5' }}
+                        />
+                    </div>
+
+                    {/* Next Excluded */}
+                    <div>
+                        <label style={{ fontSize: '10px', color: 'rgba(255,255,255,0.5)', marginBottom: '4px', display: 'block' }}>
+                            Excluded (Strictly Blocked)
+                        </label>
+                        <input
+                            type="text"
+                            className="property-input"
+                            value={(entity.nextExcludedTags || []).join(', ')}
+                            onChange={(e) => {
+                                const nextExcludedTags = e.target.value.split(',').map(t => t.trim()).filter(Boolean);
+                                updateFn(entityId, { nextExcludedTags });
+                            }}
+                            placeholder="night, rainy..."
+                            style={{ borderColor: 'rgba(255, 100, 100, 0.3)', color: '#ffbdc5' }}
+                        />
+                    </div>
+                </div>
+            )}
         </>
     );
 
