@@ -568,7 +568,7 @@ export const simulateEvent = (
         }
         // Phase 3: Build result for visible nodes
 
-        else if (currentNode.type === 'referenceNode') {
+        else {
             // const hiddenTypes = ['startNode', 'endNode', 'branchNode', 'referenceNode', 'ifNode', 'carryForwardNode', 'fieldNode'];
             // if (!hiddenTypes.includes(currentNode.type) && !isBlockedByField) {
             if (!isBlockedByField) {
