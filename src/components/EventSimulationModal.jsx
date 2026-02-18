@@ -36,6 +36,10 @@ const EventSimulationModal = ({ onClose }) => {
             const simResults = simulateEvent(
                 event.nodes || [],
                 event.edges || [],
+                [], // incomingContextParts
+                new Set(), // visitedEventIds
+                {}, // inputOverrides
+                event.fixedPrompt || '' // contextFixedPrompt
             );
             return {
                 event,
@@ -151,7 +155,7 @@ const EventSimulationModal = ({ onClose }) => {
 
     return (
         <div className="modal-overlay" onClick={onClose}>
-            <div className="modal" onClick={(e) => e.stopPropagation()} style={{ minWidth: '600px', maxWidth: '800px', height: '80vh', display: 'flex', flexDirection: 'column' }}>
+            <div className="modal" onClick={(e) => e.stopPropagation()} style={{ width: '800px', maxWidth: '90vw', height: '80vh', display: 'flex', flexDirection: 'column' }}>
                 <div className="modal-header">
                     <h3 className="modal-title">🔮 Event Simulation Output</h3>
                     <button className="modal-close" onClick={onClose}>×</button>

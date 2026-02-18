@@ -69,6 +69,7 @@ function App() {
     const extractNodeFromFlow = useStore((state) => state.extractNodeFromFlow);
     const updateNode = useStore((state) => state.updateNode);
     const setSelectedNode = useStore((state) => state.setSelectedNode);
+    const setSelectedFolderId = useStore((state) => state.setSelectedFolderId);
     const currentEventId = useStore((state) => state.currentEventId);
     const getCurrentEvent = useStore((state) => state.getCurrentEvent);
     const updateEventName = useStore((state) => state.updateEventName);
@@ -265,8 +266,9 @@ function App() {
 
     const onPaneClick = useCallback(() => {
         setSelectedNode(null);
+        setSelectedFolderId(null); // Clear folder selection on canvas click
         setContextMenu(null);
-    }, [setSelectedNode]);
+    }, [setSelectedNode, setSelectedFolderId]);
 
     // Handle edge drop to empty space - open context menu for new node
     const onConnectEnd = useCallback((event, connectionState) => {

@@ -553,6 +553,7 @@ const useStore = create(
                         edges: event.edges || [],
                         viewport: event.viewport || { x: 0, y: 0, zoom: 1 },
                         selectedNode: null,
+                        selectedFolderId: null, // Clear folder selection on event switch
                     });
                     // Open/activate tab for this event
                     get().openTab(eventId);
@@ -1376,10 +1377,11 @@ const useStore = create(
             },
 
             // Simulation Logic (Graph Traversal)
-            simulateEvent: (currentNodes, currentEdges, incomingContextParts = [], visitedEventIds = new Set(), inputOverrides = {}) => {
+            simulateEvent: (currentNodes, currentEdges, incomingContextParts = [], visitedEventIds = new Set(), inputOverrides = {}, contextFixedPrompt = null) => {
                 const state = get();
                 const currentEvent = state.getCurrentEvent();
-                const fixedPrompt = currentEvent?.fixedPrompt || '';
+                // Use provided fixedPrompt (for playlists) or fallback to current event's prompt
+                const fixedPrompt = contextFixedPrompt !== null ? contextFixedPrompt : (currentEvent?.fixedPrompt || '');
 
                 return sim.simulateEvent(state.events, currentNodes, currentEdges, fixedPrompt, incomingContextParts, visitedEventIds, inputOverrides, state.moodConfig);
             },
