@@ -557,13 +557,15 @@ export const simulateEvent = (
 
         // Phase 2: Handle reference nodes (recursive simulation)
         if (currentNode.type === 'referenceNode') {
-            const refResult = processReferenceNode(currentNode, {
-                allEvents, processedNodes, currentEdges, currentEventFixedPrompt,
-                visitedEdgeIds, incomingContextParts, visitedEventIds, moodConfig, currentMood
-            });
-            if (refResult) {
-                currentMood = refResult.newMood;
-                results.push(...refResult.results);
+            if (!isBlockedByField) {
+                const refResult = processReferenceNode(currentNode, {
+                    allEvents, processedNodes, currentEdges, currentEventFixedPrompt,
+                    visitedEdgeIds, incomingContextParts, visitedEventIds, moodConfig, currentMood
+                });
+                if (refResult) {
+                    currentMood = refResult.newMood;
+                    results.push(...refResult.results);
+                }
             }
         }
         // Phase 3: Build result for visible nodes
