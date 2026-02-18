@@ -569,9 +569,9 @@ export const simulateEvent = (
         // Phase 3: Build result for visible nodes
 
         else {
-            // const hiddenTypes = ['startNode', 'endNode', 'branchNode', 'referenceNode', 'ifNode', 'carryForwardNode', 'fieldNode'];
-            // if (!hiddenTypes.includes(currentNode.type) && !isBlockedByField) {
-            if (!isBlockedByField) {
+            const hiddenTypes = ['startNode', 'endNode', 'branchNode', 'referenceNode', 'ifNode', 'carryForwardNode', 'fieldNode'];
+            if (!hiddenTypes.includes(currentNode.type) && !isBlockedByField) {
+                // if (!isBlockedByField) {
                 const { result, newMood } = buildNodeResult(currentNode, {
                     allEvents, processedNodes, currentEdges, currentEventFixedPrompt,
                     visitedEdgeIds, incomingContextParts, moodConfig, currentMood, containingFieldId
