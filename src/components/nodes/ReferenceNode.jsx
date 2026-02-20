@@ -164,18 +164,6 @@ const ReferenceNode = ({ id, data, selected }) => {
                     )}
                 </div>
 
-                {selectedEvent && (
-                    <div style={{
-                        marginTop: '8px',
-                        padding: '8px',
-                        background: 'rgba(181, 245, 255, 0.05)',
-                        borderRadius: '4px',
-                        fontSize: '10px',
-                        color: 'rgba(255,255,255,0.5)',
-                    }}>
-                        🔄 Reusable: Will execute "{selectedEvent.name}" flow
-                    </div>
-                )}
 
                 {/* Display referenced event's Start Node inputs */}
                 {selectedEvent && (() => {
@@ -255,6 +243,57 @@ const ReferenceNode = ({ id, data, selected }) => {
                         </div>
                     );
                 })()}
+
+                {/* Carry Forward Text Input */}
+                {selectedEvent && (
+                    <div style={{
+                        marginTop: '8px',
+                        padding: '8px',
+                        background: 'rgba(229, 212, 255, 0.05)',
+                        borderRadius: '4px',
+                        border: '1px solid rgba(229, 212, 255, 0.1)',
+                    }}>
+                        <div style={{
+                            fontSize: '10px',
+                            color: '#E5D4FF',
+                            marginBottom: '6px',
+                            fontWeight: 500,
+                        }}>
+                            ⏩ Carry Forward Text
+                        </div>
+                        <textarea
+                            className="nodrag"
+                            value={data.carryForwardText || ''}
+                            onChange={(e) => {
+                                e.stopPropagation();
+                                updateNode(id, { carryForwardText: e.target.value });
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            onMouseDown={(e) => e.stopPropagation()}
+                            placeholder="Text that carries to all nodes in the referenced event..."
+                            style={{
+                                width: '100%',
+                                minHeight: '40px',
+                                background: 'rgba(229, 212, 255, 0.08)',
+                                border: '1px solid rgba(229, 212, 255, 0.15)',
+                                borderRadius: '4px',
+                                color: 'rgba(255,255,255,0.85)',
+                                fontSize: '11px',
+                                padding: '6px 8px',
+                                resize: 'vertical',
+                                fontFamily: 'inherit',
+                                outline: 'none',
+                                boxSizing: 'border-box',
+                            }}
+                        />
+                        <div style={{
+                            fontSize: '9px',
+                            color: 'rgba(255,255,255,0.35)',
+                            marginTop: '4px',
+                        }}>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Output Handles */}

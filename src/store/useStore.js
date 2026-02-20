@@ -66,6 +66,7 @@ const createReferenceNode = (position = { x: 0, y: 0 }, data = {}) => ({
         label: data.label || 'Event Reference',
         referenceId: data.referenceId || null,
         referenceName: data.referenceName || 'Select Event...',
+        carryForwardText: data.carryForwardText || '',
         inputs: data.inputs || [{ id: 'trigger', label: 'Trigger' }],
         outputs: data.outputs || [{ id: 'next', label: 'Next' }],
         ...data,

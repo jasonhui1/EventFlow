@@ -473,6 +473,17 @@ const processReferenceNode = (refNode, context) => {
     );
 
     const newContextParts = [...incomingContextParts, ...refPromptParts];
+
+    // Inject carry-forward text from the reference node
+    if (refNode.data?.carryForwardText?.trim()) {
+        newContextParts.push({
+            label: `Carry Forward (→ ${refNode.data.referenceName || 'Ref'})`,
+            prompt: refNode.data.carryForwardText.trim(),
+            type: 'inherited',
+            nodeId: refNode.id,
+        });
+    }
+
     const newVisitedEvents = new Set(visitedEventIds).add(refNode.data.referenceId);
 
     // Deep clone and apply input overrides
