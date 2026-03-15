@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import useStore from '../store/useStore';
 import ConfirmModal from './ConfirmModal';
 
@@ -41,9 +41,13 @@ const Sidebar = () => {
         }));
     };
 
-    const filteredEvents = events.filter(event =>
-        event.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    // Memoize the filtered events based on the search term
+    const filteredEvents = useMemo(() => {
+        const lowerSearchTerm = searchTerm.toLowerCase();
+        return events.filter(event =>
+            event.name.toLowerCase().includes(lowerSearchTerm)
+        );
+    }, [events, searchTerm]);
 
     const onDragStart = (event, nodeType) => {
         event.dataTransfer.setData('application/reactflow', nodeType);
@@ -115,6 +119,14 @@ const Sidebar = () => {
         }
     };
 
+    // Get root-level folders (no parent or parentId is undefined/null)
+    const rootFolders = useMemo(() => {
+        return (folders || []).filter(f => {
+            const folderParent = f.parentId ?? null; // Convert undefined to null
+            return folderParent === null;
+        });
+    }, [folders]);
+
     // Get child folders for a given parent (treat undefined same as null for backwards compatibility)
     const getChildFolders = (parentId) => {
         return (folders || []).filter(f => {
@@ -123,23 +135,24 @@ const Sidebar = () => {
         });
     };
 
-    // Get root-level folders (no parent or parentId is undefined/null)
-    const rootFolders = getChildFolders(null);
-
     // Group events by folder
-    const eventsByFolder = {}; // { folderId: [events] }
-    const rootEvents = [];
+    const { eventsByFolder, rootEvents } = useMemo(() => {
+        const eventsByFolderMap = {}; // { folderId: [events] }
+        const rootEventsArray = [];
 
-    filteredEvents.forEach(event => {
-        if (event.folderId && folders.find(f => f.id === event.folderId)) {
-            if (!eventsByFolder[event.folderId]) {
-                eventsByFolder[event.folderId] = [];
+        filteredEvents.forEach(event => {
+            if (event.folderId && folders.find(f => f.id === event.folderId)) {
+                if (!eventsByFolderMap[event.folderId]) {
+                    eventsByFolderMap[event.folderId] = [];
+                }
+                eventsByFolderMap[event.folderId].push(event);
+            } else {
+                rootEventsArray.push(event);
             }
-            eventsByFolder[event.folderId].push(event);
-        } else {
-            rootEvents.push(event);
-        }
-    });
+        });
+
+        return { eventsByFolder: eventsByFolderMap, rootEvents: rootEventsArray };
+    }, [filteredEvents, folders]);
 
     // Recursive folder renderer component
     const renderFolder = (folder, depth = 0) => {
