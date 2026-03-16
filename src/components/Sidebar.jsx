@@ -186,6 +186,7 @@ const Sidebar = () => {
                     {hoveredFolderId === folder.id && (
                         <div className="folder-actions" style={{ display: 'flex', gap: '4px' }}>
                             <button
+                                aria-label="Add Subfolder"
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     setNewFolderParentId(folder.id);
@@ -203,6 +204,7 @@ const Sidebar = () => {
                                 +📁
                             </button>
                             <button
+                                aria-label="Rename Folder"
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     setRenameFolderModal({ id: folder.id, name: folder.name });
@@ -219,6 +221,7 @@ const Sidebar = () => {
                                 ✎
                             </button>
                             <button
+                                aria-label="Delete Folder"
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     setDeleteFolderModal({ id: folder.id, name: folder.name });
@@ -258,6 +261,7 @@ const Sidebar = () => {
                                 <div className="event-item-actions">
                                     <span className="event-item-count">{event.nodes?.length || 0}</span>
                                     <button
+                                        aria-label="Duplicate Event"
                                         className="event-action-btn duplicate"
                                         onClick={(e) => {
                                             e.stopPropagation();
@@ -269,6 +273,7 @@ const Sidebar = () => {
                                     </button>
                                     {events.length > 1 && (
                                         <button
+                                            aria-label="Delete Event"
                                             className="event-action-btn delete"
                                             onClick={(e) => {
                                                 e.stopPropagation();
@@ -311,6 +316,8 @@ const Sidebar = () => {
                     </>
                 )}
                 <button
+                    aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                    aria-expanded={!isCollapsed}
                     className="sidebar-collapse-btn"
                     onClick={() => setIsCollapsed(!isCollapsed)}
                     title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
@@ -533,6 +540,7 @@ const Sidebar = () => {
                                             <div className="event-item-actions">
                                                 <span className="event-item-count">{event.nodes?.length || 0}</span>
                                                 <button
+                                                    aria-label="Duplicate Event"
                                                     className="event-action-btn duplicate"
                                                     onClick={(e) => {
                                                         e.stopPropagation();
@@ -544,6 +552,7 @@ const Sidebar = () => {
                                                 </button>
                                                 {events.length > 1 && (
                                                     <button
+                                                        aria-label="Delete Event"
                                                         className="event-action-btn delete"
                                                         onClick={(e) => {
                                                             e.stopPropagation();
