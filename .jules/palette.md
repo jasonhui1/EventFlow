@@ -1,0 +1,3 @@
+## 2026-03-16 - Accessibility Improvements for Icon Buttons
+**Learning:** Adding `aria-label` alongside `title` to icon-only buttons improves screen reader context. Using `:focus-visible` globally instead of relying solely on pointer interactions is crucial for ensuring keyboard accessibility in highly interactive canvas-based apps like this one, as many action buttons lacked focus states.
+**Action:** Next time, always check for `:focus-visible` states in the global CSS when dealing with custom components or icon buttons, and proactively ensure all icon-only buttons include descriptive `aria-label`s.
