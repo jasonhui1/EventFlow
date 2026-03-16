@@ -65,6 +65,21 @@ body {
   overflow: hidden;
 }
 
+/* Global focus states for accessibility */
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--pastel-purple);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+.react-flow__node:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--pastel-purple), var(--shadow-lg);
+}
+
 #root {
   width: 100vw;
   height: 100vh;

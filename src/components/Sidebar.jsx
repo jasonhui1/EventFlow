@@ -198,9 +198,10 @@ const Sidebar = () => {
                                     cursor: 'pointer',
                                     fontSize: '12px',
                                 }}
-                                title="Add Subfolder"
+                                title={`Add subfolder to ${folder.name}`}
+                                aria-label={`Add subfolder to ${folder.name}`}
                             >
-                                +📁
+                                <span aria-hidden="true">+📁</span>
                             </button>
                             <button
                                 onClick={(e) => {
@@ -214,9 +215,10 @@ const Sidebar = () => {
                                     cursor: 'pointer',
                                     fontSize: '12px',
                                 }}
-                                title="Rename"
+                                title={`Rename folder ${folder.name}`}
+                                aria-label={`Rename folder ${folder.name}`}
                             >
-                                ✎
+                                <span aria-hidden="true">✎</span>
                             </button>
                             <button
                                 onClick={(e) => {
@@ -230,9 +232,10 @@ const Sidebar = () => {
                                     cursor: 'pointer',
                                     fontSize: '12px',
                                 }}
-                                title="Delete"
+                                title={`Delete folder ${folder.name}`}
+                                aria-label={`Delete folder ${folder.name}`}
                             >
-                                ✕
+                                <span aria-hidden="true">✕</span>
                             </button>
                         </div>
                     )}
@@ -263,9 +266,10 @@ const Sidebar = () => {
                                             e.stopPropagation();
                                             duplicateEvent(event.id);
                                         }}
-                                        title="Duplicate Event"
+                                        title={`Duplicate Event ${event.name}`}
+                                        aria-label={`Duplicate Event ${event.name}`}
                                     >
-                                        ❐
+                                        <span aria-hidden="true">❐</span>
                                     </button>
                                     {events.length > 1 && (
                                         <button
@@ -274,9 +278,10 @@ const Sidebar = () => {
                                                 e.stopPropagation();
                                                 handleDeleteEvent(event.id, event.name);
                                             }}
-                                            title="Delete Event"
+                                            title={`Delete Event ${event.name}`}
+                                            aria-label={`Delete Event ${event.name}`}
                                         >
-                                            ✕
+                                            <span aria-hidden="true">✕</span>
                                         </button>
                                     )}
                                 </div>
@@ -314,35 +319,46 @@ const Sidebar = () => {
                     className="sidebar-collapse-btn"
                     onClick={() => setIsCollapsed(!isCollapsed)}
                     title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                    aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                    aria-expanded={!isCollapsed}
                 >
-                    {isCollapsed ? '»' : '«'}
+                    <span aria-hidden="true">{isCollapsed ? '»' : '«'}</span>
                 </button>
             </div>
 
-            <div className="sidebar-tabs">
+            <div className="sidebar-tabs" role="tablist">
 
                 <button
                     className={`sidebar-tab ${activeTab === 'nodes' ? 'active' : ''}`}
                     onClick={() => { setActiveTab('nodes'); if (isCollapsed) setIsCollapsed(false); }}
                     title="Node Palette"
+                    aria-label="Node Palette Tab"
+                    role="tab"
+                    aria-selected={activeTab === 'nodes'}
                 >
-                    <span className="tab-icon">🧩</span>
+                    <span className="tab-icon" aria-hidden="true">🧩</span>
                     {!isCollapsed && <span className="tab-label">Nodes</span>}
                 </button>
                 <button
                     className={`sidebar-tab ${activeTab === 'library' ? 'active' : ''}`}
                     onClick={() => { setActiveTab('library'); if (isCollapsed) setIsCollapsed(false); }}
                     title="Event Library"
+                    aria-label="Event Library Tab"
+                    role="tab"
+                    aria-selected={activeTab === 'library'}
                 >
-                    <span className="tab-icon">📚</span>
+                    <span className="tab-icon" aria-hidden="true">📚</span>
                     {!isCollapsed && <span className="tab-label">Library</span>}
                 </button>
                 <button
                     className={`sidebar-tab ${activeTab === 'tips' ? 'active' : ''}`}
                     onClick={() => { setActiveTab('tips'); if (isCollapsed) setIsCollapsed(false); }}
                     title="Quick Tips"
+                    aria-label="Quick Tips Tab"
+                    role="tab"
+                    aria-selected={activeTab === 'tips'}
                 >
-                    <span className="tab-icon">💡</span>
+                    <span className="tab-icon" aria-hidden="true">💡</span>
                     {!isCollapsed && <span className="tab-label">Tips</span>}
                 </button>
             </div>
@@ -475,6 +491,7 @@ const Sidebar = () => {
                                     setShowNewFolderModal(true);
                                 }}
                                 title="New Folder"
+                                aria-label="Create new root folder"
                                 style={{
                                     background: 'none',
                                     border: 'none',
@@ -484,7 +501,7 @@ const Sidebar = () => {
                                     padding: '4px',
                                 }}
                             >
-                                📁+
+                                <span aria-hidden="true">📁+</span>
                             </button>
                         </div>
 
@@ -538,9 +555,10 @@ const Sidebar = () => {
                                                         e.stopPropagation();
                                                         duplicateEvent(event.id);
                                                     }}
-                                                    title="Duplicate Event"
+                                                    title={`Duplicate Event ${event.name}`}
+                                                    aria-label={`Duplicate Event ${event.name}`}
                                                 >
-                                                    ❐
+                                                    <span aria-hidden="true">❐</span>
                                                 </button>
                                                 {events.length > 1 && (
                                                     <button
@@ -549,9 +567,10 @@ const Sidebar = () => {
                                                             e.stopPropagation();
                                                             handleDeleteEvent(event.id, event.name);
                                                         }}
-                                                        title="Delete Event"
+                                                        title={`Delete Event ${event.name}`}
+                                                        aria-label={`Delete Event ${event.name}`}
                                                     >
-                                                        ✕
+                                                        <span aria-hidden="true">✕</span>
                                                     </button>
                                                 )}
                                             </div>
