@@ -1,0 +1,3 @@
+## 2024-05-18 - Essential ARIA Labels for Icon-Only and Custom UI Elements
+**Learning:** Across custom React components (like Sidebar collapse, TabBar close buttons, Top UI collapse), icon-only or custom interactive elements frequently lack screen reader accessibility. Since visual cues (icons, "x") don't naturally convey their purpose to assistive technologies, they are essentially invisible or confusing to these users.
+**Action:** Always verify that every custom icon button or toggle element has a descriptive `aria-label`, and for expandable sections, ensure `aria-expanded` accurately reflects the state.
