@@ -1,4 +1,4 @@
-import React, { memo } from 'react';
+import React, { memo, useMemo } from 'react';
 import { Handle, Position, NodeResizer } from '@xyflow/react';
 import useStore from '../../store/useStore';
 
@@ -29,14 +29,18 @@ const BranchNode = ({ id, data, selected }) => {
 
     return (
         <div className={`branch-node ${selected ? 'selected' : ''}`}>
-            <NodeResizer
-                color="#FFCEB5"
-                isVisible={selected}
-                minWidth={250}
-                minHeight={150}
-                handleStyle={{ width: 8, height: 8, borderRadius: '50%' }}
-                lineStyle={{ border: '1px solid #FFCEB5' }}
-            />
+            {/* ⚡ Bolt: Memoize NodeResizer to prevent unnecessary re-renders during interactions like typing.
+                Impact: Reduces React overhead on heavy text input operations inside the node. */}
+            {useMemo(() => (
+                <NodeResizer
+                    color="#FFCEB5"
+                    isVisible={selected}
+                    minWidth={250}
+                    minHeight={150}
+                    handleStyle={{ width: 8, height: 8, borderRadius: '50%' }}
+                    lineStyle={{ border: '1px solid #FFCEB5' }}
+                />
+            ), [selected])}
             {/* Input Handle */}
             {data.inputs?.map((input, index) => (
                 <Handle
