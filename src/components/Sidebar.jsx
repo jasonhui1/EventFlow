@@ -186,6 +186,7 @@ const Sidebar = () => {
                     {hoveredFolderId === folder.id && (
                         <div className="folder-actions" style={{ display: 'flex', gap: '4px' }}>
                             <button
+                                aria-label={`Add Subfolder to ${folder.name}`}
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     setNewFolderParentId(folder.id);
@@ -203,6 +204,7 @@ const Sidebar = () => {
                                 +📁
                             </button>
                             <button
+                                aria-label={`Rename Folder ${folder.name}`}
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     setRenameFolderModal({ id: folder.id, name: folder.name });
@@ -219,6 +221,7 @@ const Sidebar = () => {
                                 ✎
                             </button>
                             <button
+                                aria-label={`Delete Folder ${folder.name}`}
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     setDeleteFolderModal({ id: folder.id, name: folder.name });
@@ -258,6 +261,7 @@ const Sidebar = () => {
                                 <div className="event-item-actions">
                                     <span className="event-item-count">{event.nodes?.length || 0}</span>
                                     <button
+                                        aria-label={`Duplicate Event ${event.name}`}
                                         className="event-action-btn duplicate"
                                         onClick={(e) => {
                                             e.stopPropagation();
@@ -269,6 +273,7 @@ const Sidebar = () => {
                                     </button>
                                     {events.length > 1 && (
                                         <button
+                                            aria-label={`Delete Event ${event.name}`}
                                             className="event-action-btn delete"
                                             onClick={(e) => {
                                                 e.stopPropagation();
@@ -311,6 +316,8 @@ const Sidebar = () => {
                     </>
                 )}
                 <button
+                    aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                    aria-expanded={!isCollapsed}
                     className="sidebar-collapse-btn"
                     onClick={() => setIsCollapsed(!isCollapsed)}
                     title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
@@ -322,6 +329,7 @@ const Sidebar = () => {
             <div className="sidebar-tabs">
 
                 <button
+                    aria-label="Node Palette"
                     className={`sidebar-tab ${activeTab === 'nodes' ? 'active' : ''}`}
                     onClick={() => { setActiveTab('nodes'); if (isCollapsed) setIsCollapsed(false); }}
                     title="Node Palette"
@@ -330,6 +338,7 @@ const Sidebar = () => {
                     {!isCollapsed && <span className="tab-label">Nodes</span>}
                 </button>
                 <button
+                    aria-label="Event Library"
                     className={`sidebar-tab ${activeTab === 'library' ? 'active' : ''}`}
                     onClick={() => { setActiveTab('library'); if (isCollapsed) setIsCollapsed(false); }}
                     title="Event Library"
@@ -338,6 +347,7 @@ const Sidebar = () => {
                     {!isCollapsed && <span className="tab-label">Library</span>}
                 </button>
                 <button
+                    aria-label="Quick Tips"
                     className={`sidebar-tab ${activeTab === 'tips' ? 'active' : ''}`}
                     onClick={() => { setActiveTab('tips'); if (isCollapsed) setIsCollapsed(false); }}
                     title="Quick Tips"
@@ -470,6 +480,7 @@ const Sidebar = () => {
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <h3 className="sidebar-section-title">Event Library</h3>
                             <button
+                                aria-label="New Folder"
                                 onClick={() => {
                                     setNewFolderParentId(null);
                                     setShowNewFolderModal(true);
@@ -533,6 +544,7 @@ const Sidebar = () => {
                                             <div className="event-item-actions">
                                                 <span className="event-item-count">{event.nodes?.length || 0}</span>
                                                 <button
+                                                    aria-label={`Duplicate Event ${event.name}`}
                                                     className="event-action-btn duplicate"
                                                     onClick={(e) => {
                                                         e.stopPropagation();
@@ -544,6 +556,7 @@ const Sidebar = () => {
                                                 </button>
                                                 {events.length > 1 && (
                                                     <button
+                                                        aria-label={`Delete Event ${event.name}`}
                                                         className="event-action-btn delete"
                                                         onClick={(e) => {
                                                             e.stopPropagation();

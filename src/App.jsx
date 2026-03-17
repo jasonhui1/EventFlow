@@ -551,6 +551,8 @@ function App() {
 
                     {/* Top UI Collapse Toggle */}
                     <button
+                        aria-label={isTopUICollapsed ? 'Expand Top UI' : 'Collapse Top UI'}
+                        aria-expanded={!isTopUICollapsed}
                         onClick={() => setIsTopUICollapsed(!isTopUICollapsed)}
                         style={{
                             background: 'rgba(255,255,255,0.05)',
@@ -689,6 +691,7 @@ function App() {
                                         const isActive = currentCostumes.some(c => (typeof c === 'string' ? c : c.name) === costume);
                                         return (
                                             <button
+                                                aria-label={`Toggle costume ${costume}`}
                                                 key={costume}
                                                 className={`costume-tag ${isActive ? 'active' : ''}`}
                                                 onClick={() => toggleCostume(costume)}
@@ -701,6 +704,8 @@ function App() {
 
                                 {(currentEvent.costumes || []).length > 0 && (
                                     <button
+                                        aria-label={showWeights ? 'Hide Weights' : 'Configure Weights'}
+                                        aria-expanded={showWeights}
                                         className={`weights-toggle-btn ${showWeights ? 'active' : ''}`}
                                         onClick={() => setShowWeights(!showWeights)}
                                         title="Configure Weights"
