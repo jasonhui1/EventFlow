@@ -1,0 +1,3 @@
+## 2024-03-18 - Optimize ID-to-Node lookups in simulationUtils.js
+**Learning:** O(N) array traversals for ID-based lookups (`nodes.find(n => n.id === ...)`) in recursive functions like `getInheritedPrompts` lead to significant performance bottlenecks, causing O(N^2) or worse time complexity during graph traversal.
+**Action:** When performing recursive traversals or large iterations over arrays to find specific elements by ID, always pre-compute a `Map` (e.g., `new Map(nodes.map(n => [n.id, n]))`) at the entry point of the function. Pass this `nodeMap` down to recursive calls to achieve O(1) lookups.
