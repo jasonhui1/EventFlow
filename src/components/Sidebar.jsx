@@ -199,6 +199,7 @@ const Sidebar = () => {
                                     fontSize: '12px',
                                 }}
                                 title="Add Subfolder"
+                                aria-label={`Add Subfolder to ${folder.name}`}
                             >
                                 +📁
                             </button>
@@ -215,6 +216,7 @@ const Sidebar = () => {
                                     fontSize: '12px',
                                 }}
                                 title="Rename"
+                                aria-label={`Rename folder ${folder.name}`}
                             >
                                 ✎
                             </button>
@@ -231,6 +233,7 @@ const Sidebar = () => {
                                     fontSize: '12px',
                                 }}
                                 title="Delete"
+                                aria-label={`Delete folder ${folder.name}`}
                             >
                                 ✕
                             </button>
@@ -264,6 +267,7 @@ const Sidebar = () => {
                                             duplicateEvent(event.id);
                                         }}
                                         title="Duplicate Event"
+                                        aria-label={`Duplicate event ${event.name}`}
                                     >
                                         ❐
                                     </button>
@@ -275,6 +279,7 @@ const Sidebar = () => {
                                                 handleDeleteEvent(event.id, event.name);
                                             }}
                                             title="Delete Event"
+                                            aria-label={`Delete event ${event.name}`}
                                         >
                                             ✕
                                         </button>
@@ -314,6 +319,8 @@ const Sidebar = () => {
                     className="sidebar-collapse-btn"
                     onClick={() => setIsCollapsed(!isCollapsed)}
                     title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                    aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                    aria-expanded={!isCollapsed}
                 >
                     {isCollapsed ? '»' : '«'}
                 </button>
@@ -475,6 +482,7 @@ const Sidebar = () => {
                                     setShowNewFolderModal(true);
                                 }}
                                 title="New Folder"
+                                aria-label="New Folder"
                                 style={{
                                     background: 'none',
                                     border: 'none',
@@ -539,6 +547,7 @@ const Sidebar = () => {
                                                         duplicateEvent(event.id);
                                                     }}
                                                     title="Duplicate Event"
+                                                    aria-label={`Duplicate event ${event.name}`}
                                                 >
                                                     ❐
                                                 </button>
@@ -550,6 +559,7 @@ const Sidebar = () => {
                                                             handleDeleteEvent(event.id, event.name);
                                                         }}
                                                         title="Delete Event"
+                                                        aria-label={`Delete event ${event.name}`}
                                                     >
                                                         ✕
                                                     </button>
