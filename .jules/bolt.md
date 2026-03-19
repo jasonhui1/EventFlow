@@ -1,0 +1,4 @@
+
+## 2024-05-28 - Optimizing O(N) Array Lookups in Recursive Graph Traversal
+**Learning:** The simulation utilities (`simulateEvent`, `getInheritedPrompts`, `getComposedPrompt`) heavily rely on looking up nodes by ID. Previously, this was done using `Array.prototype.find()` inside recursive calls and tight loops, resulting in O(N²) or worse time complexity for deep graphs.
+**Action:** When working with graph or tree traversals in this codebase, always pre-compute a `Map` of ID -> Node (`new Map(nodes.map(n => [n.id, n]))`) at the highest level possible and pass it down as an optional parameter (`nodeMap`) to recursive functions. This changes the lookup time to O(1) and significantly speeds up simulation performance without altering the logic. Make sure to reset or recalculate the `nodeMap` when crossing boundaries where the node array changes, such as when entering a referenced event (`nodeMap: null`).
