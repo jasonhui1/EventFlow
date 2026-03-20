@@ -1,0 +1,3 @@
+## 2024-03-20 - Added ARIA labels to Sidebar icon-only buttons
+**Learning:** Found that multiple icon-only buttons in `Sidebar.jsx` relied solely on `title` attributes for accessibility. While `title` provides a tooltip, explicit `aria-label`s are necessary for consistent screen reader support, especially when the button action relies on dynamic context (like deleting a specific named folder).
+**Action:** Always ensure icon-only buttons have an `aria-label` attribute, and use dynamic string interpolation (e.g., `aria-label={\`Delete folder ${folder.name}\`}`) to provide specific context when applicable, rather than generic labels.
