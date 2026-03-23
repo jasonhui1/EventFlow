@@ -52,10 +52,11 @@ export const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 /**
  * Get parent nodes (nodes that connect TO a specific node)
  */
-export const getParentNodes = (nodeId, nodes, edges) => {
+export const getParentNodes = (nodeId, nodes, edges, nodeMap = null) => {
     const parentEdges = edges.filter((edge) => edge.target === nodeId);
+    // ⚡ Bolt Performance Optimization: Use O(1) Map lookup instead of O(N) Array.find when available
     return parentEdges.map((edge) => {
-        const parentNode = nodes.find((n) => n.id === edge.source);
+        const parentNode = nodeMap ? nodeMap.get(edge.source) : nodes.find((n) => n.id === edge.source);
         return parentNode ? { node: parentNode, edgeId: edge.id, sourceHandle: edge.sourceHandle } : null;
     }).filter(Boolean);
 };
@@ -71,9 +72,10 @@ const processPrompt = (promptData) => {
 };
 
 export const getInheritedPrompts = (nodeId, allEvents, nodes, edges, visited = new Set(), options = {}) => {
-    const { originalDisabledSources = null, selectSinglePath = false, randomize = false, allowedEdges = null } = options;
+    const { originalDisabledSources = null, selectSinglePath = false, randomize = false, allowedEdges = null, nodeMap = null } = options;
 
-    const node = nodes.find((n) => n.id === nodeId);
+    // ⚡ Bolt Performance Optimization: Use O(1) Map lookup instead of O(N) Array.find when available
+    const node = nodeMap ? nodeMap.get(nodeId) : nodes.find((n) => n.id === nodeId);
     if (!node || visited.has(nodeId)) return [];
 
     visited.add(nodeId);
@@ -82,7 +84,7 @@ export const getInheritedPrompts = (nodeId, allEvents, nodes, edges, visited = n
         ? originalDisabledSources
         : (node.data?.disabledInheritedSources || []);
 
-    let parentNodes = getParentNodes(nodeId, nodes, edges);
+    let parentNodes = getParentNodes(nodeId, nodes, edges, nodeMap);
 
     if (allowedEdges) {
         parentNodes = parentNodes.filter(({ edgeId }) => allowedEdges.has(edgeId));
@@ -112,6 +114,8 @@ export const getInheritedPrompts = (nodeId, allEvents, nodes, edges, visited = n
         if (parentNode.type === 'referenceNode' && parentNode.data?.referenceId) {
             const referencedEvent = allEvents.find(e => e.id === parentNode.data.referenceId);
             if (referencedEvent && referencedEvent.nodes && referencedEvent.edges) {
+                // ⚡ Bolt Performance Optimization: Create Map for reference event nodes for O(1) lookups in recursion
+                const refNodeMap = new Map(referencedEvent.nodes.map(n => [n.id, n]));
                 const refEndNode = referencedEvent.nodes.find(n => n.type === 'endNode');
                 if (refEndNode) {
                     const refInherited = getInheritedPrompts(
@@ -123,6 +127,7 @@ export const getInheritedPrompts = (nodeId, allEvents, nodes, edges, visited = n
                         {
                             ...options,
                             originalDisabledSources: [],
+                            nodeMap: refNodeMap,
                         }
                     );
                     inheritedPrompts = [...inheritedPrompts, ...refInherited];
@@ -156,13 +161,16 @@ export const getInheritedPrompts = (nodeId, allEvents, nodes, edges, visited = n
  * Get the fully composed prompt for a node
  */
 export const getComposedPrompt = (nodeId, allEvents, nodes, edges, currentEventFixedPrompt = '', options = {}) => {
-    const node = nodes.find((n) => n.id === nodeId);
+    // ⚡ Bolt Performance Optimization: Hoist Map creation to avoid O(N^2) lookups during inheritance traversal
+    const nodeMap = options.nodeMap || new Map(nodes.map(n => [n.id, n]));
+    const node = nodeMap.get(nodeId);
     if (!node) return { parts: [], full: '' };
 
     const inheritedPrompts = getInheritedPrompts(nodeId, allEvents, nodes, edges, new Set(), {
         selectSinglePath: !options.allowedEdges,
         randomize: options.randomize || false,
-        allowedEdges: options.allowedEdges
+        allowedEdges: options.allowedEdges,
+        nodeMap
     });
 
     const localPrompt = processPrompt(node.data?.localPrompt);
@@ -181,6 +189,7 @@ export const getComposedPrompt = (nodeId, allEvents, nodes, edges, currentEventF
     if (options.resolveReferences !== false && node.type === 'referenceNode' && node.data?.referenceId) {
         const refEvent = allEvents.find(e => e.id === node.data.referenceId);
         if (refEvent && refEvent.nodes) {
+            const refNodeMap = new Map(refEvent.nodes.map(n => [n.id, n]));
             const refEndNode = refEvent.nodes.find(n => n.type === 'endNode');
             if (refEndNode) {
                 const innerPrompts = getInheritedPrompts(
@@ -192,6 +201,7 @@ export const getComposedPrompt = (nodeId, allEvents, nodes, edges, currentEventF
                     {
                         selectSinglePath: true,
                         randomize: options.randomize,
+                        nodeMap: refNodeMap,
                     }
                 );
 
@@ -277,6 +287,9 @@ export const simulateEvent = (
     const startNodes = processedNodes.filter(n => n.type === 'startNode');
 
     if (startNodes.length === 0) return [];
+
+    // ⚡ Bolt Performance Optimization: Hoist Map creation for node lookups to convert O(N*E) traversal to O(E)
+    const processedNodeMap = new Map(processedNodes.map(n => [n.id, n]));
 
     // Pre-compute which nodes are inside which fieldNode
     // Nodes inside a field should ONLY be processed via field selection, not independent edges
@@ -394,7 +407,8 @@ export const simulateEvent = (
                         {
                             allowedEdges: visitedEdgeIds,
                             randomize: false,
-                            resolveReferences: false
+                            resolveReferences: false,
+                            nodeMap: processedNodeMap
                         }
                     );
 
@@ -445,7 +459,8 @@ export const simulateEvent = (
                     {
                         allowedEdges: visitedEdgeIds,
                         randomize: false,
-                        resolveReferences: false
+                        resolveReferences: false,
+                        nodeMap: processedNodeMap
                     }
                 );
 
@@ -502,7 +517,7 @@ export const simulateEvent = (
                 const selectedEdges = outgoingEdges.filter(e => e.sourceHandle === randomHandle);
                 selectedEdges.forEach(edge => {
                     visitedEdgeIds.add(edge.id);
-                    const targetNode = processedNodes.find(n => n.id === edge.target);
+                    const targetNode = processedNodeMap.get(edge.target);
                     if (targetNode) queue.push(targetNode);
                 });
             }
@@ -524,13 +539,13 @@ export const simulateEvent = (
 
             selectedEdges.forEach(edge => {
                 visitedEdgeIds.add(edge.id);
-                const targetNode = processedNodes.find(n => n.id === edge.target);
+                const targetNode = processedNodeMap.get(edge.target);
                 if (targetNode) queue.push(targetNode);
             });
         } else {
             outgoingEdges.forEach(edge => {
                 visitedEdgeIds.add(edge.id);
-                const targetNode = processedNodes.find(n => n.id === edge.target);
+                const targetNode = processedNodeMap.get(edge.target);
                 if (targetNode) queue.push(targetNode);
             });
         }
