@@ -1,0 +1,3 @@
+## 2025-02-28 - Dynamic Tab Keydown Event Bubbling
+**Learning:** In complex tabbed components like `TabBar.jsx`, where nested actionable elements (like a "close tab" button) exist inside an interactive parent element (`div role="tab"`), `onKeyDown` handlers attached to the parent can accidentally be triggered when a user interacts with the child element (e.g., pressing Enter while focused on the close button).
+**Action:** When creating interactive containers, ensure `onKeyDown` handlers include `e.target === e.currentTarget` to explicitly verify that the keyboard event originated from the parent container itself and not a nested focusable child.
