@@ -1,0 +1,3 @@
+## 2024-03-24 - [O(1) Graph Traversal Maps]
+**Learning:** During heavy graph traversals like `simulateEvent`, using `Array.prototype.find()` and `Array.prototype.filter()` on `nodes` and `edges` repeatedly inside recursive functions (like `getInheritedPrompts`) creates severe performance bottlenecks as graph size increases, resulting in $O(N)$ or $O(E)$ lookups inside deeply nested loops.
+**Action:** Always pre-compute and pass down `Map` structures for $O(1)$ ID-based lookups (e.g., `nodeMap.get(id)`) and targeted array subsets (e.g., `edgesByTarget.get(targetId)`). Add optional map arguments to the end of utility function signatures and implement fallback logic to preserve backwards compatibility for external callers.
