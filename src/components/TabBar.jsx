@@ -20,6 +20,14 @@ function TabBar() {
         setActiveTab(eventId);
     };
 
+    // Handle keyboard interaction on tab
+    const handleKeyDown = (e, eventId) => {
+        if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
+            e.preventDefault();
+            setActiveTab(eventId);
+        }
+    };
+
     // Handle close button click
     const handleCloseClick = (e, eventId) => {
         e.stopPropagation();
@@ -45,12 +53,17 @@ function TabBar() {
 
     return (
         <div className="tab-bar">
-            <div className="tab-bar-scroll">
+            <div className="tab-bar-scroll" role="tablist" aria-label="Open events">
                 {openTabs.map((tab) => (
                     <div
                         key={tab.eventId}
                         className={`tab ${activeTabId === tab.eventId ? 'active' : ''}`}
+                        role="tab"
+                        tabIndex={0}
+                        aria-selected={activeTabId === tab.eventId}
+                        aria-label={getEventName(tab.eventId)}
                         onClick={() => handleTabClick(tab.eventId)}
+                        onKeyDown={(e) => handleKeyDown(e, tab.eventId)}
                         onMouseDown={(e) => handleMouseDown(e, tab.eventId)}
                         title={getEventName(tab.eventId)}
                     >
@@ -58,6 +71,7 @@ function TabBar() {
                         <span className="tab-name">{getEventName(tab.eventId)}</span>
                         <button
                             className="tab-close"
+                            aria-label={`Close ${getEventName(tab.eventId)} tab`}
                             onClick={(e) => handleCloseClick(e, tab.eventId)}
                             title="Close tab"
                         >
@@ -68,6 +82,7 @@ function TabBar() {
             </div>
             <button
                 className="tab-new"
+                aria-label="Create new event tab"
                 onClick={handleNewTab}
                 title="New tab"
             >
