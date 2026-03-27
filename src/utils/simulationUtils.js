@@ -52,10 +52,10 @@ export const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 /**
  * Get parent nodes (nodes that connect TO a specific node)
  */
-export const getParentNodes = (nodeId, nodes, edges) => {
+export const getParentNodes = (nodeId, nodes, edges, nodeMap) => {
     const parentEdges = edges.filter((edge) => edge.target === nodeId);
     return parentEdges.map((edge) => {
-        const parentNode = nodes.find((n) => n.id === edge.source);
+        const parentNode = nodeMap ? nodeMap.get(edge.source) : nodes.find((n) => n.id === edge.source);
         return parentNode ? { node: parentNode, edgeId: edge.id, sourceHandle: edge.sourceHandle } : null;
     }).filter(Boolean);
 };
@@ -70,10 +70,11 @@ const processPrompt = (promptData) => {
     return promptData || '';
 };
 
-export const getInheritedPrompts = (nodeId, allEvents, nodes, edges, visited = new Set(), options = {}) => {
+export const getInheritedPrompts = (nodeId, allEvents, nodes, edges, visited = new Set(), options = {}, nodeMap = null) => {
+    nodeMap = nodeMap || new Map(nodes.map(n => [n.id, n]));
     const { originalDisabledSources = null, selectSinglePath = false, randomize = false, allowedEdges = null } = options;
 
-    const node = nodes.find((n) => n.id === nodeId);
+    const node = nodeMap ? nodeMap.get(nodeId) : nodes.find((n) => n.id === nodeId);
     if (!node || visited.has(nodeId)) return [];
 
     visited.add(nodeId);
@@ -82,7 +83,7 @@ export const getInheritedPrompts = (nodeId, allEvents, nodes, edges, visited = n
         ? originalDisabledSources
         : (node.data?.disabledInheritedSources || []);
 
-    let parentNodes = getParentNodes(nodeId, nodes, edges);
+    let parentNodes = getParentNodes(nodeId, nodes, edges, nodeMap);
 
     if (allowedEdges) {
         parentNodes = parentNodes.filter(({ edgeId }) => allowedEdges.has(edgeId));
@@ -103,7 +104,7 @@ export const getInheritedPrompts = (nodeId, allEvents, nodes, edges, visited = n
         const parentInherited = getInheritedPrompts(parentNode.id, allEvents, nodes, edges, visited, {
             ...options,
             originalDisabledSources: disabledSources,
-        });
+        }, nodeMap);
         inheritedPrompts = [...inheritedPrompts, ...parentInherited];
 
         if (disabledSources.includes(parentNode.id)) continue;
@@ -123,7 +124,8 @@ export const getInheritedPrompts = (nodeId, allEvents, nodes, edges, visited = n
                         {
                             ...options,
                             originalDisabledSources: [],
-                        }
+                        },
+                        null // Inner map
                     );
                     inheritedPrompts = [...inheritedPrompts, ...refInherited];
                 }
@@ -155,15 +157,16 @@ export const getInheritedPrompts = (nodeId, allEvents, nodes, edges, visited = n
 /**
  * Get the fully composed prompt for a node
  */
-export const getComposedPrompt = (nodeId, allEvents, nodes, edges, currentEventFixedPrompt = '', options = {}) => {
-    const node = nodes.find((n) => n.id === nodeId);
+export const getComposedPrompt = (nodeId, allEvents, nodes, edges, currentEventFixedPrompt = '', options = {}, nodeMap = null) => {
+    nodeMap = nodeMap || new Map(nodes.map(n => [n.id, n]));
+    const node = nodeMap ? nodeMap.get(nodeId) : nodes.find((n) => n.id === nodeId);
     if (!node) return { parts: [], full: '' };
 
     const inheritedPrompts = getInheritedPrompts(nodeId, allEvents, nodes, edges, new Set(), {
         selectSinglePath: !options.allowedEdges,
         randomize: options.randomize || false,
         allowedEdges: options.allowedEdges
-    });
+    }, nodeMap);
 
     const localPrompt = processPrompt(node.data?.localPrompt);
     const nodeInheritedPrompt = processPrompt(node.data?.inheritedPrompt);
@@ -192,7 +195,8 @@ export const getComposedPrompt = (nodeId, allEvents, nodes, edges, currentEventF
                     {
                         selectSinglePath: true,
                         randomize: options.randomize,
-                    }
+                    },
+                    null // Inner map
                 );
 
                 innerPrompts.forEach(item => {
@@ -256,6 +260,7 @@ export const simulateEvent = (
     incomingMood = null // Mood carried from parent simulation
 ) => {
     // Apply input overrides to top-level start nodes if provided
+
     const processedNodes = currentNodes.map(node => {
         if (node.type === 'startNode' && inputOverrides && Object.keys(inputOverrides).length > 0) {
             return {
@@ -273,6 +278,10 @@ export const simulateEvent = (
         }
         return node;
     });
+
+    // Use Map to cache processed nodes for fast lookups
+    const nodeMap = new Map();
+    processedNodes.forEach(n => nodeMap.set(n.id, n));
 
     const startNodes = processedNodes.filter(n => n.type === 'startNode');
 
@@ -395,7 +404,8 @@ export const simulateEvent = (
                             allowedEdges: visitedEdgeIds,
                             randomize: false,
                             resolveReferences: false
-                        }
+                        },
+                        null // Prevent using parent nodeMap since getComposedPrompt recursively evaluates reference nodes internally which need a fresh map
                     );
 
                     const newContextParts = [...incomingContextParts, ...refPromptParts];
@@ -446,7 +456,8 @@ export const simulateEvent = (
                         allowedEdges: visitedEdgeIds,
                         randomize: false,
                         resolveReferences: false
-                    }
+                    },
+                    nodeMap
                 );
 
                 const finalParts = [...incomingContextParts, ...localParts];
@@ -502,12 +513,13 @@ export const simulateEvent = (
                 const selectedEdges = outgoingEdges.filter(e => e.sourceHandle === randomHandle);
                 selectedEdges.forEach(edge => {
                     visitedEdgeIds.add(edge.id);
-                    const targetNode = processedNodes.find(n => n.id === edge.target);
+                    const targetNode = nodeMap.get(edge.target);
                     if (targetNode) queue.push(targetNode);
                 });
             }
         } else if (currentNode.type === 'ifNode') {
             // Evaluate condition based on Start Node inputs
+            // Map doesn't help with type lookup, keep find
             const startNode = processedNodes.find(n => n.type === 'startNode');
             const startInputs = startNode?.data?.inputs || [];
             const conditionInputIds = currentNode.data?.conditionInputIds || [];
@@ -524,13 +536,13 @@ export const simulateEvent = (
 
             selectedEdges.forEach(edge => {
                 visitedEdgeIds.add(edge.id);
-                const targetNode = processedNodes.find(n => n.id === edge.target);
+                const targetNode = nodeMap.get(edge.target);
                 if (targetNode) queue.push(targetNode);
             });
         } else {
             outgoingEdges.forEach(edge => {
                 visitedEdgeIds.add(edge.id);
-                const targetNode = processedNodes.find(n => n.id === edge.target);
+                const targetNode = nodeMap.get(edge.target);
                 if (targetNode) queue.push(targetNode);
             });
         }
