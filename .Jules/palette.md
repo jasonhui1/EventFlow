@@ -1,0 +1,3 @@
+## 2024-05-18 - TabBar Keyboard Accessibility with Nested Buttons
+**Learning:** When making custom tab components accessible (like `div` elements with `role="tab"` and `tabIndex={0}`), ensure that keydown event handlers (for `Enter` and `Space`) check `e.target === e.currentTarget`. This prevents nested interactive elements (like a close `<button>` inside the tab `div`) from inadvertently triggering the parent tab`s activation logic when focused and activated via keyboard.
+**Action:** Always include `e.target === e.currentTarget` in custom keyboard activation handlers for interactive containers that house other focusable elements.
