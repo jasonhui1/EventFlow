@@ -44,7 +44,7 @@ function TabBar() {
     }
 
     return (
-        <div className="tab-bar">
+        <div className="tab-bar" role="tablist" aria-label="Open events">
             <div className="tab-bar-scroll">
                 {openTabs.map((tab) => (
                     <div
@@ -52,16 +52,27 @@ function TabBar() {
                         className={`tab ${activeTabId === tab.eventId ? 'active' : ''}`}
                         onClick={() => handleTabClick(tab.eventId)}
                         onMouseDown={(e) => handleMouseDown(e, tab.eventId)}
+                        onKeyDown={(e) => {
+                            if ((e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) {
+                                e.preventDefault();
+                                handleTabClick(tab.eventId);
+                            }
+                        }}
                         title={getEventName(tab.eventId)}
+                        role="tab"
+                        tabIndex={0}
+                        aria-selected={activeTabId === tab.eventId}
+                        aria-label={getEventName(tab.eventId)}
                     >
-                        <span className="tab-icon">📋</span>
+                        <span className="tab-icon" aria-hidden="true">📋</span>
                         <span className="tab-name">{getEventName(tab.eventId)}</span>
                         <button
                             className="tab-close"
                             onClick={(e) => handleCloseClick(e, tab.eventId)}
                             title="Close tab"
+                            aria-label={`Close ${getEventName(tab.eventId)} tab`}
                         >
-                            ×
+                            <span aria-hidden="true">×</span>
                         </button>
                     </div>
                 ))}
@@ -70,8 +81,9 @@ function TabBar() {
                 className="tab-new"
                 onClick={handleNewTab}
                 title="New tab"
+                aria-label="Create new event tab"
             >
-                +
+                <span aria-hidden="true">+</span>
             </button>
         </div>
     );
