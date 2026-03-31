@@ -1,0 +1,3 @@
+## 2024-05-24 - Optimization: O(1) Map Lookups over O(N) Array Search
+**Learning:** In heavily simulated graph traversals (like `simulateEvent`), repeatedly utilizing `Array.prototype.find` (O(N)) to look up nodes by ID results in a massive performance bottleneck, particularly inside recursive logic like `getInheritedPrompts`. This limits the scaling factor of graph resolution logic.
+**Action:** Always prefer hoisting `Map` instantiation (mapping IDs to items) ahead of complex simulations, passing the `Map` downward, enabling fast O(1) lookups during deeply nested evaluations. Avoid caching these reference maps inside global states / event objects to prevent stale-data bugs.
