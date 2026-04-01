@@ -1,0 +1,3 @@
+## 2024-04-01 - O(N) Array Operations in Graph Traversal
+**Learning:** Using `Array.find()` and `queue.shift()` inside recursive graph traversal loops (like `simulateEvent` and `getInheritedPrompts`) creates an O(N^2) complexity bottleneck, as these O(N) operations execute per node/edge. Cross-event references further compound this issue.
+**Action:** Always hoist `Map` creation for ID-based lookups and use a `queueIndex` pointer for BFS queues to guarantee O(1) time complexity. Ensure maps passed to recursive reference resolutions are locally scoped to prevent data leakage and undefined lookups.
