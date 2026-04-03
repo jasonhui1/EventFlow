@@ -1,0 +1,3 @@
+## 2024-05-18 - Replacing O(N) Array Operations with O(1) Data Structures in Graph Traversals
+**Learning:** During large graph simulations, using `Array.prototype.shift()` as a queue dequeue operation introduces an $O(N^2)$ bottleneck because `shift()` runs in $O(N)$ time. Furthermore, scanning edge arrays repeatedly with `edges.filter()` within loops scales poorly ($O(E)$ per node, compounding significantly).
+**Action:** Replace `queue.shift()` with a read-pointer index (`queueIndex`) to iterate over the array in $O(1)$ time. Replace `edges.filter()` with pre-computed `Map` lookups (`incomingEdgesMap`, `outgoingEdgesMap`) allowing $O(1)$ edge resolution during traversals.
