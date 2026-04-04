@@ -1,0 +1,3 @@
+## 2024-05-24 - O(N) optimizations for Graph Traversals
+**Learning:** During heavy node simulations via `simulateEvent`, nested `.filter()` and `.find()` array methods inside recursive graph traversals (`getInheritedPrompts`) trigger an `O(N^2 * E)` or worse complexity due to repeatedly scanning graph states for connected edges and references.
+**Action:** Always hoist Maps (`nodeMap`, `incomingEdgesMap`, `outgoingEdgesMap`) mapping IDs to Node Objects or Edge Arrays before running recursive or loop-heavy traversals. Passing these maps to child functions directly scales performance up drastically for deeply connected graphs, turning array lookups into `O(1)` time complexities.
