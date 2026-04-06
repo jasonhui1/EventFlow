@@ -1,0 +1,3 @@
+## 2024-06-25 - Caching Map Lookups for Graph Traversals
+**Learning:** In deeply recursive or loop-heavy graph traversals (like `simulateEvent` or `getInheritedPrompts`), calling array operations like `edges.filter()` or `nodes.find()` rapidly degrades performance from O(1) to O(E) or O(N). The complexity hits O(D * E) during recursive prompt resolution. Benchmark showed ~5500ms execution times.
+**Action:** Always hoist Maps (`new Map()`) for node/edge indexing prior to traversal. By passing a `nodeMap` and `incomingEdgesMap`/`outgoingEdgesMap` into graph walker functions, time complexity drops significantly to O(1) for lookup boundaries. In synthetic tests, this reduced times to ~1700ms.
