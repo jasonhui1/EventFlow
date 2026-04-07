@@ -365,8 +365,13 @@ export const simulateEvent = (
         console.log('[Simulation] Initialized mood:', currentMood);
     }
 
-    while (queue.length > 0) {
-        const currentNode = queue.shift();
+    // ⚡ Bolt: BFS Traversal Optimization
+    // Using a queueIndex read-pointer instead of queue.shift() converts
+    // an O(N) array mutation into an O(1) read operation,
+    // significantly improving performance for deep or dense graph traversals.
+    let queueIndex = 0;
+    while (queueIndex < queue.length) {
+        const currentNode = queue[queueIndex++];
 
         if (visitedNodeIds.has(currentNode.id)) continue;
 

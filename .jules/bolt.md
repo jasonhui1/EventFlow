@@ -1,0 +1,3 @@
+## 2025-02-14 - Replace `queue.shift()` with Read-Pointer in BFS Traversal
+**Learning:** In Javascript, using `Array.prototype.shift()` in BFS graph traversal queues inside hot loops (like in `simulateEvent` in `src/utils/simulationUtils.js`) is an O(N) operation that mutates the array and creates a severe performance bottleneck during deep or dense graph traversals.
+**Action:** Always use an integer read-pointer (e.g., `let queueIndex = 0`) to read from the queue array (`queue[queueIndex++]`) instead of using `.shift()` to maintain O(1) time complexity for queue popping operations.
