@@ -365,8 +365,11 @@ export const simulateEvent = (
         console.log('[Simulation] Initialized mood:', currentMood);
     }
 
-    while (queue.length > 0) {
-        const currentNode = queue.shift();
+    // ⚡ Bolt: Replace O(N) queue.shift() with an O(1) queueIndex read-pointer
+    // to improve BFS traversal performance on large graphs
+    let queueIndex = 0;
+    while (queueIndex < queue.length) {
+        const currentNode = queue[queueIndex++];
 
         if (visitedNodeIds.has(currentNode.id)) continue;
 
