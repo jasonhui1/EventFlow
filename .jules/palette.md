@@ -1,0 +1,3 @@
+## 2024-04-08 - Keyboard accessibility for custom interactive elements with nested buttons
+**Learning:** When making non-native elements (like `<div>`s acting as tabs) keyboard accessible with `onKeyDown`, 'Enter' and 'Space' events can inadvertently trigger when interacting with nested interactive elements (like a close `<button>`).
+**Action:** Always check `e.target === e.currentTarget` in the `onKeyDown` handler to ensure the event originated from the outer element itself, and not from a nested interactive child. Also ensure `e.preventDefault()` is used to prevent page scrolling when 'Space' is pressed. Use `role="tab"` for tab items and `role="tablist"` for their container for correct semantic structure.
