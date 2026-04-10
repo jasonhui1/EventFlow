@@ -178,7 +178,6 @@ const FieldNode = ({ id, data, selected, style }) => {
                         zIndex: 100,
                         minWidth: '180px',
                         maxHeight: '200px',
-                        maxHeight: '200px',
                         overflowY: 'auto',
                         pointerEvents: 'all',
                     }}
