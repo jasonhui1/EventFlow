@@ -70,8 +70,25 @@ const processPrompt = (promptData) => {
     return promptData || '';
 };
 
-export const getInheritedPrompts = (nodeId, allEvents, nodes, edges, visited = new Set(), options = {}) => {
+export const getInheritedPrompts = (nodeId, allEvents, nodes, edges, visited = new Set(), options = {}, parentNodesCache = null) => {
     const { originalDisabledSources = null, selectSinglePath = false, randomize = false, allowedEdges = null } = options;
+
+    // Compute parent nodes lookup only once per top-level call if not provided
+    let cache = parentNodesCache;
+    if (!cache) {
+        cache = new Map();
+        const nodeMap = new Map();
+        nodes.forEach(n => nodeMap.set(n.id, n));
+        edges.forEach(edge => {
+            if (!cache.has(edge.target)) {
+                cache.set(edge.target, []);
+            }
+            const parentNode = nodeMap.get(edge.source);
+            if (parentNode) {
+                cache.get(edge.target).push({ node: parentNode, edgeId: edge.id, sourceHandle: edge.sourceHandle });
+            }
+        });
+    }
 
     const node = nodes.find((n) => n.id === nodeId);
     if (!node || visited.has(nodeId)) return [];
@@ -82,7 +99,7 @@ export const getInheritedPrompts = (nodeId, allEvents, nodes, edges, visited = n
         ? originalDisabledSources
         : (node.data?.disabledInheritedSources || []);
 
-    let parentNodes = getParentNodes(nodeId, nodes, edges);
+    let parentNodes = cache.get(nodeId) || [];
 
     if (allowedEdges) {
         parentNodes = parentNodes.filter(({ edgeId }) => allowedEdges.has(edgeId));
@@ -103,7 +120,7 @@ export const getInheritedPrompts = (nodeId, allEvents, nodes, edges, visited = n
         const parentInherited = getInheritedPrompts(parentNode.id, allEvents, nodes, edges, visited, {
             ...options,
             originalDisabledSources: disabledSources,
-        });
+        }, cache);
         inheritedPrompts = [...inheritedPrompts, ...parentInherited];
 
         if (disabledSources.includes(parentNode.id)) continue;
@@ -285,6 +302,20 @@ export const simulateEvent = (
     const unlockedByField = new Set(); // Nodes selected by their parent field (populated upfront)
     const fieldSettings = new Map(); // Maps fieldId -> { randomizeOrder }
 
+    // Initialize cache for parent nodes traversal to avoid O(E) operations on every node
+    const parentNodesCache = new Map();
+    const nodeMap = new Map();
+    processedNodes.forEach(n => nodeMap.set(n.id, n));
+    currentEdges.forEach(edge => {
+        if (!parentNodesCache.has(edge.target)) {
+            parentNodesCache.set(edge.target, []);
+        }
+        const parentNode = nodeMap.get(edge.source);
+        if (parentNode) {
+            parentNodesCache.get(edge.target).push({ node: parentNode, edgeId: edge.id, sourceHandle: edge.sourceHandle });
+        }
+    });
+
 
     // Process all Field Nodes upfront - they are purely spatial containers with no edges
     fieldNodes.forEach(field => {
@@ -356,6 +387,7 @@ export const simulateEvent = (
     const visitedNodeIds = new Set();
     const visitedEdgeIds = new Set();
     const queue = [...startNodes]; // Field children are reached via edges, filtered by unlockedByField
+    let queueIndex = 0;
 
     // Initialize mood state
     let currentMood = incomingMood;
@@ -365,8 +397,8 @@ export const simulateEvent = (
         console.log('[Simulation] Initialized mood:', currentMood);
     }
 
-    while (queue.length > 0) {
-        const currentNode = queue.shift();
+    while (queueIndex < queue.length) {
+        const currentNode = queue[queueIndex++];
 
         if (visitedNodeIds.has(currentNode.id)) continue;
 
@@ -395,7 +427,8 @@ export const simulateEvent = (
                             allowedEdges: visitedEdgeIds,
                             randomize: false,
                             resolveReferences: false
-                        }
+                        },
+                        parentNodesCache
                     );
 
                     const newContextParts = [...incomingContextParts, ...refPromptParts];
@@ -446,7 +479,8 @@ export const simulateEvent = (
                         allowedEdges: visitedEdgeIds,
                         randomize: false,
                         resolveReferences: false
-                    }
+                    },
+                    parentNodesCache
                 );
 
                 const finalParts = [...incomingContextParts, ...localParts];
