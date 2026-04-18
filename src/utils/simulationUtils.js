@@ -365,8 +365,11 @@ export const simulateEvent = (
         console.log('[Simulation] Initialized mood:', currentMood);
     }
 
-    while (queue.length > 0) {
-        const currentNode = queue.shift();
+    // Optimization: Use a read-pointer instead of Array.prototype.shift() to avoid O(N) dequeue operations
+    // This reduces the graph traversal time complexity from O(N^2) to O(N+E)
+    let queueIndex = 0;
+    while (queueIndex < queue.length) {
+        const currentNode = queue[queueIndex++];
 
         if (visitedNodeIds.has(currentNode.id)) continue;
 
