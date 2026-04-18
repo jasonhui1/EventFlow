@@ -34,6 +34,14 @@ function TabBar() {
         }
     };
 
+    // Handle keyboard navigation for tab items
+    const handleKeyDown = (e, eventId) => {
+        if ((e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) {
+            e.preventDefault();
+            handleTabClick(eventId);
+        }
+    };
+
     // Handle new tab button
     const handleNewTab = () => {
         addEvent('New Event');
@@ -45,13 +53,17 @@ function TabBar() {
 
     return (
         <div className="tab-bar">
-            <div className="tab-bar-scroll">
+            <div className="tab-bar-scroll" role="tablist" aria-label="Open events">
                 {openTabs.map((tab) => (
                     <div
                         key={tab.eventId}
+                        role="tab"
+                        aria-selected={activeTabId === tab.eventId}
+                        tabIndex={0}
                         className={`tab ${activeTabId === tab.eventId ? 'active' : ''}`}
                         onClick={() => handleTabClick(tab.eventId)}
                         onMouseDown={(e) => handleMouseDown(e, tab.eventId)}
+                        onKeyDown={(e) => handleKeyDown(e, tab.eventId)}
                         title={getEventName(tab.eventId)}
                     >
                         <span className="tab-icon">📋</span>
@@ -60,6 +72,7 @@ function TabBar() {
                             className="tab-close"
                             onClick={(e) => handleCloseClick(e, tab.eventId)}
                             title="Close tab"
+                            aria-label={`Close ${getEventName(tab.eventId)} tab`}
                         >
                             ×
                         </button>
@@ -70,6 +83,7 @@ function TabBar() {
                 className="tab-new"
                 onClick={handleNewTab}
                 title="New tab"
+                aria-label="New tab"
             >
                 +
             </button>
