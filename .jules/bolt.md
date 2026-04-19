@@ -1,0 +1,3 @@
+## 2024-05-24 - O(1) Queue Operations in BFS Graph Traversals
+**Learning:** In graph traversals like `simulateEvent` in `simulationUtils.js`, using `queue.shift()` for BFS creates a performance bottleneck during large traversals due to O(N) time complexity.
+**Action:** Instead of `shift()`, use a `queueIndex` read-pointer (`let queueIndex = 0`) to iterate through the array (`queue[queueIndex++]`) to maintain O(1) time complexity.
