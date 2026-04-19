@@ -58,6 +58,11 @@ function App() {
     const [showBulkExportModal, setShowBulkExportModal] = useState(false);
     const [showMoodConfigModal, setShowMoodConfigModal] = useState(false);
 
+    // Loading state from API server
+    const isLoading = useStore((state) => state.isLoading);
+    const isSaving = useStore((state) => state.isSaving);
+    const lastSaved = useStore((state) => state.lastSaved);
+
     // Store state
     const nodes = useStore((state) => state.nodes);
     const edges = useStore((state) => state.edges);
@@ -518,6 +523,33 @@ function App() {
         return connection.source !== connection.target;
     }, []);
 
+    // Loading screen while fetching from API server
+    if (isLoading) {
+        return (
+            <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                height: '100vh',
+                background: '#0a0a0f',
+                color: 'rgba(255,255,255,0.6)',
+                gap: '16px',
+            }}>
+                <div style={{
+                    width: '40px',
+                    height: '40px',
+                    border: '3px solid rgba(201, 181, 255, 0.2)',
+                    borderTopColor: '#C9B5FF',
+                    borderRadius: '50%',
+                    animation: 'spin 0.8s linear infinite',
+                }} />
+                <span style={{ fontSize: '14px' }}>Loading from server...</span>
+                <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+            </div>
+        );
+    }
+
     return (
         <div className="app-container">
             <Sidebar />
@@ -597,9 +629,27 @@ function App() {
                         <button className="action-btn" onClick={handleExport}>
                             📤 Export
                         </button>
-                        <button className="action-btn primary" onClick={saveCurrentEvent}>
-                            💾 Save
+                        <button
+                            className={`action-btn ${isSaving ? 'disabled' : 'primary'}`}
+                            onClick={() => useStore.getState().saveToServer()}
+                            disabled={isSaving}
+                            style={{ position: 'relative' }}
+                        >
+                            {isSaving ? '⏳ Saving...' : '💾 Save'}
                         </button>
+
+                        {lastSaved && !isSaving && (
+                            <span style={{
+                                fontSize: '10px',
+                                color: 'rgba(255,255,255,0.3)',
+                                position: 'absolute',
+                                right: '0',
+                                bottom: '-14px',
+                                whiteSpace: 'nowrap'
+                            }}>
+                                Saved {lastSaved.toLocaleTimeString()}
+                            </span>
+                        )}
                     </div>
                 </div>
 

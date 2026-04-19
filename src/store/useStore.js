@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
 import { applyNodeChanges, applyEdgeChanges } from '@xyflow/react';
 import * as sim from '../utils/simulationUtils';
@@ -162,1260 +161,1347 @@ const createInitialEvent = () => ({
     updatedAt: new Date().toISOString(),
 });
 
+const API_SERVER_URL = 'http://localhost:4649';
+
 const useStore = create(
-    persist(
-        (set, get) => ({
-            // Events library
-            events: [createInitialEvent()],
-            currentEventId: null,
+    (set, get) => ({
+        isLoading: true,
+        isInitialized: false,
+        isSaving: false,
+        lastSaved: null,
 
-            // React Flow state
-            nodes: [],
-            edges: [],
-            viewport: { x: 0, y: 0, zoom: 1 },
-            setViewport: (viewport) => set({ viewport }),
+        // Events library
+        events: [],
+        currentEventId: null,
 
-            // Mood system configuration
-            moodConfig: {
-                tiers: [
-                    { id: 'very_negative', min: -100, max: -40, label: 'Very Negative' },
-                    { id: 'negative', min: -40, max: -10, label: 'Negative' },
-                    { id: 'neutral', min: -10, max: 10, label: 'Neutral' },
-                    { id: 'positive', min: 10, max: 40, label: 'Positive' },
-                    { id: 'very_positive', min: 40, max: 100, label: 'Very Positive' },
-                ],
-                tags: {
-                    very_negative: [{ id: 'vn1', tag: 'angry', weight: 50 }, { id: 'vn2', tag: 'crying', weight: 30 }, { id: 'vn3', tag: 'frustrated', weight: 20 }],
-                    negative: [{ id: 'n1', tag: 'annoyed', weight: 50 }, { id: 'n2', tag: 'frown', weight: 40 }, { id: 'n3', tag: 'shaded_face', weight: 30 }],
-                    neutral: [{ id: 'nu1', tag: 'calm', weight: 50 }, { id: 'nu2', tag: 'neutral_expression', weight: 50 }],
-                    positive: [{ id: 'p1', tag: 'smile', weight: 50 }, { id: 'p2', tag: 'happy', weight: 40 }, { id: 'p3', tag: 'blush', weight: 30 }],
-                    very_positive: [{ id: 'vp1', tag: 'grin', weight: 40 }, { id: 'vp2', tag: 'closed_eyes', weight: 30 }, { id: 'vp3', tag: 'wink', weight: 25 }, { id: 'vp4', tag: 'sparkle', weight: 20 }],
-                },
-                initialMoodRange: { min: -20, max: 20 },
+        // React Flow state
+        nodes: [],
+        edges: [],
+        viewport: { x: 0, y: 0, zoom: 1 },
+        setViewport: (viewport) => set({ viewport }),
+
+        // Mood system configuration
+        moodConfig: {
+            tiers: [
+                { id: 'very_negative', min: -100, max: -40, label: 'Very Negative' },
+                { id: 'negative', min: -40, max: -10, label: 'Negative' },
+                { id: 'neutral', min: -10, max: 10, label: 'Neutral' },
+                { id: 'positive', min: 10, max: 40, label: 'Positive' },
+                { id: 'very_positive', min: 40, max: 100, label: 'Very Positive' },
+            ],
+            tags: {
+                very_negative: [{ id: 'vn1', tag: 'angry', weight: 50 }, { id: 'vn2', tag: 'crying', weight: 30 }, { id: 'vn3', tag: 'frustrated', weight: 20 }],
+                negative: [{ id: 'n1', tag: 'annoyed', weight: 50 }, { id: 'n2', tag: 'frown', weight: 40 }, { id: 'n3', tag: 'shaded_face', weight: 30 }],
+                neutral: [{ id: 'nu1', tag: 'calm', weight: 50 }, { id: 'nu2', tag: 'neutral_expression', weight: 50 }],
+                positive: [{ id: 'p1', tag: 'smile', weight: 50 }, { id: 'p2', tag: 'happy', weight: 40 }, { id: 'p3', tag: 'blush', weight: 30 }],
+                very_positive: [{ id: 'vp1', tag: 'grin', weight: 40 }, { id: 'vp2', tag: 'closed_eyes', weight: 30 }, { id: 'vp3', tag: 'wink', weight: 25 }, { id: 'vp4', tag: 'sparkle', weight: 20 }],
             },
+            initialMoodRange: { min: -20, max: 20 },
+        },
 
-            // Tab state for browser-like canvas tabs
-            openTabs: [], // Array of { eventId, order }
-            activeTabId: null,
+        // Tab state for browser-like canvas tabs
+        openTabs: [], // Array of { eventId, order }
+        activeTabId: null,
 
-            // Open a tab for an event (or focus if already open)
-            openTab: (eventId) => {
-                const state = get();
-                const existingTab = state.openTabs.find(t => t.eventId === eventId);
-                if (existingTab) {
-                    // Already open, just activate
-                    set({ activeTabId: eventId });
-                } else {
-                    // Add new tab
-                    const newTab = { eventId, order: state.openTabs.length };
-                    set({
-                        openTabs: [...state.openTabs, newTab],
-                        activeTabId: eventId,
-                    });
-                }
-            },
-
-            // Close a tab
-            closeTab: (eventId) => {
-                const state = get();
-                const tabIndex = state.openTabs.findIndex(t => t.eventId === eventId);
-                if (tabIndex === -1) return;
-
-                const newTabs = state.openTabs.filter(t => t.eventId !== eventId);
-                let newActiveId = state.activeTabId;
-
-                // If closing active tab, switch to adjacent
-                if (state.activeTabId === eventId) {
-                    if (newTabs.length > 0) {
-                        // Prefer tab to the left, or right if none
-                        const newIndex = Math.min(tabIndex, newTabs.length - 1);
-                        newActiveId = newTabs[newIndex].eventId;
-                    } else {
-                        newActiveId = null;
-                    }
-                }
-
-                set({ openTabs: newTabs, activeTabId: newActiveId });
-
-                // Switch to the new active event if there is one
-                if (newActiveId && newActiveId !== state.currentEventId) {
-                    get().selectEvent(newActiveId);
-                }
-            },
-
-            // Set active tab (and switch to that event)
-            setActiveTab: (eventId) => {
-                const state = get();
-                if (state.activeTabId === eventId) return;
+        // Open a tab for an event (or focus if already open)
+        openTab: (eventId) => {
+            const state = get();
+            const existingTab = state.openTabs.find(t => t.eventId === eventId);
+            if (existingTab) {
+                // Already open, just activate
                 set({ activeTabId: eventId });
-                state.selectEvent(eventId);
-            },
+            } else {
+                // Add new tab
+                const newTab = { eventId, order: state.openTabs.length };
+                set({
+                    openTabs: [...state.openTabs, newTab],
+                    activeTabId: eventId,
+                });
+            }
+        },
 
-            // Reorder tabs (for drag-and-drop support)
-            reorderTabs: (fromIndex, toIndex) => {
-                const state = get();
-                const newTabs = [...state.openTabs];
-                const [removed] = newTabs.splice(fromIndex, 1);
-                newTabs.splice(toIndex, 0, removed);
-                // Update order values
-                newTabs.forEach((tab, idx) => tab.order = idx);
-                set({ openTabs: newTabs });
-            },
+        // Close a tab
+        closeTab: (eventId) => {
+            const state = get();
+            const tabIndex = state.openTabs.findIndex(t => t.eventId === eventId);
+            if (tabIndex === -1) return;
 
-            // Selected node for properties panel
-            selectedNode: null,
+            const newTabs = state.openTabs.filter(t => t.eventId !== eventId);
+            let newActiveId = state.activeTabId;
 
-            // Context menu state
-            contextMenu: null,
+            // If closing active tab, switch to adjacent
+            if (state.activeTabId === eventId) {
+                if (newTabs.length > 0) {
+                    // Prefer tab to the left, or right if none
+                    const newIndex = Math.min(tabIndex, newTabs.length - 1);
+                    newActiveId = newTabs[newIndex].eventId;
+                } else {
+                    newActiveId = null;
+                }
+            }
 
-            // Session-based confirmation flags (not persisted)
-            sessionConfirmDelete: false,
-            setSessionConfirmDelete: (value) => set({ sessionConfirmDelete: value }),
-            sessionConfirmDeleteNode: false,
-            setSessionConfirmDeleteNode: (value) => set({ sessionConfirmDeleteNode: value }),
+            set({ openTabs: newTabs, activeTabId: newActiveId });
 
-            // Undo/Redo history
-            history: [],
-            historyIndex: -1,
-            maxHistoryLength: 50,
-            isUndoRedo: false, // Flag to prevent recording undo/redo as new history
+            // Switch to the new active event if there is one
+            if (newActiveId && newActiveId !== state.currentEventId) {
+                get().selectEvent(newActiveId);
+            }
+        },
 
-            // Clipboard for copy/paste
-            clipboard: null,
+        // Set active tab (and switch to that event)
+        setActiveTab: (eventId) => {
+            const state = get();
+            if (state.activeTabId === eventId) return;
+            set({ activeTabId: eventId });
+            state.selectEvent(eventId);
+        },
 
-            // Push current state to history
-            pushToHistory: () => {
-                const state = get();
-                const snapshot = {
-                    nodes: JSON.parse(JSON.stringify(state.nodes)),
-                    edges: JSON.parse(JSON.stringify(state.edges)),
+        // Reorder tabs (for drag-and-drop support)
+        reorderTabs: (fromIndex, toIndex) => {
+            const state = get();
+            const newTabs = [...state.openTabs];
+            const [removed] = newTabs.splice(fromIndex, 1);
+            newTabs.splice(toIndex, 0, removed);
+            // Update order values
+            newTabs.forEach((tab, idx) => tab.order = idx);
+            set({ openTabs: newTabs });
+        },
+
+        // Selected node for properties panel
+        selectedNode: null,
+
+        // Context menu state
+        contextMenu: null,
+
+        // Session-based confirmation flags (not persisted)
+        sessionConfirmDelete: false,
+        setSessionConfirmDelete: (value) => set({ sessionConfirmDelete: value }),
+        sessionConfirmDeleteNode: false,
+        setSessionConfirmDeleteNode: (value) => set({ sessionConfirmDeleteNode: value }),
+
+        // Undo/Redo history
+        history: [],
+        historyIndex: -1,
+        maxHistoryLength: 50,
+        isUndoRedo: false, // Flag to prevent recording undo/redo as new history
+
+        // Clipboard for copy/paste
+        clipboard: null,
+
+        // Push current state to history
+        pushToHistory: () => {
+            const state = get();
+            const snapshot = {
+                nodes: JSON.parse(JSON.stringify(state.nodes)),
+                edges: JSON.parse(JSON.stringify(state.edges)),
+            };
+
+            // Remove any future states if we're not at the end
+            const newHistory = state.history.slice(0, state.historyIndex + 1);
+            newHistory.push(snapshot);
+
+            // Limit history length
+            if (newHistory.length > state.maxHistoryLength) {
+                newHistory.shift();
+            }
+
+            set({
+                history: newHistory,
+                historyIndex: newHistory.length - 1,
+            });
+        },
+
+        // Undo action
+        undo: () => {
+            const state = get();
+            if (state.historyIndex > 0) {
+                const prevState = state.history[state.historyIndex - 1];
+                set({
+                    nodes: JSON.parse(JSON.stringify(prevState.nodes)),
+                    edges: JSON.parse(JSON.stringify(prevState.edges)),
+                    historyIndex: state.historyIndex - 1,
+                    selectedNode: null,
+                    isUndoRedo: true, // Signal subscription to skip this change
+                });
+            }
+        },
+
+        // Redo action
+        redo: () => {
+            const state = get();
+            if (state.historyIndex < state.history.length - 1) {
+                const nextState = state.history[state.historyIndex + 1];
+                set({
+                    nodes: JSON.parse(JSON.stringify(nextState.nodes)),
+                    edges: JSON.parse(JSON.stringify(nextState.edges)),
+                    historyIndex: state.historyIndex + 1,
+                    selectedNode: null,
+                    isUndoRedo: true, // Signal subscription to skip this change
+                });
+            }
+        },
+
+        // Copy selected nodes to clipboard
+        copySelectedNodes: () => {
+            const state = get();
+            const selectedNodes = state.nodes.filter(n => n.selected);
+            if (selectedNodes.length === 0) return;
+
+            const selectedNodeIds = selectedNodes.map(n => n.id);
+            const relatedEdges = state.edges.filter(
+                e => selectedNodeIds.includes(e.source) && selectedNodeIds.includes(e.target)
+            );
+
+            set({
+                clipboard: {
+                    nodes: JSON.parse(JSON.stringify(selectedNodes)),
+                    edges: JSON.parse(JSON.stringify(relatedEdges)),
+                },
+            });
+        },
+
+        // Paste nodes from clipboard
+        pasteNodes: (offset = { x: 50, y: 50 }) => {
+            const state = get();
+            if (!state.clipboard) return;
+
+            const idMap = {};
+            const newNodes = state.clipboard.nodes.map(node => {
+                const newId = uuidv4();
+                idMap[node.id] = newId;
+                return {
+                    ...node,
+                    id: newId,
+                    position: {
+                        x: node.position.x + offset.x,
+                        y: node.position.y + offset.y,
+                    },
+                    selected: true,
+                    data: { ...node.data },
+                };
+            });
+
+            const newEdges = state.clipboard.edges.map(edge => ({
+                ...edge,
+                id: `edge_${uuidv4()}`,
+                source: idMap[edge.source],
+                target: idMap[edge.target],
+            }));
+
+            // Deselect existing nodes
+            const updatedNodes = state.nodes.map(n => ({ ...n, selected: false }));
+
+            set({
+                nodes: [...updatedNodes, ...newNodes],
+                edges: [...state.edges, ...newEdges],
+            });
+        },
+
+        // Duplicate selected nodes
+        duplicateSelectedNodes: (offset = { x: 20, y: 20 }) => {
+            const state = get();
+            const selectedNodes = state.nodes.filter(n => n.selected);
+            if (selectedNodes.length === 0) return;
+
+            const idMap = {};
+            const newNodes = selectedNodes.map(node => {
+                const newId = uuidv4();
+                idMap[node.id] = newId;
+                return {
+                    ...JSON.parse(JSON.stringify(node)),
+                    id: newId,
+                    position: {
+                        x: node.position.x + offset.x,
+                        y: node.position.y + offset.y,
+                    },
+                    selected: true,
+                    data: { ...node.data },
+                };
+            });
+
+            const selectedNodeIds = selectedNodes.map(n => n.id);
+            // Duplicate edges only if both source and target are selected
+            const internalEdges = state.edges.filter(
+                e => selectedNodeIds.includes(e.source) && selectedNodeIds.includes(e.target)
+            );
+
+            const newEdges = internalEdges.map(edge => ({
+                ...edge,
+                id: `edge_${uuidv4()}`,
+                source: idMap[edge.source],
+                target: idMap[edge.target],
+                selected: true,
+            }));
+
+            // Deselect existing
+            const updatedNodes = state.nodes.map(n => ({ ...n, selected: false }));
+            const updatedEdges = state.edges.map(e => ({ ...e, selected: false }));
+
+            set({
+                nodes: [...updatedNodes, ...newNodes],
+                edges: [...updatedEdges, ...newEdges],
+                selectedNode: newNodes.length === 1 ? newNodes[0] : null
+            });
+        },
+
+        // Event Actions
+        addEvent: (name = 'New Event', folderId = null) => {
+            const startNode = createStartNode({ x: 50, y: 50 });
+            const event1 = createEventNode({ x: 400, y: 50 }, { label: 'Event 1' });
+            const event2 = createEventNode({ x: 750, y: 50 }, { label: 'Event 2' });
+            const event3 = createEventNode({ x: 1100, y: 50 }, { label: 'Event 3' });
+            const event4 = createEventNode({ x: 1450, y: 50 }, { label: 'Event 4' });
+            const endNode = createEndNode({ x: 1850, y: 850 });
+
+            const nodes = [startNode, event1, event2, event3, event4, endNode];
+
+            const edges = [
+                { id: `edge_${uuidv4()}`, source: startNode.id, sourceHandle: 'start_output', target: event1.id, targetHandle: 'trigger', type: 'smoothstep', animated: true, style: { stroke: '#C9B5FF', strokeWidth: 2 } },
+                { id: `edge_${uuidv4()}`, source: event1.id, sourceHandle: 'next', target: event2.id, targetHandle: 'trigger', type: 'smoothstep', animated: true, style: { stroke: '#C9B5FF', strokeWidth: 2 } },
+                { id: `edge_${uuidv4()}`, source: event2.id, sourceHandle: 'next', target: event3.id, targetHandle: 'trigger', type: 'smoothstep', animated: true, style: { stroke: '#C9B5FF', strokeWidth: 2 } },
+                { id: `edge_${uuidv4()}`, source: event3.id, sourceHandle: 'next', target: event4.id, targetHandle: 'trigger', type: 'smoothstep', animated: true, style: { stroke: '#C9B5FF', strokeWidth: 2 } },
+                { id: `edge_${uuidv4()}`, source: event4.id, sourceHandle: 'next', target: endNode.id, targetHandle: 'end_input', type: 'smoothstep', animated: true, style: { stroke: '#C9B5FF', strokeWidth: 2 } },
+            ];
+
+            const newEvent = {
+                id: uuidv4(),
+                name,
+                description: '',
+                fixedPrompt: '',
+                tags: [],
+                incompatibleTags: [],
+                requiredTags: [],
+                weight: 10,
+                folderId, // Associate with folder if provided
+                nodes,
+                edges,
+                viewport: { x: 0, y: 0, zoom: 1 },
+                costumes: [],
+                nextPreferredTags: [],
+                nextRequiredTags: [],
+                nextExcludedTags: [],
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+            };
+
+            set((state) => ({
+                events: [...state.events, newEvent],
+                currentEventId: newEvent.id,
+                nodes: newEvent.nodes,
+                edges: newEvent.edges,
+                viewport: newEvent.viewport,
+            }));
+            // Open a tab for the new event
+            get().openTab(newEvent.id);
+            return newEvent.id;
+        },
+
+        duplicateEvent: (eventId) => {
+            const state = get();
+            const sourceEvent = state.events.find(e => e.id === eventId);
+            if (!sourceEvent) return;
+
+            const newEvent = {
+                ...JSON.parse(JSON.stringify(sourceEvent)),
+                id: uuidv4(),
+                name: `${sourceEvent.name} (Copy)`,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+            };
+
+            set((state) => ({
+                events: [...state.events, newEvent],
+                currentEventId: newEvent.id,
+                nodes: newEvent.nodes,
+                edges: newEvent.edges,
+            }));
+            // Open a tab for the duplicated event
+            get().openTab(newEvent.id);
+        },
+
+        deleteEvent: (eventId) => {
+            set((state) => {
+                const newEvents = state.events.filter((e) => e.id !== eventId);
+                const newCurrentId = state.currentEventId === eventId
+                    ? (newEvents[0]?.id || null)
+                    : state.currentEventId;
+
+                const currentEvent = newEvents.find((e) => e.id === newCurrentId);
+                return {
+                    events: newEvents,
+                    currentEventId: newCurrentId,
+                    nodes: currentEvent?.nodes || [],
+                    edges: currentEvent?.edges || [],
+                };
+            });
+        },
+
+        selectEvent: (eventId) => {
+            const state = get();
+            // Save current event first (including viewport)
+            if (state.currentEventId) {
+                state.saveCurrentEvent();
+            }
+
+            // Skip if already selected and loaded
+            if (state.currentEventId === eventId && state.nodes.length > 0) {
+                // Still open/activate the tab
+                state.openTab(eventId);
+                return;
+            }
+
+            // Load selected event
+            const event = state.events.find((e) => e.id === eventId);
+            if (event) {
+                set({
+                    currentEventId: eventId,
+                    nodes: event.nodes || [],
+                    edges: event.edges || [],
+                    viewport: event.viewport || { x: 0, y: 0, zoom: 1 },
+                    selectedNode: null,
+                    selectedFolderId: null, // Clear folder selection on event switch
+                });
+                // Open/activate tab for this event
+                get().openTab(eventId);
+            }
+        },
+
+        updateEventName: (eventId, name) => {
+            set((state) => ({
+                events: state.events.map((e) =>
+                    e.id === eventId ? { ...e, name, updatedAt: new Date().toISOString() } : e
+                ),
+            }));
+        },
+
+        updateEventFixedPrompt: (eventId, fixedPrompt) => {
+            set((state) => ({
+                events: state.events.map((e) =>
+                    e.id === eventId ? { ...e, fixedPrompt, updatedAt: new Date().toISOString() } : e
+                ),
+            }));
+        },
+
+        updateEventMetadata: (eventId, metadata) => {
+            set((state) => ({
+                events: state.events.map((e) =>
+                    e.id === eventId ? { ...e, ...metadata, updatedAt: new Date().toISOString() } : e
+                ),
+            }));
+        },
+
+        updateEventCostumes: (eventId, costumes) => {
+            set((state) => ({
+                events: state.events.map((e) =>
+                    e.id === eventId ? {
+                        ...e, costumes: costumes.map(c =>
+                            typeof c === 'string' ? { name: c, weight: 1 } : c
+                        ), updatedAt: new Date().toISOString()
+                    } : e
+                ),
+            }));
+        },
+
+        updateCostumeWeight: (eventId, costumeName, weight) => {
+            set((state) => ({
+                events: state.events.map((e) =>
+                    e.id === eventId
+                        ? {
+                            ...e,
+                            costumes: (e.costumes || []).map((c) =>
+                                c.name === costumeName ? { ...c, weight } : c
+                            ),
+                            updatedAt: new Date().toISOString(),
+                        }
+                        : e
+                ),
+            }));
+        },
+
+        // Mood Configuration Actions
+        updateMoodTierTags: (tierId, tags) => {
+            set((state) => ({
+                moodConfig: {
+                    ...state.moodConfig,
+                    tags: {
+                        ...state.moodConfig.tags,
+                        [tierId]: tags,
+                    },
+                },
+            }));
+        },
+
+        addMoodTag: (tierId, tag, weight = 50) => {
+            set((state) => ({
+                moodConfig: {
+                    ...state.moodConfig,
+                    tags: {
+                        ...state.moodConfig.tags,
+                        [tierId]: [
+                            ...(state.moodConfig.tags[tierId] || []),
+                            { id: uuidv4(), tag, weight },
+                        ],
+                    },
+                },
+            }));
+        },
+
+        removeMoodTag: (tierId, tagId) => {
+            set((state) => ({
+                moodConfig: {
+                    ...state.moodConfig,
+                    tags: {
+                        ...state.moodConfig.tags,
+                        [tierId]: (state.moodConfig.tags[tierId] || []).filter(t => t.id !== tagId),
+                    },
+                },
+            }));
+        },
+
+        updateMoodTagWeight: (tierId, tagId, weight) => {
+            set((state) => ({
+                moodConfig: {
+                    ...state.moodConfig,
+                    tags: {
+                        ...state.moodConfig.tags,
+                        [tierId]: (state.moodConfig.tags[tierId] || []).map(t =>
+                            t.id === tagId ? { ...t, weight } : t
+                        ),
+                    },
+                },
+            }));
+        },
+
+        updateInitialMoodRange: (min, max) => {
+            set((state) => ({
+                moodConfig: {
+                    ...state.moodConfig,
+                    initialMoodRange: { min, max },
+                },
+            }));
+        },
+
+        // Folder Actions
+        folders: [],
+        selectedFolderId: null,
+
+        setSelectedFolderId: (folderId) => {
+            set({ selectedFolderId: folderId });
+        },
+
+        addFolder: (name = 'New Folder', parentId = null) => {
+            const newFolder = {
+                id: uuidv4(),
+                name,
+                parentId, // Support nested folders
+                tags: [],
+                incompatibleTags: [],
+                requiredTags: [],
+                createdAt: new Date().toISOString(),
+            };
+            set((state) => ({
+                folders: [...(state.folders || []), newFolder]
+            }));
+            return newFolder.id;
+        },
+
+        deleteFolder: (folderId) => {
+            set((state) => {
+                const folderToDelete = (state.folders || []).find(f => f.id === folderId);
+                const parentId = folderToDelete?.parentId || null;
+
+                return {
+                    // Remove the folder
+                    folders: (state.folders || [])
+                        .filter(f => f.id !== folderId)
+                        // Move child folders up to the deleted folder's parent
+                        .map(f => f.parentId === folderId ? { ...f, parentId } : f),
+                    // Move events in this folder to the parent folder (or root)
+                    events: state.events.map(e =>
+                        e.folderId === folderId ? { ...e, folderId: parentId } : e
+                    )
+                };
+            });
+        },
+
+        renameFolder: (folderId, newName) => {
+            set((state) => ({
+                folders: (state.folders || []).map(f =>
+                    f.id === folderId ? { ...f, name: newName } : f
+                )
+            }));
+        },
+
+        updateFolderMetadata: (folderId, metadata) => {
+            set((state) => ({
+                folders: (state.folders || []).map(f =>
+                    f.id === folderId ? { ...f, ...metadata } : f
+                )
+            }));
+        },
+
+        moveEventToFolder: (eventId, folderId) => {
+            set((state) => ({
+                events: state.events.map(e =>
+                    e.id === eventId ? { ...e, folderId } : e
+                )
+            }));
+        },
+
+        moveFolderToFolder: (folderId, targetParentId) => {
+            set((state) => {
+                // Prevent moving folder into itself or its descendants
+                const isDescendant = (parentId, checkId) => {
+                    if (!parentId) return false;
+                    if (parentId === checkId) return true;
+                    const parent = (state.folders || []).find(f => f.id === parentId);
+                    return parent ? isDescendant(parent.parentId, checkId) : false;
                 };
 
-                // Remove any future states if we're not at the end
-                const newHistory = state.history.slice(0, state.historyIndex + 1);
-                newHistory.push(snapshot);
-
-                // Limit history length
-                if (newHistory.length > state.maxHistoryLength) {
-                    newHistory.shift();
+                // Don't allow moving into self or descendant
+                if (folderId === targetParentId || isDescendant(targetParentId, folderId)) {
+                    return state;
                 }
 
-                set({
-                    history: newHistory,
-                    historyIndex: newHistory.length - 1,
-                });
-            },
+                return {
+                    folders: (state.folders || []).map(f =>
+                        f.id === folderId ? { ...f, parentId: targetParentId } : f
+                    )
+                };
+            });
+        },
 
-            // Undo action
-            undo: () => {
-                const state = get();
-                if (state.historyIndex > 0) {
-                    const prevState = state.history[state.historyIndex - 1];
-                    set({
-                        nodes: JSON.parse(JSON.stringify(prevState.nodes)),
-                        edges: JSON.parse(JSON.stringify(prevState.edges)),
-                        historyIndex: state.historyIndex - 1,
-                        selectedNode: null,
-                        isUndoRedo: true, // Signal subscription to skip this change
+        getCurrentEvent: () => {
+            const state = get();
+            return state.events.find((e) => e.id === state.currentEventId);
+        },
+
+        // Node Actions
+        addNode: (type, position) => {
+            let newNode;
+            // Add initialFocus flag to new nodes so they can auto-focus their inputs
+            const dataWithFocus = { initialFocus: true };
+
+            switch (type) {
+                case 'eventNode':
+                    newNode = createEventNode(position, dataWithFocus);
+                    break;
+                case 'groupNode':
+                    newNode = createGroupNode(position, dataWithFocus);
+                    break;
+                case 'branchNode':
+                    newNode = createBranchNode(position, dataWithFocus);
+                    break;
+                case 'referenceNode':
+                    newNode = createReferenceNode(position, dataWithFocus);
+                    break;
+                case 'startNode':
+                    newNode = createStartNode(position, dataWithFocus);
+                    break;
+                case 'endNode':
+                    newNode = createEndNode(position, dataWithFocus);
+                    break;
+                case 'ifNode':
+                    newNode = createIfNode(position, dataWithFocus);
+                    break;
+                case 'carryForwardNode':
+                    newNode = createCarryForwardNode(position, dataWithFocus);
+                    break;
+                case 'fieldNode':
+                    newNode = createFieldNode(position, dataWithFocus);
+                    break;
+                default:
+                    newNode = createEventNode(position, dataWithFocus);
+            }
+            set((state) => ({ nodes: [...state.nodes, newNode] }));
+            return newNode.id;
+        },
+
+        insertNodeOnEdge: (type, position, edgeId, nodeId = null) => {
+            const state = get();
+            const edge = state.edges.find((e) => e.id === edgeId);
+            if (!edge) return null;
+
+            let targetNodeId = nodeId;
+            if (!targetNodeId) {
+                targetNodeId = state.addNode(type, position);
+            }
+
+            const targetNode = get().nodes.find(n => n.id === targetNodeId);
+
+            // Create new edges
+            const edge1 = {
+                id: `edge_${uuidv4()}`,
+                source: edge.source,
+                sourceHandle: edge.sourceHandle,
+                target: targetNodeId,
+                targetHandle: targetNode.data?.inputs?.[0]?.id || null,
+                type: 'smoothstep',
+                animated: true,
+                style: { stroke: '#C9B5FF', strokeWidth: 2 },
+            };
+
+            const edge2 = {
+                id: `edge_${uuidv4()}`,
+                source: targetNodeId,
+                sourceHandle: targetNode.data?.outputs?.[0]?.id || null,
+                target: edge.target,
+                targetHandle: edge.targetHandle,
+                type: 'smoothstep',
+                animated: true,
+                style: { stroke: '#C9B5FF', strokeWidth: 2 },
+            };
+
+            set((state) => ({
+                edges: [
+                    ...state.edges.filter((e) => e.id !== edgeId), // Remove old edge
+                    edge1,
+                    edge2,
+                ],
+            }));
+
+            return targetNodeId;
+        },
+
+        extractNodeFromFlow: (nodeId) => {
+            const state = get();
+            const { edges } = state._getBridgedState([nodeId]);
+            set({ edges });
+        },
+
+        extractAndDeleteNodes: (nodeIds) => {
+            const state = get();
+            const { nodes, edges } = state._getBridgedState(nodeIds);
+            set({
+                nodes,
+                edges,
+                selectedNode: nodeIds.includes(state.selectedNode?.id) ? null : state.selectedNode,
+            });
+        },
+
+        // Internal helper to calculate bridged state without committing to store
+        _getBridgedState: (nodeIds) => {
+            const state = get();
+            let currentEdges = [...state.edges];
+
+            nodeIds.forEach(nodeId => {
+                const incomingEdges = currentEdges.filter(e => e.target === nodeId);
+                const outgoingEdges = currentEdges.filter(e => e.source === nodeId);
+
+                incomingEdges.forEach(inEdge => {
+                    outgoingEdges.forEach(outEdge => {
+                        const exists = currentEdges.some(e =>
+                            e.source === inEdge.source &&
+                            e.target === outEdge.target &&
+                            e.sourceHandle === inEdge.sourceHandle &&
+                            e.targetHandle === outEdge.targetHandle
+                        );
+
+                        if (!exists) {
+                            currentEdges.push({
+                                id: `edge_${uuidv4()}`,
+                                source: inEdge.source,
+                                sourceHandle: inEdge.sourceHandle,
+                                target: outEdge.target,
+                                targetHandle: outEdge.targetHandle,
+                                type: 'smoothstep',
+                                animated: true,
+                                style: { stroke: '#C9B5FF', strokeWidth: 2 },
+                            });
+                        }
                     });
-                }
-            },
-
-            // Redo action
-            redo: () => {
-                const state = get();
-                if (state.historyIndex < state.history.length - 1) {
-                    const nextState = state.history[state.historyIndex + 1];
-                    set({
-                        nodes: JSON.parse(JSON.stringify(nextState.nodes)),
-                        edges: JSON.parse(JSON.stringify(nextState.edges)),
-                        historyIndex: state.historyIndex + 1,
-                        selectedNode: null,
-                        isUndoRedo: true, // Signal subscription to skip this change
-                    });
-                }
-            },
-
-            // Copy selected nodes to clipboard
-            copySelectedNodes: () => {
-                const state = get();
-                const selectedNodes = state.nodes.filter(n => n.selected);
-                if (selectedNodes.length === 0) return;
-
-                const selectedNodeIds = selectedNodes.map(n => n.id);
-                const relatedEdges = state.edges.filter(
-                    e => selectedNodeIds.includes(e.source) && selectedNodeIds.includes(e.target)
-                );
-
-                set({
-                    clipboard: {
-                        nodes: JSON.parse(JSON.stringify(selectedNodes)),
-                        edges: JSON.parse(JSON.stringify(relatedEdges)),
-                    },
                 });
-            },
 
-            // Paste nodes from clipboard
-            pasteNodes: (offset = { x: 50, y: 50 }) => {
-                const state = get();
-                if (!state.clipboard) return;
+                // Remove edges connected to this node
+                currentEdges = currentEdges.filter(e => e.source !== nodeId && e.target !== nodeId);
+            });
 
-                const idMap = {};
-                const newNodes = state.clipboard.nodes.map(node => {
-                    const newId = uuidv4();
-                    idMap[node.id] = newId;
+            return {
+                nodes: state.nodes.filter(n => !nodeIds.includes(n.id)),
+                edges: currentEdges
+            };
+        },
+
+        updateNode: (nodeId, data) => {
+            set((state) => ({
+                nodes: state.nodes.map((node) =>
+                    node.id === nodeId
+                        ? { ...node, data: { ...node.data, ...data } }
+                        : node
+                ),
+            }));
+        },
+
+        setNodeZIndex: (nodeId, zIndex) => {
+            set((state) => ({
+                nodes: state.nodes.map((node) =>
+                    node.id === nodeId
+                        ? { ...node, zIndex }
+                        : node
+                ),
+            }));
+        },
+
+        deleteNode: (nodeId) => {
+            set((state) => ({
+                nodes: state.nodes.filter((node) => node.id !== nodeId),
+                edges: state.edges.filter(
+                    (edge) => edge.source !== nodeId && edge.target !== nodeId
+                ),
+                selectedNode: state.selectedNode?.id === nodeId ? null : state.selectedNode,
+            }));
+        },
+
+        // Delete multiple nodes at once
+        deleteNodes: (nodeIds) => {
+            set((state) => ({
+                nodes: state.nodes.filter((node) => !nodeIds.includes(node.id)),
+                edges: state.edges.filter(
+                    (edge) => !nodeIds.includes(edge.source) && !nodeIds.includes(edge.target)
+                ),
+                selectedNode: nodeIds.includes(state.selectedNode?.id) ? null : state.selectedNode,
+            }));
+        },
+
+        // Delete multiple edges at once
+        deleteEdges: (edgeIds) => {
+            set((state) => ({
+                edges: state.edges.filter((edge) => !edgeIds.includes(edge.id)),
+            }));
+        },
+
+        addNodeOutput: (nodeId) => {
+            set((state) => ({
+                nodes: state.nodes.map((node) => {
+                    if (node.id !== nodeId) return node;
+                    const newOutput = {
+                        id: `output_${uuidv4().slice(0, 8)}`,
+                        label: `Output ${node.data.outputs.length + 1}`,
+                        weight: node.type === 'branchNode' ? 50 : undefined,
+                    };
                     return {
                         ...node,
-                        id: newId,
-                        position: {
-                            x: node.position.x + offset.x,
-                            y: node.position.y + offset.y,
+                        data: {
+                            ...node.data,
+                            outputs: [...node.data.outputs, newOutput],
                         },
-                        selected: true,
-                        data: { ...node.data },
                     };
-                });
+                }),
+            }));
+        },
 
-                const newEdges = state.clipboard.edges.map(edge => ({
-                    ...edge,
-                    id: `edge_${uuidv4()}`,
-                    source: idMap[edge.source],
-                    target: idMap[edge.target],
-                }));
-
-                // Deselect existing nodes
-                const updatedNodes = state.nodes.map(n => ({ ...n, selected: false }));
-
-                set({
-                    nodes: [...updatedNodes, ...newNodes],
-                    edges: [...state.edges, ...newEdges],
-                });
-            },
-
-            // Duplicate selected nodes
-            duplicateSelectedNodes: (offset = { x: 20, y: 20 }) => {
-                const state = get();
-                const selectedNodes = state.nodes.filter(n => n.selected);
-                if (selectedNodes.length === 0) return;
-
-                const idMap = {};
-                const newNodes = selectedNodes.map(node => {
-                    const newId = uuidv4();
-                    idMap[node.id] = newId;
+        addNodeInput: (nodeId) => {
+            set((state) => ({
+                nodes: state.nodes.map((node) => {
+                    if (node.id !== nodeId) return node;
+                    const newInput = {
+                        id: `input_${uuidv4().slice(0, 8)}`,
+                        label: `Input ${node.data.inputs.length + 1}`,
+                    };
                     return {
-                        ...JSON.parse(JSON.stringify(node)),
-                        id: newId,
-                        position: {
-                            x: node.position.x + offset.x,
-                            y: node.position.y + offset.y,
+                        ...node,
+                        data: {
+                            ...node.data,
+                            inputs: [...node.data.inputs, newInput],
                         },
-                        selected: true,
-                        data: { ...node.data },
                     };
-                });
+                }),
+            }));
+        },
 
-                const selectedNodeIds = selectedNodes.map(n => n.id);
-                // Duplicate edges only if both source and target are selected
-                const internalEdges = state.edges.filter(
-                    e => selectedNodeIds.includes(e.source) && selectedNodeIds.includes(e.target)
-                );
-
-                const newEdges = internalEdges.map(edge => ({
-                    ...edge,
-                    id: `edge_${uuidv4()}`,
-                    source: idMap[edge.source],
-                    target: idMap[edge.target],
-                    selected: true,
-                }));
-
-                // Deselect existing
-                const updatedNodes = state.nodes.map(n => ({ ...n, selected: false }));
-                const updatedEdges = state.edges.map(e => ({ ...e, selected: false }));
-
-                set({
-                    nodes: [...updatedNodes, ...newNodes],
-                    edges: [...updatedEdges, ...newEdges],
-                    selectedNode: newNodes.length === 1 ? newNodes[0] : null
-                });
-            },
-
-            // Event Actions
-            addEvent: (name = 'New Event', folderId = null) => {
-                const startNode = createStartNode({ x: 50, y: 50 });
-                const event1 = createEventNode({ x: 400, y: 50 }, { label: 'Event 1' });
-                const event2 = createEventNode({ x: 750, y: 50 }, { label: 'Event 2' });
-                const event3 = createEventNode({ x: 1100, y: 50 }, { label: 'Event 3' });
-                const event4 = createEventNode({ x: 1450, y: 50 }, { label: 'Event 4' });
-                const endNode = createEndNode({ x: 1850, y: 850 });
-
-                const nodes = [startNode, event1, event2, event3, event4, endNode];
-
-                const edges = [
-                    { id: `edge_${uuidv4()}`, source: startNode.id, sourceHandle: 'start_output', target: event1.id, targetHandle: 'trigger', type: 'smoothstep', animated: true, style: { stroke: '#C9B5FF', strokeWidth: 2 } },
-                    { id: `edge_${uuidv4()}`, source: event1.id, sourceHandle: 'next', target: event2.id, targetHandle: 'trigger', type: 'smoothstep', animated: true, style: { stroke: '#C9B5FF', strokeWidth: 2 } },
-                    { id: `edge_${uuidv4()}`, source: event2.id, sourceHandle: 'next', target: event3.id, targetHandle: 'trigger', type: 'smoothstep', animated: true, style: { stroke: '#C9B5FF', strokeWidth: 2 } },
-                    { id: `edge_${uuidv4()}`, source: event3.id, sourceHandle: 'next', target: event4.id, targetHandle: 'trigger', type: 'smoothstep', animated: true, style: { stroke: '#C9B5FF', strokeWidth: 2 } },
-                    { id: `edge_${uuidv4()}`, source: event4.id, sourceHandle: 'next', target: endNode.id, targetHandle: 'end_input', type: 'smoothstep', animated: true, style: { stroke: '#C9B5FF', strokeWidth: 2 } },
-                ];
-
-                const newEvent = {
-                    id: uuidv4(),
-                    name,
-                    description: '',
-                    fixedPrompt: '',
-                    tags: [],
-                    incompatibleTags: [],
-                    requiredTags: [],
-                    weight: 10,
-                    folderId, // Associate with folder if provided
-                    nodes,
-                    edges,
-                    viewport: { x: 0, y: 0, zoom: 1 },
-                    costumes: [],
-                    nextPreferredTags: [],
-                    nextRequiredTags: [],
-                    nextExcludedTags: [],
-                    createdAt: new Date().toISOString(),
-                    updatedAt: new Date().toISOString(),
-                };
-
-                set((state) => ({
-                    events: [...state.events, newEvent],
-                    currentEventId: newEvent.id,
-                    nodes: newEvent.nodes,
-                    edges: newEvent.edges,
-                    viewport: newEvent.viewport,
-                }));
-                // Open a tab for the new event
-                get().openTab(newEvent.id);
-                return newEvent.id;
-            },
-
-            duplicateEvent: (eventId) => {
-                const state = get();
-                const sourceEvent = state.events.find(e => e.id === eventId);
-                if (!sourceEvent) return;
-
-                const newEvent = {
-                    ...JSON.parse(JSON.stringify(sourceEvent)),
-                    id: uuidv4(),
-                    name: `${sourceEvent.name} (Copy)`,
-                    createdAt: new Date().toISOString(),
-                    updatedAt: new Date().toISOString(),
-                };
-
-                set((state) => ({
-                    events: [...state.events, newEvent],
-                    currentEventId: newEvent.id,
-                    nodes: newEvent.nodes,
-                    edges: newEvent.edges,
-                }));
-                // Open a tab for the duplicated event
-                get().openTab(newEvent.id);
-            },
-
-            deleteEvent: (eventId) => {
-                set((state) => {
-                    const newEvents = state.events.filter((e) => e.id !== eventId);
-                    const newCurrentId = state.currentEventId === eventId
-                        ? (newEvents[0]?.id || null)
-                        : state.currentEventId;
-
-                    const currentEvent = newEvents.find((e) => e.id === newCurrentId);
+        // Start Node input management
+        addStartNodeInput: (nodeId) => {
+            set((state) => ({
+                nodes: state.nodes.map((node) => {
+                    if (node.id !== nodeId || node.type !== 'startNode') return node;
+                    const inputs = node.data.inputs || [];
+                    const newInput = {
+                        id: `input_${uuidv4().slice(0, 8)}`,
+                        label: `Input ${inputs.length + 1}`,
+                        enabled: true,
+                    };
                     return {
-                        events: newEvents,
-                        currentEventId: newCurrentId,
-                        nodes: currentEvent?.nodes || [],
-                        edges: currentEvent?.edges || [],
+                        ...node,
+                        data: {
+                            ...node.data,
+                            inputs: [...inputs, newInput],
+                        },
                     };
-                });
-            },
+                }),
+            }));
+        },
 
-            selectEvent: (eventId) => {
-                const state = get();
-                // Save current event first (including viewport)
-                if (state.currentEventId) {
-                    state.saveCurrentEvent();
-                }
-
-                // Skip if already selected and loaded
-                if (state.currentEventId === eventId && state.nodes.length > 0) {
-                    // Still open/activate the tab
-                    state.openTab(eventId);
-                    return;
-                }
-
-                // Load selected event
-                const event = state.events.find((e) => e.id === eventId);
-                if (event) {
-                    set({
-                        currentEventId: eventId,
-                        nodes: event.nodes || [],
-                        edges: event.edges || [],
-                        viewport: event.viewport || { x: 0, y: 0, zoom: 1 },
-                        selectedNode: null,
-                        selectedFolderId: null, // Clear folder selection on event switch
-                    });
-                    // Open/activate tab for this event
-                    get().openTab(eventId);
-                }
-            },
-
-            updateEventName: (eventId, name) => {
-                set((state) => ({
-                    events: state.events.map((e) =>
-                        e.id === eventId ? { ...e, name, updatedAt: new Date().toISOString() } : e
-                    ),
-                }));
-            },
-
-            updateEventFixedPrompt: (eventId, fixedPrompt) => {
-                set((state) => ({
-                    events: state.events.map((e) =>
-                        e.id === eventId ? { ...e, fixedPrompt, updatedAt: new Date().toISOString() } : e
-                    ),
-                }));
-            },
-
-            updateEventMetadata: (eventId, metadata) => {
-                set((state) => ({
-                    events: state.events.map((e) =>
-                        e.id === eventId ? { ...e, ...metadata, updatedAt: new Date().toISOString() } : e
-                    ),
-                }));
-            },
-
-            updateEventCostumes: (eventId, costumes) => {
-                set((state) => ({
-                    events: state.events.map((e) =>
-                        e.id === eventId ? {
-                            ...e, costumes: costumes.map(c =>
-                                typeof c === 'string' ? { name: c, weight: 1 } : c
-                            ), updatedAt: new Date().toISOString()
-                        } : e
-                    ),
-                }));
-            },
-
-            updateCostumeWeight: (eventId, costumeName, weight) => {
-                set((state) => ({
-                    events: state.events.map((e) =>
-                        e.id === eventId
-                            ? {
-                                ...e,
-                                costumes: (e.costumes || []).map((c) =>
-                                    c.name === costumeName ? { ...c, weight } : c
-                                ),
-                                updatedAt: new Date().toISOString(),
-                            }
-                            : e
-                    ),
-                }));
-            },
-
-            // Mood Configuration Actions
-            updateMoodTierTags: (tierId, tags) => {
-                set((state) => ({
-                    moodConfig: {
-                        ...state.moodConfig,
-                        tags: {
-                            ...state.moodConfig.tags,
-                            [tierId]: tags,
+        removeStartNodeInput: (nodeId, inputId) => {
+            set((state) => ({
+                nodes: state.nodes.map((node) => {
+                    if (node.id !== nodeId || node.type !== 'startNode') return node;
+                    return {
+                        ...node,
+                        data: {
+                            ...node.data,
+                            inputs: (node.data.inputs || []).filter(input => input.id !== inputId),
                         },
-                    },
-                }));
-            },
+                    };
+                }),
+            }));
+        },
 
-            addMoodTag: (tierId, tag, weight = 50) => {
-                set((state) => ({
-                    moodConfig: {
-                        ...state.moodConfig,
-                        tags: {
-                            ...state.moodConfig.tags,
-                            [tierId]: [
-                                ...(state.moodConfig.tags[tierId] || []),
-                                { id: uuidv4(), tag, weight },
-                            ],
-                        },
-                    },
-                }));
-            },
-
-            removeMoodTag: (tierId, tagId) => {
-                set((state) => ({
-                    moodConfig: {
-                        ...state.moodConfig,
-                        tags: {
-                            ...state.moodConfig.tags,
-                            [tierId]: (state.moodConfig.tags[tierId] || []).filter(t => t.id !== tagId),
-                        },
-                    },
-                }));
-            },
-
-            updateMoodTagWeight: (tierId, tagId, weight) => {
-                set((state) => ({
-                    moodConfig: {
-                        ...state.moodConfig,
-                        tags: {
-                            ...state.moodConfig.tags,
-                            [tierId]: (state.moodConfig.tags[tierId] || []).map(t =>
-                                t.id === tagId ? { ...t, weight } : t
+        toggleStartNodeInput: (nodeId, inputId) => {
+            set((state) => ({
+                nodes: state.nodes.map((node) => {
+                    if (node.id !== nodeId || node.type !== 'startNode') return node;
+                    return {
+                        ...node,
+                        data: {
+                            ...node.data,
+                            inputs: (node.data.inputs || []).map(input =>
+                                input.id === inputId ? { ...input, enabled: !input.enabled } : input
                             ),
                         },
-                    },
-                }));
-            },
+                    };
+                }),
+            }));
+        },
 
-            updateInitialMoodRange: (min, max) => {
-                set((state) => ({
-                    moodConfig: {
-                        ...state.moodConfig,
-                        initialMoodRange: { min, max },
-                    },
-                }));
-            },
-
-            // Folder Actions
-            folders: [],
-            selectedFolderId: null,
-
-            setSelectedFolderId: (folderId) => {
-                set({ selectedFolderId: folderId });
-            },
-
-            addFolder: (name = 'New Folder', parentId = null) => {
-                const newFolder = {
-                    id: uuidv4(),
-                    name,
-                    parentId, // Support nested folders
-                    tags: [],
-                    incompatibleTags: [],
-                    requiredTags: [],
-                    createdAt: new Date().toISOString(),
-                };
-                set((state) => ({
-                    folders: [...(state.folders || []), newFolder]
-                }));
-                return newFolder.id;
-            },
-
-            deleteFolder: (folderId) => {
-                set((state) => {
-                    const folderToDelete = (state.folders || []).find(f => f.id === folderId);
-                    const parentId = folderToDelete?.parentId || null;
-
+        updateStartNodeInputLabel: (nodeId, inputId, label) => {
+            set((state) => ({
+                nodes: state.nodes.map((node) => {
+                    if (node.id !== nodeId || node.type !== 'startNode') return node;
                     return {
-                        // Remove the folder
-                        folders: (state.folders || [])
-                            .filter(f => f.id !== folderId)
-                            // Move child folders up to the deleted folder's parent
-                            .map(f => f.parentId === folderId ? { ...f, parentId } : f),
-                        // Move events in this folder to the parent folder (or root)
-                        events: state.events.map(e =>
-                            e.folderId === folderId ? { ...e, folderId: parentId } : e
-                        )
+                        ...node,
+                        data: {
+                            ...node.data,
+                            inputs: (node.data.inputs || []).map(input =>
+                                input.id === inputId ? { ...input, label } : input
+                            ),
+                        },
                     };
-                });
-            },
+                }),
+            }));
+        },
 
-            renameFolder: (folderId, newName) => {
-                set((state) => ({
-                    folders: (state.folders || []).map(f =>
-                        f.id === folderId ? { ...f, name: newName } : f
-                    )
-                }));
-            },
-
-            updateFolderMetadata: (folderId, metadata) => {
-                set((state) => ({
-                    folders: (state.folders || []).map(f =>
-                        f.id === folderId ? { ...f, ...metadata } : f
-                    )
-                }));
-            },
-
-            moveEventToFolder: (eventId, folderId) => {
-                set((state) => ({
-                    events: state.events.map(e =>
-                        e.id === eventId ? { ...e, folderId } : e
-                    )
-                }));
-            },
-
-            moveFolderToFolder: (folderId, targetParentId) => {
-                set((state) => {
-                    // Prevent moving folder into itself or its descendants
-                    const isDescendant = (parentId, checkId) => {
-                        if (!parentId) return false;
-                        if (parentId === checkId) return true;
-                        const parent = (state.folders || []).find(f => f.id === parentId);
-                        return parent ? isDescendant(parent.parentId, checkId) : false;
+        updateOutputWeight: (nodeId, outputId, weight) => {
+            set((state) => ({
+                nodes: state.nodes.map((node) => {
+                    if (node.id !== nodeId) return node;
+                    return {
+                        ...node,
+                        data: {
+                            ...node.data,
+                            outputs: node.data.outputs.map((output) =>
+                                output.id === outputId ? { ...output, weight } : output
+                            ),
+                        },
                     };
+                }),
+            }));
+        },
 
-                    // Don't allow moving into self or descendant
-                    if (folderId === targetParentId || isDescendant(targetParentId, folderId)) {
-                        return state;
+        setSelectedNode: (node) => {
+            set({ selectedNode: node });
+        },
+
+        // Edge Actions
+        addEdge: (connection) => {
+            const state = get();
+
+            // Check for duplicates
+            const exists = state.edges.some(
+                (edge) =>
+                    edge.source === connection.source &&
+                    edge.target === connection.target &&
+                    (edge.sourceHandle === connection.sourceHandle || (!edge.sourceHandle && !connection.sourceHandle)) &&
+                    (edge.targetHandle === connection.targetHandle || (!edge.targetHandle && !connection.targetHandle))
+            );
+
+            if (connection.source === connection.target) {
+                console.log('Self-connection is not allowed.');
+                return;
+            }
+
+            if (exists) {
+                console.log('Edge already exists, skipping.');
+                return;
+            }
+
+            const newEdge = {
+                id: `edge_${uuidv4()}`,
+                ...connection,
+                type: 'smoothstep',
+                animated: true,
+                style: { stroke: '#C9B5FF', strokeWidth: 2 },
+            };
+            set((state) => ({ edges: [...state.edges, newEdge] }));
+        },
+
+        deleteEdge: (edgeId) => {
+            set((state) => ({
+                edges: state.edges.filter((edge) => edge.id !== edgeId),
+            }));
+        },
+
+        // React Flow callbacks
+        onNodesChange: (changes) => {
+            set((state) => {
+                // Side-effect: Track selected node
+                changes.forEach((change) => {
+                    if (change.type === 'select' && change.selected) {
+                        // We need to look up in the current state or the new state?
+                        // applyNodeChanges hasn't run yet, so look in current state.
+                        const node = state.nodes.find((n) => n.id === change.id);
+                        if (node) {
+                            // We can't update state inside set() directly if we are returning partial state.
+                            // But selectedNode is part of the state.
+                            // We can just include selectedNode in the return object?
+                            // No, because we are iterating.
+                            // Instead, we can't easily set state.selectedNode here inside the reduce/map.
+                            // But since we are returning an object to merge, we can compute it.
+                        }
                     }
-
-                    return {
-                        folders: (state.folders || []).map(f =>
-                            f.id === folderId ? { ...f, parentId: targetParentId } : f
-                        )
-                    };
                 });
-            },
 
-            getCurrentEvent: () => {
-                const state = get();
-                return state.events.find((e) => e.id === state.currentEventId);
-            },
+                // More robust selection handling:
+                const newNodes = applyNodeChanges(changes, state.nodes);
 
-            // Node Actions
-            addNode: (type, position) => {
-                let newNode;
-                // Add initialFocus flag to new nodes so they can auto-focus their inputs
-                const dataWithFocus = { initialFocus: true };
-
-                switch (type) {
-                    case 'eventNode':
-                        newNode = createEventNode(position, dataWithFocus);
-                        break;
-                    case 'groupNode':
-                        newNode = createGroupNode(position, dataWithFocus);
-                        break;
-                    case 'branchNode':
-                        newNode = createBranchNode(position, dataWithFocus);
-                        break;
-                    case 'referenceNode':
-                        newNode = createReferenceNode(position, dataWithFocus);
-                        break;
-                    case 'startNode':
-                        newNode = createStartNode(position, dataWithFocus);
-                        break;
-                    case 'endNode':
-                        newNode = createEndNode(position, dataWithFocus);
-                        break;
-                    case 'ifNode':
-                        newNode = createIfNode(position, dataWithFocus);
-                        break;
-                    case 'carryForwardNode':
-                        newNode = createCarryForwardNode(position, dataWithFocus);
-                        break;
-                    case 'fieldNode':
-                        newNode = createFieldNode(position, dataWithFocus);
-                        break;
-                    default:
-                        newNode = createEventNode(position, dataWithFocus);
-                }
-                set((state) => ({ nodes: [...state.nodes, newNode] }));
-                return newNode.id;
-            },
-
-            insertNodeOnEdge: (type, position, edgeId, nodeId = null) => {
-                const state = get();
-                const edge = state.edges.find((e) => e.id === edgeId);
-                if (!edge) return null;
-
-                let targetNodeId = nodeId;
-                if (!targetNodeId) {
-                    targetNodeId = state.addNode(type, position);
-                }
-
-                const targetNode = get().nodes.find(n => n.id === targetNodeId);
-
-                // Create new edges
-                const edge1 = {
-                    id: `edge_${uuidv4()}`,
-                    source: edge.source,
-                    sourceHandle: edge.sourceHandle,
-                    target: targetNodeId,
-                    targetHandle: targetNode.data?.inputs?.[0]?.id || null,
-                    type: 'smoothstep',
-                    animated: true,
-                    style: { stroke: '#C9B5FF', strokeWidth: 2 },
-                };
-
-                const edge2 = {
-                    id: `edge_${uuidv4()}`,
-                    source: targetNodeId,
-                    sourceHandle: targetNode.data?.outputs?.[0]?.id || null,
-                    target: edge.target,
-                    targetHandle: edge.targetHandle,
-                    type: 'smoothstep',
-                    animated: true,
-                    style: { stroke: '#C9B5FF', strokeWidth: 2 },
-                };
-
-                set((state) => ({
-                    edges: [
-                        ...state.edges.filter((e) => e.id !== edgeId), // Remove old edge
-                        edge1,
-                        edge2,
-                    ],
-                }));
-
-                return targetNodeId;
-            },
-
-            extractNodeFromFlow: (nodeId) => {
-                const state = get();
-                const { edges } = state._getBridgedState([nodeId]);
-                set({ edges });
-            },
-
-            extractAndDeleteNodes: (nodeIds) => {
-                const state = get();
-                const { nodes, edges } = state._getBridgedState(nodeIds);
-                set({
-                    nodes,
-                    edges,
-                    selectedNode: nodeIds.includes(state.selectedNode?.id) ? null : state.selectedNode,
-                });
-            },
-
-            // Internal helper to calculate bridged state without committing to store
-            _getBridgedState: (nodeIds) => {
-                const state = get();
-                let currentEdges = [...state.edges];
-
-                nodeIds.forEach(nodeId => {
-                    const incomingEdges = currentEdges.filter(e => e.target === nodeId);
-                    const outgoingEdges = currentEdges.filter(e => e.source === nodeId);
-
-                    incomingEdges.forEach(inEdge => {
-                        outgoingEdges.forEach(outEdge => {
-                            const exists = currentEdges.some(e =>
-                                e.source === inEdge.source &&
-                                e.target === outEdge.target &&
-                                e.sourceHandle === inEdge.sourceHandle &&
-                                e.targetHandle === outEdge.targetHandle
-                            );
-
-                            if (!exists) {
-                                currentEdges.push({
-                                    id: `edge_${uuidv4()}`,
-                                    source: inEdge.source,
-                                    sourceHandle: inEdge.sourceHandle,
-                                    target: outEdge.target,
-                                    targetHandle: outEdge.targetHandle,
-                                    type: 'smoothstep',
-                                    animated: true,
-                                    style: { stroke: '#C9B5FF', strokeWidth: 2 },
-                                });
-                            }
-                        });
-                    });
-
-                    // Remove edges connected to this node
-                    currentEdges = currentEdges.filter(e => e.source !== nodeId && e.target !== nodeId);
+                // Check if selected node changed
+                let newSelectedNode = state.selectedNode;
+                changes.forEach((change) => {
+                    if (change.type === 'select') {
+                        if (change.selected) {
+                            newSelectedNode = newNodes.find((n) => n.id === change.id) || null;
+                        } else if (state.selectedNode?.id === change.id) {
+                            newSelectedNode = null;
+                        }
+                    }
                 });
 
                 return {
-                    nodes: state.nodes.filter(n => !nodeIds.includes(n.id)),
-                    edges: currentEdges
+                    nodes: newNodes,
+                    selectedNode: newSelectedNode
                 };
-            },
+            });
+        },
 
-            updateNode: (nodeId, data) => {
-                set((state) => ({
-                    nodes: state.nodes.map((node) =>
-                        node.id === nodeId
-                            ? { ...node, data: { ...node.data, ...data } }
-                            : node
-                    ),
-                }));
-            },
+        onEdgesChange: (changes) => {
+            set((state) => ({
+                edges: applyEdgeChanges(changes, state.edges),
+            }));
+        },
 
-            setNodeZIndex: (nodeId, zIndex) => {
-                set((state) => ({
-                    nodes: state.nodes.map((node) =>
-                        node.id === nodeId
-                            ? { ...node, zIndex }
-                            : node
-                    ),
-                }));
-            },
+        onConnect: (connection) => {
+            get().addEdge(connection);
+        },
 
-            deleteNode: (nodeId) => {
-                set((state) => ({
-                    nodes: state.nodes.filter((node) => node.id !== nodeId),
-                    edges: state.edges.filter(
-                        (edge) => edge.source !== nodeId && edge.target !== nodeId
-                    ),
-                    selectedNode: state.selectedNode?.id === nodeId ? null : state.selectedNode,
-                }));
-            },
+        setNodes: (nodes) => set({ nodes }),
+        setEdges: (edges) => set({ edges }),
 
-            // Delete multiple nodes at once
-            deleteNodes: (nodeIds) => {
-                set((state) => ({
-                    nodes: state.nodes.filter((node) => !nodeIds.includes(node.id)),
-                    edges: state.edges.filter(
-                        (edge) => !nodeIds.includes(edge.source) && !nodeIds.includes(edge.target)
-                    ),
-                    selectedNode: nodeIds.includes(state.selectedNode?.id) ? null : state.selectedNode,
-                }));
-            },
+        // Context Menu
+        showContextMenu: (x, y, type = 'canvas') => {
+            set({ contextMenu: { x, y, type } });
+        },
 
-            // Delete multiple edges at once
-            deleteEdges: (edgeIds) => {
-                set((state) => ({
-                    edges: state.edges.filter((edge) => !edgeIds.includes(edge.id)),
-                }));
-            },
+        hideContextMenu: () => {
+            set({ contextMenu: null });
+        },
 
-            addNodeOutput: (nodeId) => {
-                set((state) => ({
-                    nodes: state.nodes.map((node) => {
-                        if (node.id !== nodeId) return node;
-                        const newOutput = {
-                            id: `output_${uuidv4().slice(0, 8)}`,
-                            label: `Output ${node.data.outputs.length + 1}`,
-                            weight: node.type === 'branchNode' ? 50 : undefined,
-                        };
-                        return {
-                            ...node,
-                            data: {
-                                ...node.data,
-                                outputs: [...node.data.outputs, newOutput],
-                            },
-                        };
-                    }),
-                }));
-            },
+        // Auto-layout (simple horizontal layout)
+        autoLayout: () => {
+            set((state) => {
+                const SPACING_X = 280;
+                const SPACING_Y = 150;
 
-            addNodeInput: (nodeId) => {
-                set((state) => ({
-                    nodes: state.nodes.map((node) => {
-                        if (node.id !== nodeId) return node;
-                        const newInput = {
-                            id: `input_${uuidv4().slice(0, 8)}`,
-                            label: `Input ${node.data.inputs.length + 1}`,
-                        };
-                        return {
-                            ...node,
-                            data: {
-                                ...node.data,
-                                inputs: [...node.data.inputs, newInput],
-                            },
-                        };
-                    }),
-                }));
-            },
-
-            // Start Node input management
-            addStartNodeInput: (nodeId) => {
-                set((state) => ({
-                    nodes: state.nodes.map((node) => {
-                        if (node.id !== nodeId || node.type !== 'startNode') return node;
-                        const inputs = node.data.inputs || [];
-                        const newInput = {
-                            id: `input_${uuidv4().slice(0, 8)}`,
-                            label: `Input ${inputs.length + 1}`,
-                            enabled: true,
-                        };
-                        return {
-                            ...node,
-                            data: {
-                                ...node.data,
-                                inputs: [...inputs, newInput],
-                            },
-                        };
-                    }),
-                }));
-            },
-
-            removeStartNodeInput: (nodeId, inputId) => {
-                set((state) => ({
-                    nodes: state.nodes.map((node) => {
-                        if (node.id !== nodeId || node.type !== 'startNode') return node;
-                        return {
-                            ...node,
-                            data: {
-                                ...node.data,
-                                inputs: (node.data.inputs || []).filter(input => input.id !== inputId),
-                            },
-                        };
-                    }),
-                }));
-            },
-
-            toggleStartNodeInput: (nodeId, inputId) => {
-                set((state) => ({
-                    nodes: state.nodes.map((node) => {
-                        if (node.id !== nodeId || node.type !== 'startNode') return node;
-                        return {
-                            ...node,
-                            data: {
-                                ...node.data,
-                                inputs: (node.data.inputs || []).map(input =>
-                                    input.id === inputId ? { ...input, enabled: !input.enabled } : input
-                                ),
-                            },
-                        };
-                    }),
-                }));
-            },
-
-            updateStartNodeInputLabel: (nodeId, inputId, label) => {
-                set((state) => ({
-                    nodes: state.nodes.map((node) => {
-                        if (node.id !== nodeId || node.type !== 'startNode') return node;
-                        return {
-                            ...node,
-                            data: {
-                                ...node.data,
-                                inputs: (node.data.inputs || []).map(input =>
-                                    input.id === inputId ? { ...input, label } : input
-                                ),
-                            },
-                        };
-                    }),
-                }));
-            },
-
-            updateOutputWeight: (nodeId, outputId, weight) => {
-                set((state) => ({
-                    nodes: state.nodes.map((node) => {
-                        if (node.id !== nodeId) return node;
-                        return {
-                            ...node,
-                            data: {
-                                ...node.data,
-                                outputs: node.data.outputs.map((output) =>
-                                    output.id === outputId ? { ...output, weight } : output
-                                ),
-                            },
-                        };
-                    }),
-                }));
-            },
-
-            setSelectedNode: (node) => {
-                set({ selectedNode: node });
-            },
-
-            // Edge Actions
-            addEdge: (connection) => {
-                const state = get();
-
-                // Check for duplicates
-                const exists = state.edges.some(
-                    (edge) =>
-                        edge.source === connection.source &&
-                        edge.target === connection.target &&
-                        (edge.sourceHandle === connection.sourceHandle || (!edge.sourceHandle && !connection.sourceHandle)) &&
-                        (edge.targetHandle === connection.targetHandle || (!edge.targetHandle && !connection.targetHandle))
-                );
-
-                if (connection.source === connection.target) {
-                    console.log('Self-connection is not allowed.');
-                    return;
-                }
-
-                if (exists) {
-                    console.log('Edge already exists, skipping.');
-                    return;
-                }
-
-                const newEdge = {
-                    id: `edge_${uuidv4()}`,
-                    ...connection,
-                    type: 'smoothstep',
-                    animated: true,
-                    style: { stroke: '#C9B5FF', strokeWidth: 2 },
-                };
-                set((state) => ({ edges: [...state.edges, newEdge] }));
-            },
-
-            deleteEdge: (edgeId) => {
-                set((state) => ({
-                    edges: state.edges.filter((edge) => edge.id !== edgeId),
-                }));
-            },
-
-            // React Flow callbacks
-            onNodesChange: (changes) => {
-                set((state) => {
-                    // Side-effect: Track selected node
-                    changes.forEach((change) => {
-                        if (change.type === 'select' && change.selected) {
-                            // We need to look up in the current state or the new state?
-                            // applyNodeChanges hasn't run yet, so look in current state.
-                            const node = state.nodes.find((n) => n.id === change.id);
-                            if (node) {
-                                // We can't update state inside set() directly if we are returning partial state.
-                                // But selectedNode is part of the state.
-                                // We can just include selectedNode in the return object?
-                                // No, because we are iterating.
-                                // Instead, we can't easily set state.selectedNode here inside the reduce/map.
-                                // But since we are returning an object to merge, we can compute it.
-                            }
-                        }
-                    });
-
-                    // More robust selection handling:
-                    const newNodes = applyNodeChanges(changes, state.nodes);
-
-                    // Check if selected node changed
-                    let newSelectedNode = state.selectedNode;
-                    changes.forEach((change) => {
-                        if (change.type === 'select') {
-                            if (change.selected) {
-                                newSelectedNode = newNodes.find((n) => n.id === change.id) || null;
-                            } else if (state.selectedNode?.id === change.id) {
-                                newSelectedNode = null;
-                            }
-                        }
-                    });
-
+                // Create new node objects with updated positions (immutable)
+                const newNodes = state.nodes.map((node, index) => {
+                    const col = index % 4;
+                    const row = Math.floor(index / 4);
                     return {
-                        nodes: newNodes,
-                        selectedNode: newSelectedNode
+                        ...node,
+                        position: {
+                            x: 100 + col * SPACING_X,
+                            y: 100 + row * SPACING_Y,
+                        },
                     };
                 });
-            },
 
-            onEdgesChange: (changes) => {
-                set((state) => ({
-                    edges: applyEdgeChanges(changes, state.edges),
-                }));
-            },
+                return { nodes: newNodes };
+            });
+        },
 
-            onConnect: (connection) => {
-                get().addEdge(connection);
-            },
+        // Save current state to event
+        saveCurrentEvent: () => {
+            const state = get();
+            if (!state.currentEventId) return;
 
-            setNodes: (nodes) => set({ nodes }),
-            setEdges: (edges) => set({ edges }),
+            const currentEvent = state.events.find((e) => e.id === state.currentEventId);
+            if (!currentEvent) return;
 
-            // Context Menu
-            showContextMenu: (x, y, type = 'canvas') => {
-                set({ contextMenu: { x, y, type } });
-            },
+            // Reference Check: Only save if there's actually a difference to avoid loops
+            if (
+                currentEvent.nodes === state.nodes &&
+                currentEvent.edges === state.edges &&
+                JSON.stringify(currentEvent.viewport) === JSON.stringify(state.viewport)
+            ) {
+                return;
+            }
 
-            hideContextMenu: () => {
-                set({ contextMenu: null });
-            },
+            set((state) => ({
+                events: state.events.map((e) =>
+                    e.id === state.currentEventId
+                        ? {
+                            ...e,
+                            nodes: state.nodes,
+                            edges: state.edges,
+                            viewport: state.viewport,
+                            updatedAt: new Date().toISOString(),
+                        }
+                        : e
+                ),
+            }));
+        },
 
-            // Auto-layout (simple horizontal layout)
-            autoLayout: () => {
-                set((state) => {
-                    const SPACING_X = 280;
-                    const SPACING_Y = 150;
+        // Export/Import
+        exportEvents: () => {
+            const state = get();
+            // Save current state first
+            state.saveCurrentEvent();
 
-                    // Create new node objects with updated positions (immutable)
-                    const newNodes = state.nodes.map((node, index) => {
-                        const col = index % 4;
-                        const row = Math.floor(index / 4);
-                        return {
-                            ...node,
-                            position: {
-                                x: 100 + col * SPACING_X,
-                                y: 100 + row * SPACING_Y,
-                            },
-                        };
-                    });
-
-                    return { nodes: newNodes };
-                });
-            },
-
-            // Save current state to event
-            saveCurrentEvent: () => {
-                const state = get();
-                if (!state.currentEventId) return;
-
-                const currentEvent = state.events.find((e) => e.id === state.currentEventId);
-                if (!currentEvent) return;
-
-                // Reference Check: Only save if there's actually a difference to avoid loops
-                if (
-                    currentEvent.nodes === state.nodes &&
-                    currentEvent.edges === state.edges &&
-                    JSON.stringify(currentEvent.viewport) === JSON.stringify(state.viewport)
-                ) {
-                    return;
-                }
-
-                set((state) => ({
-                    events: state.events.map((e) =>
-                        e.id === state.currentEventId
-                            ? {
-                                ...e,
-                                nodes: state.nodes,
-                                edges: state.edges,
-                                viewport: state.viewport,
-                                updatedAt: new Date().toISOString(),
-                            }
-                            : e
-                    ),
-                }));
-            },
-
-            // Export/Import
-            exportEvents: () => {
-                const state = get();
-                // Save current state first
-                state.saveCurrentEvent();
-
-                return JSON.stringify({
-                    events: state.events,
-                    version: '1.0',
-                    exportedAt: new Date().toISOString(),
-                }, null, 2);
-            },
-
-            importEvents: (jsonString) => {
-                try {
-                    const data = JSON.parse(jsonString);
-                    if (data.events && Array.isArray(data.events)) {
-                        set({
-                            events: data.events,
-                            currentEventId: data.events[0]?.id || null,
-                            nodes: data.events[0]?.nodes || [],
-                            edges: data.events[0]?.edges || [],
-                        });
-                        return true;
-                    }
-                    return false;
-                } catch (e) {
-                    console.error('Import failed:', e);
-                    return false;
-                }
-            },
-
-            // ========================================
-            // Prompt Inheritance System
-            // ========================================
-
-            // Get all parent nodes (nodes that connect TO this node)
-            getParentNodes: (nodeId, context = null) => {
-                const state = get();
-                const nodes = context?.nodes || state.nodes;
-                const edges = context?.edges || state.edges;
-                return sim.getParentNodes(nodeId, nodes, edges);
-            },
-
-            // Get ALL upstream nodes recursively (for UI display)
-            getAllUpstreamNodes: (nodeId, visited = new Set(), depth = 0, context = null) => {
-                const state = get();
-                if (visited.has(nodeId)) return [];
-                visited.add(nodeId);
-
-                const parentNodes = get().getParentNodes(nodeId, context);
-                let allUpstream = [];
-
-                for (const { node: parentNode } of parentNodes) {
-                    // Add this parent if it's not a start flow node
-                    if (parentNode.type !== 'startNode') {
-                        const prompt = parentNode.data?.inheritedPrompt || parentNode.data?.fixedPrompt || '';
-                        allUpstream.push({
-                            nodeId: parentNode.id,
-                            nodeLabel: parentNode.data?.label || 'Unknown',
-                            nodeType: parentNode.type,
-                            prompt: prompt,
-                            depth: depth,
-                        });
-                    }
-
-                    // Recursively get grandparents
-                    const grandparents = get().getAllUpstreamNodes(parentNode.id, visited, depth + 1, context);
-                    allUpstream = [...allUpstream, ...grandparents];
-                }
-
-                return allUpstream;
-            },
-
-            // Get all inherited prompts from parent nodes (recursive)
-            getInheritedPrompts: (nodeId, visited = new Set(), options = {}) => {
-                const state = get();
-                const nodes = options.context?.nodes || state.nodes;
-                const edges = options.context?.edges || state.edges;
-                return sim.getInheritedPrompts(nodeId, state.events, nodes, edges, visited, options);
-            },
-
-            // Toggle whether to inherit from a specific source node
-            toggleInheritedSource: (nodeId, sourceNodeId) => {
-                set((state) => {
-                    const updatedNodes = state.nodes.map((node) => {
-                        if (node.id !== nodeId) return node;
-                        const disabled = node.data.disabledInheritedSources || [];
-                        const newDisabled = disabled.includes(sourceNodeId)
-                            ? disabled.filter((id) => id !== sourceNodeId)
-                            : [...disabled, sourceNodeId];
-                        return {
-                            ...node,
-                            data: {
-                                ...node.data,
-                                disabledInheritedSources: newDisabled,
-                            },
-                        };
-                    });
-
-                    // Also update selectedNode if it's the same node
-                    const updatedSelectedNode = state.selectedNode?.id === nodeId
-                        ? updatedNodes.find((n) => n.id === nodeId)
-                        : state.selectedNode;
-
-                    return {
-                        nodes: updatedNodes,
-                        selectedNode: updatedSelectedNode,
-                    };
-                });
-            },
-
-            // Get the fully composed prompt for a node
-            getComposedPrompt: (nodeId, options = {}) => {
-                const state = get();
-                const nodes = options.context?.nodes || state.nodes;
-                const edges = options.context?.edges || state.edges;
-                const currentEvent = state.getCurrentEvent();
-                const fixedPrompt = options.fixedPrompt || currentEvent?.fixedPrompt || '';
-
-                return sim.getComposedPrompt(nodeId, state.events, nodes, edges, fixedPrompt, options);
-            },
-
-            // Simulation Logic (Graph Traversal)
-            simulateEvent: (currentNodes, currentEdges, incomingContextParts = [], visitedEventIds = new Set(), inputOverrides = {}, contextFixedPrompt = null) => {
-                const state = get();
-                const currentEvent = state.getCurrentEvent();
-                // Use provided fixedPrompt (for playlists) or fallback to current event's prompt
-                const fixedPrompt = contextFixedPrompt !== null ? contextFixedPrompt : (currentEvent?.fixedPrompt || '');
-
-                return sim.simulateEvent(state.events, currentNodes, currentEdges, fixedPrompt, incomingContextParts, visitedEventIds, inputOverrides, state.moodConfig);
-            },
-
-            // Generate a test prompt, randomly selecting branches based on weights
-            generateTestPrompt: (nodeId, randomize = true) => {
-                const composed = get().getComposedPrompt(nodeId, { randomize });
-
-                // For now, return the composed prompt
-                // Branch selection would require more complex path tracing
-                return {
-                    ...composed,
-                    randomSeed: randomize ? Math.random() : 0,
-                };
-            },
-        }),
-        {
-            name: 'event-flow-storage',
-            partialize: (state) => ({
+            return JSON.stringify({
                 events: state.events,
-                folders: state.folders,
-                currentEventId: state.currentEventId,
-                nodes: state.nodes,
-                edges: state.edges,
-                viewport: state.viewport,
-                openTabs: state.openTabs,
-                activeTabId: state.activeTabId,
-            }),
-            onRehydrate: () => {
-                console.log('Rehydrating from localStorage...');
-            },
-        }
-    )
+                version: '1.0',
+                exportedAt: new Date().toISOString(),
+            }, null, 2);
+        },
+
+        importEvents: (jsonString) => {
+            try {
+                const data = JSON.parse(jsonString);
+                if (data.events && Array.isArray(data.events)) {
+                    set({
+                        events: data.events,
+                        currentEventId: data.events[0]?.id || null,
+                        nodes: data.events[0]?.nodes || [],
+                        edges: data.events[0]?.edges || [],
+                    });
+                    return true;
+                }
+                return false;
+            } catch (e) {
+                console.error('Import failed:', e);
+                return false;
+            }
+        },
+
+        // ========================================
+        // Prompt Inheritance System
+        // ========================================
+
+        // Get all parent nodes (nodes that connect TO this node)
+        getParentNodes: (nodeId, context = null) => {
+            const state = get();
+            const nodes = context?.nodes || state.nodes;
+            const edges = context?.edges || state.edges;
+            return sim.getParentNodes(nodeId, nodes, edges);
+        },
+
+        // Get ALL upstream nodes recursively (for UI display)
+        getAllUpstreamNodes: (nodeId, visited = new Set(), depth = 0, context = null) => {
+            const state = get();
+            if (visited.has(nodeId)) return [];
+            visited.add(nodeId);
+
+            const parentNodes = get().getParentNodes(nodeId, context);
+            let allUpstream = [];
+
+            for (const { node: parentNode } of parentNodes) {
+                // Add this parent if it's not a start flow node
+                if (parentNode.type !== 'startNode') {
+                    const prompt = parentNode.data?.inheritedPrompt || parentNode.data?.fixedPrompt || '';
+                    allUpstream.push({
+                        nodeId: parentNode.id,
+                        nodeLabel: parentNode.data?.label || 'Unknown',
+                        nodeType: parentNode.type,
+                        prompt: prompt,
+                        depth: depth,
+                    });
+                }
+
+                // Recursively get grandparents
+                const grandparents = get().getAllUpstreamNodes(parentNode.id, visited, depth + 1, context);
+                allUpstream = [...allUpstream, ...grandparents];
+            }
+
+            return allUpstream;
+        },
+
+        // Get all inherited prompts from parent nodes (recursive)
+        getInheritedPrompts: (nodeId, visited = new Set(), options = {}) => {
+            const state = get();
+            const nodes = options.context?.nodes || state.nodes;
+            const edges = options.context?.edges || state.edges;
+            return sim.getInheritedPrompts(nodeId, state.events, nodes, edges, visited, options);
+        },
+
+        // Toggle whether to inherit from a specific source node
+        toggleInheritedSource: (nodeId, sourceNodeId) => {
+            set((state) => {
+                const updatedNodes = state.nodes.map((node) => {
+                    if (node.id !== nodeId) return node;
+                    const disabled = node.data.disabledInheritedSources || [];
+                    const newDisabled = disabled.includes(sourceNodeId)
+                        ? disabled.filter((id) => id !== sourceNodeId)
+                        : [...disabled, sourceNodeId];
+                    return {
+                        ...node,
+                        data: {
+                            ...node.data,
+                            disabledInheritedSources: newDisabled,
+                        },
+                    };
+                });
+
+                // Also update selectedNode if it's the same node
+                const updatedSelectedNode = state.selectedNode?.id === nodeId
+                    ? updatedNodes.find((n) => n.id === nodeId)
+                    : state.selectedNode;
+
+                return {
+                    nodes: updatedNodes,
+                    selectedNode: updatedSelectedNode,
+                };
+            });
+        },
+
+        // Get the fully composed prompt for a node
+        getComposedPrompt: (nodeId, options = {}) => {
+            const state = get();
+            const nodes = options.context?.nodes || state.nodes;
+            const edges = options.context?.edges || state.edges;
+            const currentEvent = state.getCurrentEvent();
+            const fixedPrompt = options.fixedPrompt || currentEvent?.fixedPrompt || '';
+
+            return sim.getComposedPrompt(nodeId, state.events, nodes, edges, fixedPrompt, options);
+        },
+
+        // Simulation Logic (Graph Traversal)
+        simulateEvent: (currentNodes, currentEdges, incomingContextParts = [], visitedEventIds = new Set(), inputOverrides = {}, contextFixedPrompt = null) => {
+            const state = get();
+            const currentEvent = state.getCurrentEvent();
+            // Use provided fixedPrompt (for playlists) or fallback to current event's prompt
+            const fixedPrompt = contextFixedPrompt !== null ? contextFixedPrompt : (currentEvent?.fixedPrompt || '');
+
+            return sim.simulateEvent(state.events, currentNodes, currentEdges, fixedPrompt, incomingContextParts, visitedEventIds, inputOverrides, state.moodConfig);
+        },
+
+        // Generate a test prompt, randomly selecting branches based on weights
+        generateTestPrompt: (nodeId, randomize = true) => {
+            const composed = get().getComposedPrompt(nodeId, { randomize });
+
+            // For now, return the composed prompt
+            // Branch selection would require more complex path tracing
+            return {
+                ...composed,
+                randomSeed: randomize ? Math.random() : 0,
+            };
+        },
+
+        // ========================================
+        // API Server Data Loading
+        // ========================================
+
+        /**
+         * Fetch state from the API server on startup.
+         * This replaces localStorage rehydration.
+         */
+        initializeFromServer: async () => {
+            try {
+                console.log('[Init] Fetching data from API server...');
+                const response = await fetch(`${API_SERVER_URL}/api/data/export`);
+
+                if (!response.ok) {
+                    throw new Error(`Server returned ${response.status}`);
+                }
+
+                const data = await response.json();
+                const events = data.events || [];
+                const folders = data.folders || [];
+                const moodConfig = data.moodConfig || get().moodConfig;
+                const openTabs = data.openTabs || [];
+                const activeTabId = data.activeTabId || null;
+
+                set({
+                    events,
+                    folders,
+                    moodConfig,
+                    openTabs,
+                    activeTabId,
+                    currentEventId: events[0]?.id || null,
+                    nodes: events[0]?.nodes || [],
+                    edges: events[0]?.edges || [],
+                    viewport: events[0]?.viewport || { x: 0, y: 0, zoom: 1 },
+                    isLoading: false,
+                    isInitialized: true,
+                });
+
+                console.log(`[Init] ✓ Loaded ${events.length} events, ${folders.length} folders`);
+            } catch (err) {
+                console.error('[Init] Failed to fetch from API server:', err.message);
+                console.log('[Init] Starting with empty state. Is the API server running? (npm run api)');
+
+                // Start with a default event so the app is usable
+                const defaultEvent = createInitialEvent();
+                set({
+                    events: [defaultEvent],
+                    currentEventId: defaultEvent.id,
+                    nodes: defaultEvent.nodes,
+                    edges: defaultEvent.edges,
+                    isLoading: false,
+                    isInitialized: true,
+                });
+            }
+        },
+
+        /**
+         * Save current state to API server immediately.
+         */
+        saveToServer: async () => {
+            const state = get();
+            if (!state.isInitialized || state.isSaving) return;
+
+            set({ isSaving: true });
+
+            // Ensure current event nodes/edges are pushed into the events array
+            state.saveCurrentEvent();
+
+            const freshState = get();
+            const payload = {
+                events: freshState.events,
+                folders: freshState.folders || [],
+                moodConfig: freshState.moodConfig,
+                openTabs: freshState.openTabs || [],
+                activeTabId: freshState.activeTabId || null,
+                updatedAt: new Date().toISOString(),
+            };
+
+            try {
+                const response = await fetch(`${API_SERVER_URL}/api/data/sync`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                });
+
+                if (response.ok) {
+                    set({ isSaving: false, lastSaved: new Date() });
+                    console.log('[Save] ✓ Saved to server');
+                } else {
+                    set({ isSaving: false });
+                    console.warn('[Save] Server returned', response.status);
+                }
+            } catch (err) {
+                set({ isSaving: false });
+                console.error('[Save] ✗ Failed to save — is the API server running?');
+            }
+        },
+    })
 );
 
 // ========================================
@@ -1497,4 +1583,33 @@ function initializeHistory() {
 // Call after a short delay to ensure rehydration is complete
 setTimeout(initializeHistory, 100);
 
+// ========================================
+// API Server Persistence (Primary Store)
+// ========================================
+
+let apiSaveTimeout;
+
+useStore.subscribe((state, prevState) => {
+    // Watch for changes in events, folders, moodConfig, canvas state (nodes/edges), or UI state (tabs)
+    if (
+        state.events !== prevState.events ||
+        state.folders !== prevState.folders ||
+        state.moodConfig !== prevState.moodConfig ||
+        state.nodes !== prevState.nodes ||
+        state.edges !== prevState.edges ||
+        state.openTabs !== prevState.openTabs ||
+        state.activeTabId !== prevState.activeTabId
+    ) {
+        clearTimeout(apiSaveTimeout);
+        // Debounce: Wait 2 seconds after last change before auto-saving
+        apiSaveTimeout = setTimeout(() => {
+            useStore.getState().saveToServer();
+        }, 5000);
+    }
+});
+
+// Initialize from server on startup
+useStore.getState().initializeFromServer();
+
 export default useStore;
+
