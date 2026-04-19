@@ -1,0 +1,3 @@
+## 2024-05-19 - Tab Bar Accessibility
+**Learning:** For dynamic components like custom tab bars, `title` attributes alone are insufficient. Always complement them with explicit, descriptive `aria-label`s that utilize dynamic data (e.g., `aria-label={"Close " + itemName + " tab"}`) and ensure elements like tabs have the `role="tab"` and their parent has `role="tablist"` to provide proper semantics and unique identifiability for screen readers.
+**Action:** Always add semantic roles (`tablist`, `tab`), `aria-selected` and `aria-label`s on close/add buttons in custom tab components. Also add `tabIndex` and `onKeyDown` handlers for keyboard accessibility.
