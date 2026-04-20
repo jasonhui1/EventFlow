@@ -1,0 +1,3 @@
+## 2024-05-28 - Tab Component Accessibility with Nested Buttons
+**Learning:** Using a `<button>` element for a tab fails accessibility guidelines and produces invalid HTML when the tab needs to contain another interactive element, such as a "close tab" button. Screen readers and browsers may mishandle nested buttons.
+**Action:** When creating complex tabs with nested actions (like close buttons), use a focusable `<div>` with `role="tab"`, `tabIndex={0}`, and implement an `onKeyDown` handler to explicitly support `Enter` and `Space` key activation, maintaining full keyboard accessibility and semantic validity.
