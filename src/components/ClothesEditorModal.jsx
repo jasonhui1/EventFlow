@@ -8,57 +8,86 @@ const formatName = (key) => key.split('_').map(w => w.charAt(0).toUpperCase() + 
 
 // --- Subcomponents ---
 
-const CostumeSidebar = ({ localDB, selectedCostumeId, onSelect, onAdd }) => (
-    <div style={{
-        width: '260px',
-        borderRight: '1px solid rgba(255,255,255,0.08)',
-        background: 'rgba(0,0,0,0.2)',
-        display: 'flex',
-        flexDirection: 'column'
-    }}>
-        <div className="modal-header" style={{ padding: '16px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-            <h3 className="modal-title" style={{ fontSize: '14px', margin: 0 }}>👗 Costume Templates</h3>
-        </div>
-        <div style={{ padding: '12px', flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {Object.keys(localDB).map(key => (
-                <div 
-                    key={key}
-                    onClick={() => onSelect(key)}
-                    style={{
-                        padding: '10px 12px',
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                        background: selectedCostumeId === key ? 'rgba(201, 181, 255, 0.15)' : 'transparent',
-                        border: `1px solid ${selectedCostumeId === key ? 'rgba(201, 181, 255, 0.3)' : 'transparent'}`,
-                        color: selectedCostumeId === key ? '#fff' : 'rgba(255,255,255,0.6)',
-                        fontWeight: selectedCostumeId === key ? 600 : 400,
-                        fontSize: '13px',
-                        transition: 'all 0.2s'
-                    }}
-                >
-                    {formatName(key)}
-                </div>
-            ))}
-        </div>
-        <div style={{ padding: '12px', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-            <button className="action-btn" onClick={onAdd} style={{ width: '100%', justifyContent: 'center' }}>
-                + Add New Template
-            </button>
-        </div>
-    </div>
-);
+const CostumeSidebar = ({ localDB, selectedCostumeId, onSelect, onAdd, onDelete }) => {
+    const [hoveredKey, setHoveredKey] = useState(null);
 
-const CostumeHeader = ({ selectedCostumeId, onDelete, onClose }) => (
+    return (
+        <div style={{
+            width: '260px',
+            borderRight: '1px solid rgba(255,255,255,0.08)',
+            background: 'rgba(0,0,0,0.2)',
+            display: 'flex',
+            flexDirection: 'column'
+        }}>
+            <div className="modal-header" style={{ padding: '16px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                <h3 className="modal-title" style={{ fontSize: '14px', margin: 0 }}>👗 Costume Templates</h3>
+            </div>
+            <div style={{ padding: '12px', flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {Object.keys(localDB).map(key => (
+                    <div 
+                        key={key}
+                        onClick={() => onSelect(key)}
+                        onMouseEnter={() => setHoveredKey(key)}
+                        onMouseLeave={() => setHoveredKey(null)}
+                        style={{
+                            padding: '10px 12px',
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            background: selectedCostumeId === key ? 'rgba(201, 181, 255, 0.15)' : 'transparent',
+                            border: `1px solid ${selectedCostumeId === key ? 'rgba(201, 181, 255, 0.3)' : 'transparent'}`,
+                            color: selectedCostumeId === key ? '#fff' : 'rgba(255,255,255,0.6)',
+                            fontWeight: selectedCostumeId === key ? 600 : 400,
+                            fontSize: '13px',
+                            transition: 'all 0.2s',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center'
+                        }}
+                    >
+                        <span>{formatName(key)}</span>
+                        <button 
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onDelete(key);
+                            }}
+                            style={{
+                                background: 'none',
+                                border: 'none',
+                                color: 'rgba(255, 100, 100, 0.6)',
+                                cursor: 'pointer',
+                                padding: '4px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                borderRadius: '4px',
+                                transition: 'all 0.2s',
+                                opacity: hoveredKey === key ? 1 : 0,
+                                pointerEvents: hoveredKey === key ? 'auto' : 'none'
+                            }}
+                            title="Delete Template"
+                        >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M3 6h18m-2 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2M10 11v6M14 11v6" />
+                            </svg>
+                        </button>
+                    </div>
+                ))}
+            </div>
+            <div style={{ padding: '12px', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                <button className="action-btn" onClick={onAdd} style={{ width: '100%', justifyContent: 'center' }}>
+                    + Add New Template
+                </button>
+            </div>
+        </div>
+    );
+};
+
+const CostumeHeader = ({ selectedCostumeId, onClose }) => (
     <div className="modal-header" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)', justifyContent: 'space-between' }}>
         <h3 className="modal-title">
             {selectedCostumeId ? `Editing: ${formatName(selectedCostumeId)}` : 'No Selection'}
         </h3>
         <div>
-            {selectedCostumeId && (
-                <button className="action-btn" onClick={onDelete} style={{ borderColor: 'rgba(255, 100, 100, 0.3)', color: '#FFB5B5', marginRight: '16px' }}>
-                    Delete
-                </button>
-            )}
             <button className="modal-close" onClick={onClose} style={{ top: 'auto', right: 'auto', position: 'relative' }}>×</button>
         </div>
     </div>
@@ -264,16 +293,19 @@ const ClothesEditorModal = ({ onClose }) => {
         setSelectedCostumeId(key);
     };
 
-    const handleDelete = () => {
-        if (!selectedCostumeId || !confirm(`Delete template '${selectedCostumeId}'?`)) return;
+    const handleDelete = (id) => {
+        const targetId = id || selectedCostumeId;
+        if (!targetId || !confirm(`Delete template '${targetId}'?`)) return;
         
         setLocalDB(prev => {
             const next = { ...prev };
-            delete next[selectedCostumeId];
+            delete next[targetId];
             return next;
         });
         
-        setSelectedCostumeId(Object.keys(localDB).filter(k => k !== selectedCostumeId)[0] || null);
+        if (selectedCostumeId === targetId) {
+            setSelectedCostumeId(Object.keys(localDB).filter(k => k !== targetId)[0] || null);
+        }
     };
 
     const handleSave = async () => {
@@ -299,18 +331,20 @@ const ClothesEditorModal = ({ onClose }) => {
     };
 
     return (
-        <div className="modal-overlay" onClick={onClose}>
+        <div className="modal-overlay" onClick={onClose} style={{ padding: '32px', boxSizing: 'border-box' }}>
             <div
                 className="modal nowheel"
                 onClick={(e) => e.stopPropagation()}
                 style={{ 
-                    minWidth: '900px', 
-                    maxWidth: '1200px', 
-                    height: '85vh', 
+                    width: '100%',
+                    height: '100%',
                     display: 'flex', 
                     flexDirection: 'row',
                     padding: 0,
-                    overflow: 'hidden'
+                    overflow: 'hidden',
+                    borderRadius: '12px',
+                    maxWidth: 'none',
+                    maxHeight: 'none'
                 }}
             >
                 <CostumeSidebar 
@@ -318,12 +352,12 @@ const ClothesEditorModal = ({ onClose }) => {
                     selectedCostumeId={selectedCostumeId}
                     onSelect={setSelectedCostumeId}
                     onAdd={handleAddNew}
+                    onDelete={handleDelete}
                 />
 
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                     <CostumeHeader 
                         selectedCostumeId={selectedCostumeId}
-                        onDelete={handleDelete}
                         onClose={onClose}
                     />
 
