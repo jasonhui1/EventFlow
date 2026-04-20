@@ -5,6 +5,8 @@ import { Router } from 'express';
 import { getEvents, getFolders, getMoodConfig } from '../dataStore.js';
 import { generatePlaylist } from '../../src/utils/playlistGenerator.js';
 import { simulateEvent } from '../../src/utils/simulationUtils.js';
+import { generateCostumePrompt } from '../../src/utils/promptEngine.js';
+import { getAllClothes } from '../clothesStore.js';
 
 const router = Router();
 
@@ -36,23 +38,31 @@ router.post('/generate', (req, res) => {
 
     // Optionally simulate each event in the playlist
     if (simulate) {
+        // Simulate each event in the playlist
         response.simulatedPrompts = playlist.map(event => {
-            const results = simulateEvent(
+            const clothesDB = getAllClothes();
+            let fixedPrompt = event.fixedPrompt || '';
+            const costumePromptStr = generateCostumePrompt(event.costumes || [], clothesDB);
+            if (costumePromptStr) {
+                fixedPrompt = [fixedPrompt, costumePromptStr].filter(Boolean).join(', ');
+            }
+
+            const simResults = simulateEvent(
                 events,
                 event.nodes || [],
                 event.edges || [],
-                event.fixedPrompt || '',
+                fixedPrompt,
                 [],
                 new Set(),
                 {},
-                moodConfig,
+                moodConfig
             );
 
             return {
                 eventId: event.id,
                 eventName: event.name,
-                prompts: results.map(r => r.prompt),
-                results,
+                prompts: simResults.map(r => r.prompt),
+                results: simResults,
             };
         });
     }

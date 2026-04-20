@@ -39,7 +39,8 @@ const EventSimulationModal = ({ onClose }) => {
                 [], // incomingContextParts
                 new Set(), // visitedEventIds
                 {}, // inputOverrides
-                event.fixedPrompt || '' // contextFixedPrompt
+                event.fixedPrompt || '', // contextFixedPrompt
+                event.costumes || [] // eventCostumes
             );
             return {
                 event,

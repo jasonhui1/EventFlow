@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { v4 as uuidv4 } from 'uuid';
 import { applyNodeChanges, applyEdgeChanges } from '@xyflow/react';
 import * as sim from '../utils/simulationUtils';
+import { generateCostumePrompt } from '../utils/promptEngine';
 
 // Default node templates
 const createEventNode = (position = { x: 0, y: 0 }, data = {}) => ({
@@ -1386,11 +1387,18 @@ const useStore = create(
         },
 
         // Simulation Logic (Graph Traversal)
-        simulateEvent: (currentNodes, currentEdges, incomingContextParts = [], visitedEventIds = new Set(), inputOverrides = {}, contextFixedPrompt = null) => {
+        simulateEvent: (currentNodes, currentEdges, incomingContextParts = [], visitedEventIds = new Set(), inputOverrides = {}, contextFixedPrompt = null, eventCostumes = null) => {
             const state = get();
             const currentEvent = state.getCurrentEvent();
             // Use provided fixedPrompt (for playlists) or fallback to current event's prompt
-            const fixedPrompt = contextFixedPrompt !== null ? contextFixedPrompt : (currentEvent?.fixedPrompt || '');
+            let fixedPrompt = contextFixedPrompt !== null ? contextFixedPrompt : (currentEvent?.fixedPrompt || '');
+            const costumes = eventCostumes !== null ? eventCostumes : (currentEvent?.costumes || []);
+
+            // Inject costume string if applicable
+            const costumePromptStr = generateCostumePrompt(costumes, state.clothesDB);
+            if (costumePromptStr) {
+                fixedPrompt = [fixedPrompt, costumePromptStr].filter(Boolean).join(', ');
+            }
 
             return sim.simulateEvent(state.events, currentNodes, currentEdges, fixedPrompt, incomingContextParts, visitedEventIds, inputOverrides, state.moodConfig);
         },

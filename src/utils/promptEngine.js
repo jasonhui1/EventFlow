@@ -334,3 +334,28 @@ export function generateOutfit(categoryName, outfitsDB, customPrompts = {}) {
     // Just join the raw parts together.
     return Object.values(parts).filter(Boolean).join(', ');
 }
+
+/**
+ * Randomly select a costume based on weights and generate its prompt string.
+ */
+export function generateCostumePrompt(eventCostumes = [], clothesDB = {}) {
+    if (!eventCostumes || eventCostumes.length === 0 || !clothesDB || Object.keys(clothesDB).length === 0) {
+        return "";
+    }
+
+    const totalWeight = eventCostumes.reduce((sum, c) => sum + (Number(c.weight) || 1), 0);
+    let roll = Math.random() * totalWeight;
+    let selectedCostume = typeof eventCostumes[0] === 'string' ? eventCostumes[0] : eventCostumes[0].name;
+
+    for (const c of eventCostumes) {
+        const w = Number(c.weight) || 1;
+        const name = typeof c === 'string' ? c : c.name;
+        roll -= w;
+        if (roll <= 0) {
+            selectedCostume = name;
+            break;
+        }
+    }
+
+    return generateOutfit(selectedCostume, clothesDB);
+}

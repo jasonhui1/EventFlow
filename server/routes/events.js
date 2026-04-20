@@ -4,6 +4,8 @@
 import { Router } from 'express';
 import { getEvents, getEventById, getMoodConfig } from '../dataStore.js';
 import { simulateEvent, getComposedPrompt } from '../../src/utils/simulationUtils.js';
+import { generateCostumePrompt } from '../../src/utils/promptEngine.js';
+import { getAllClothes } from '../clothesStore.js';
 
 const router = Router();
 
@@ -104,17 +106,26 @@ router.post('/:id/simulate', (req, res) => {
     const allEvents = getEvents();
     const moodConfig = getMoodConfig();
 
+    const clothesDB = getAllClothes();
+    
+    // Inject costume string if applicable
+    let fixedPrompt = event.fixedPrompt || '';
+    const costumePromptStr = generateCostumePrompt(event.costumes || [], clothesDB);
+    if (costumePromptStr) {
+        fixedPrompt = [fixedPrompt, costumePromptStr].filter(Boolean).join(', ');
+    }
+
     const simulations = [];
     for (let i = 0; i < Math.min(count, 100); i++) {
         const results = simulateEvent(
             allEvents,
             event.nodes || [],
             event.edges || [],
-            event.fixedPrompt || '',
+            fixedPrompt,
             [],              // incomingContextParts
             new Set(),       // visitedEventIds
             inputOverrides,
-            moodConfig,
+            moodConfig
         );
 
         simulations.push({
@@ -157,15 +168,22 @@ router.post('/simulate/bulk', (req, res) => {
             return { eventId, error: 'Event not found' };
         }
 
+        const clothesDB = getAllClothes();
+        let fixedPrompt = event.fixedPrompt || '';
+        const costumePromptStr = generateCostumePrompt(event.costumes || [], clothesDB);
+        if (costumePromptStr) {
+            fixedPrompt = [fixedPrompt, costumePromptStr].filter(Boolean).join(', ');
+        }
+
         const simResults = simulateEvent(
             allEvents,
             event.nodes || [],
             event.edges || [],
-            event.fixedPrompt || '',
+            fixedPrompt,
             [],
             new Set(),
             inputOverrides,
-            moodConfig,
+            moodConfig
         );
 
         return {

@@ -519,13 +519,15 @@ export const simulateEvent = (
     allEvents,
     currentNodes,
     currentEdges,
-    currentEventFixedPrompt = '',
+    contextFixedPrompt = '',
     incomingContextParts = [],
     visitedEventIds = new Set(),
-    inputOverrides = {}, // Parameter for top-level input overrides
-    moodConfig = null, // Mood configuration: { tiers, tags, initialMoodRange }
-    incomingMood = null // Mood carried from parent simulation
+    inputOverrides = {},
+    moodConfig = null,
+    incomingMood = null
 ) => {
+    let currentEventFixedPrompt = contextFixedPrompt;
+
     // Phase 0: Apply input overrides to start nodes
     const processedNodes = applyInputOverrides(currentNodes, inputOverrides);
 
