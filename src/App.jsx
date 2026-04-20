@@ -41,6 +41,7 @@ const nodeTypes = {
 import EventSimulationModal from './components/EventSimulationModal';
 import BulkExportModal from './components/BulkExportModal';
 import MoodConfigModal from './components/MoodConfigModal';
+import ClothesEditorModal from './components/ClothesEditorModal';
 
 function App() {
 
@@ -56,6 +57,7 @@ function App() {
     const [showSimulationModal, setShowSimulationModal] = useState(false);
     const [showBulkExportModal, setShowBulkExportModal] = useState(false);
     const [showMoodConfigModal, setShowMoodConfigModal] = useState(false);
+    const [showClothesEditorModal, setShowClothesEditorModal] = useState(false);
 
     // Loading state from API server
     const isLoading = useStore((state) => state.isLoading);
@@ -751,6 +753,13 @@ function App() {
                             <div className="costume-label" style={{ marginBottom: 0 }}>
                                 <span style={{ fontSize: '14px' }}>👗</span> COSTUMES:
                             </div>
+                            <button 
+                                className="action-btn"
+                                onClick={(e) => { e.stopPropagation(); setShowClothesEditorModal(true); }}
+                                style={{ padding: '2px 6px', fontSize: '10px', marginLeft: 'auto' }}
+                            >
+                                ✏️ Edit
+                            </button>
                         </div>
 
                         {!isCostumesCollapsed && (
@@ -962,6 +971,12 @@ function App() {
             {
                 showMoodConfigModal && (
                     <MoodConfigModal onClose={() => setShowMoodConfigModal(false)} />
+                )
+            }
+
+            {
+                showClothesEditorModal && (
+                    <ClothesEditorModal onClose={() => setShowClothesEditorModal(false)} />
                 )
             }
         </div >
