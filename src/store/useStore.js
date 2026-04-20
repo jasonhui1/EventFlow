@@ -199,6 +199,9 @@ const useStore = create(
             initialMoodRange: { min: -20, max: 20 },
         },
 
+        // Clothes/costume template database (loaded from API)
+        clothesDB: {},
+
         // Tab state for browser-like canvas tabs
         openTabs: [], // Array of { eventId, order }
         activeTabId: null,
@@ -1461,6 +1464,24 @@ const useStore = create(
         },
 
         /**
+         * Load clothes/costume templates from the API server.
+         */
+        loadClothesFromServer: async () => {
+            try {
+                const response = await fetch(`${API_SERVER_URL}/api/clothes`);
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.clothes) {
+                        set({ clothesDB: data.clothes });
+                        console.log('[Clothes] ✓ Loaded', Object.keys(data.clothes).length, 'costume templates');
+                    }
+                }
+            } catch (err) {
+                console.warn('[Clothes] Failed to load from server:', err.message);
+            }
+        },
+
+        /**
          * Save current state to API server immediately.
          */
         saveToServer: async () => {
@@ -1610,6 +1631,7 @@ useStore.subscribe((state, prevState) => {
 
 // Initialize from server on startup
 useStore.getState().initializeFromServer();
+useStore.getState().loadClothesFromServer();
 
 export default useStore;
 

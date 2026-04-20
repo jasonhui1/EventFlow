@@ -19,6 +19,7 @@ import eventsRouter from './routes/events.js';
 import foldersRouter from './routes/folders.js';
 import dataRouter from './routes/data.js';
 import playlistRouter from './routes/playlist.js';
+import clothesRouter from './routes/clothes.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.EVENTFLOW_PORT || 4649;
@@ -57,6 +58,7 @@ app.use('/api/events', eventsRouter);
 app.use('/api/folders', foldersRouter);
 app.use('/api/data', dataRouter);
 app.use('/api/playlist', playlistRouter);
+app.use('/api/clothes', clothesRouter);
 
 // Bulk simulate shortcut (also accessible via /api/events/simulate/bulk)
 app.post('/api/simulate/bulk', (req, res) => {
@@ -86,6 +88,9 @@ app.get('/api', (req, res) => {
             { method: 'POST', path: '/api/playlist/generate', description: 'Generate event playlist' },
             { method: 'POST', path: '/api/data/sync', description: 'Push data from frontend' },
             { method: 'GET', path: '/api/data/export', description: 'Export full data store' },
+            { method: 'GET', path: '/api/clothes', description: 'Get all costume templates' },
+            { method: 'GET', path: '/api/clothes/names', description: 'List costume template names' },
+            { method: 'GET', path: '/api/clothes/:name', description: 'Get single costume template' },
             { method: 'GET', path: '/api/health', description: 'Server health check' },
         ],
     });

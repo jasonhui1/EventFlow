@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState, useEffect } from 'react';
+import React, { useCallback, useRef, useState, useEffect, useMemo } from 'react';
 import {
     ReactFlow,
     Controls,
@@ -44,7 +44,6 @@ import MoodConfigModal from './components/MoodConfigModal';
 
 function App() {
 
-    const [costumeOptions, setCostumeOptions] = useState(['casual', ' school uniform']);
     const [showWeights, setShowWeights] = useState(false);
     const [isFixedPromptCollapsed, setIsFixedPromptCollapsed] = useState(false);
     const [isCostumesCollapsed, setIsCostumesCollapsed] = useState(true);
@@ -96,6 +95,29 @@ function App() {
     const pushToHistory = useStore((state) => state.pushToHistory);
     const viewport = useStore((state) => state.viewport);
     const setViewport = useStore((state) => state.setViewport);
+    const updateEventCostumes = useStore((state) => state.updateEventCostumes);
+    const updateCostumeWeight = useStore((state) => state.updateCostumeWeight);
+    const clothesDB = useStore((state) => state.clothesDB);
+
+    // Derive costume options from the loaded clothes database
+    const costumeOptions = useMemo(() => Object.keys(clothesDB), [clothesDB]);
+    
+    const currentEvent = getCurrentEvent();
+
+    // Toggle a costume on/off for the current event
+    const toggleCostume = useCallback((costumeName) => {
+        if (!currentEventId) return;
+        const currentCostumes = currentEvent?.costumes || [];
+        const exists = currentCostumes.some(c => (typeof c === 'string' ? c : c.name) === costumeName);
+
+        let newCostumes;
+        if (exists) {
+            newCostumes = currentCostumes.filter(c => (typeof c === 'string' ? c : c.name) !== costumeName);
+        } else {
+            newCostumes = [...currentCostumes, { name: costumeName, weight: 1 }];
+        }
+        updateEventCostumes(currentEventId, newCostumes);
+    }, [currentEventId, currentEvent, updateEventCostumes]);
 
     // Select first event if none selected
     React.useEffect(() => {
@@ -114,8 +136,6 @@ function App() {
             }
         }
     }, [currentEventId, reactFlowInstance]);
-
-    const currentEvent = getCurrentEvent();
 
 
     // Handle drag and drop from sidebar
@@ -745,7 +765,7 @@ function App() {
                                                 className={`costume-tag ${isActive ? 'active' : ''}`}
                                                 onClick={() => toggleCostume(costume)}
                                             >
-                                                {costume}
+                                                {costume.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
                                             </button>
                                         );
                                     })}
@@ -782,7 +802,7 @@ function App() {
                                     return (
                                         <div key={cName} className="weight-item">
                                             <div className="weight-info">
-                                                <span className="weight-name">{cName}</span>
+                                                <span className="weight-name">{cName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</span>
                                                 <span className="weight-value">Ratio: {cWeight} <span style={{ color: 'var(--pastel-blue)', opacity: 0.8 }}>({percentage}%)</span></span>
                                             </div>
                                             <input
