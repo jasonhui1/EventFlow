@@ -4,9 +4,190 @@ import useStore from '../store/useStore';
 const API_SERVER_URL = 'http://localhost:4649';
 const CATEGORIES = ["top", "bottom", "outerwear", "neckwear", "legwear", "accessories", "sync"];
 
+const formatName = (key) => key.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+
+// --- Subcomponents ---
+
+const CostumeSidebar = ({ localDB, selectedCostumeId, onSelect, onAdd }) => (
+    <div style={{
+        width: '260px',
+        borderRight: '1px solid rgba(255,255,255,0.08)',
+        background: 'rgba(0,0,0,0.2)',
+        display: 'flex',
+        flexDirection: 'column'
+    }}>
+        <div className="modal-header" style={{ padding: '16px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+            <h3 className="modal-title" style={{ fontSize: '14px', margin: 0 }}>👗 Costume Templates</h3>
+        </div>
+        <div style={{ padding: '12px', flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {Object.keys(localDB).map(key => (
+                <div 
+                    key={key}
+                    onClick={() => onSelect(key)}
+                    style={{
+                        padding: '10px 12px',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        background: selectedCostumeId === key ? 'rgba(201, 181, 255, 0.15)' : 'transparent',
+                        border: `1px solid ${selectedCostumeId === key ? 'rgba(201, 181, 255, 0.3)' : 'transparent'}`,
+                        color: selectedCostumeId === key ? '#fff' : 'rgba(255,255,255,0.6)',
+                        fontWeight: selectedCostumeId === key ? 600 : 400,
+                        fontSize: '13px',
+                        transition: 'all 0.2s'
+                    }}
+                >
+                    {formatName(key)}
+                </div>
+            ))}
+        </div>
+        <div style={{ padding: '12px', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+            <button className="action-btn" onClick={onAdd} style={{ width: '100%', justifyContent: 'center' }}>
+                + Add New Template
+            </button>
+        </div>
+    </div>
+);
+
+const CostumeHeader = ({ selectedCostumeId, onDelete, onClose }) => (
+    <div className="modal-header" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)', justifyContent: 'space-between' }}>
+        <h3 className="modal-title">
+            {selectedCostumeId ? `Editing: ${formatName(selectedCostumeId)}` : 'No Selection'}
+        </h3>
+        <div>
+            {selectedCostumeId && (
+                <button className="action-btn" onClick={onDelete} style={{ borderColor: 'rgba(255, 100, 100, 0.3)', color: '#FFB5B5', marginRight: '16px' }}>
+                    Delete
+                </button>
+            )}
+            <button className="modal-close" onClick={onClose} style={{ top: 'auto', right: 'auto', position: 'relative' }}>×</button>
+        </div>
+    </div>
+);
+
+const CategoryGrid = ({ activeCostume, onChange }) => (
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+        {CATEGORIES.filter(c => c !== 'sync').map(cat => (
+            <div key={cat} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: '12px', color: 'rgba(255,255,255,0.7)', fontWeight: 600, textTransform: 'capitalize' }}>
+                    {cat}
+                </label>
+                <textarea
+                    className="nodrag"
+                    value={activeCostume[cat] || ''}
+                    onChange={(e) => onChange(cat, e.target.value)}
+                    placeholder={`Prompt template for ${cat}...`}
+                    spellCheck="false"
+                    style={{
+                        width: '100%',
+                        minHeight: '80px',
+                        padding: '10px 12px',
+                        background: 'rgba(255,255,255,0.03)',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        borderRadius: '6px',
+                        color: '#fff',
+                        fontSize: '13px',
+                        resize: 'vertical',
+                        fontFamily: 'monospace',
+                    }}
+                />
+            </div>
+        ))}
+    </div>
+);
+
+const CrucialToggles = ({ activeCostume, onToggle }) => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <label style={{ fontSize: '13px', color: 'rgba(255,255,255,0.9)', fontWeight: 600 }}>
+            🎯 Crucial Components
+        </label>
+        <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)', marginTop: '-8px' }}>
+            Select which parts MUST be generated for this template and stay the same when generated in groups.
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+            {CATEGORIES.map(cat => {
+                const isSelected = (activeCostume.crucial || []).includes(cat);
+                return (
+                    <button
+                        key={cat}
+                        onClick={() => onToggle(cat)}
+                        style={{
+                            padding: '6px 12px',
+                            borderRadius: '20px',
+                            background: isSelected ? 'var(--pastel-purple)' : 'rgba(255,255,255,0.05)',
+                            border: `1px solid ${isSelected ? 'var(--pastel-purple)' : 'rgba(255,255,255,0.1)'}`,
+                            color: isSelected ? '#1a1a2e' : 'rgba(255,255,255,0.6)',
+                            fontSize: '11px',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            textTransform: 'capitalize',
+                            transition: 'all 0.2s',
+                        }}
+                    >
+                        {isSelected ? '✓ ' : ''}{cat}
+                    </button>
+                );
+            })}
+        </div>
+    </div>
+);
+
+const SyncConfig = ({ activeCostume, onChange }) => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <label style={{ fontSize: '13px', color: 'rgba(255,255,255,0.9)', fontWeight: 600 }}>
+            🔗 Cross-Part Sync
+        </label>
+        <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)', marginTop: '-8px' }}>
+            Define shared prompt modifiers (like color schemas) that should inject into multiple items.
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', background: 'rgba(0,0,0,0.15)', padding: '16px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
+            {CATEGORIES.filter(c => c !== 'sync').map(cat => (
+                <div key={cat} style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                    <div style={{ width: '100px', fontSize: '12px', color: 'rgba(255,255,255,0.7)', textTransform: 'capitalize', textAlign: 'right' }}>
+                        {cat}
+                    </div>
+                    <input
+                        type="text"
+                        value={(activeCostume.sync && activeCostume.sync[cat]) || ''}
+                        onChange={(e) => onChange(cat, e.target.value)}
+                        placeholder={`e.g., <warm$cool$neutral>`}
+                        spellCheck="false"
+                        style={{
+                            flex: 1,
+                            padding: '8px 12px',
+                            background: 'rgba(255,255,255,0.05)',
+                            border: '1px solid rgba(255,255,255,0.1)',
+                            borderRadius: '6px',
+                            color: '#fff',
+                            fontSize: '12px',
+                            fontFamily: 'monospace',
+                        }}
+                    />
+                </div>
+            ))}
+        </div>
+    </div>
+);
+
+const CostumeFooter = ({ onCancel, onSave, isSaving }) => (
+    <div className="modal-footer" style={{ borderTop: '1px solid rgba(255,255,255,0.08)', background: 'rgba(0,0,0,0.2)' }}>
+        <button className="action-btn" onClick={onCancel} style={{ marginLeft: 'auto', marginRight: '12px' }}>
+            Cancel
+        </button>
+        <button 
+            className="action-btn primary" 
+            onClick={onSave} 
+            disabled={isSaving}
+            style={{ opacity: isSaving ? 0.7 : 1 }}
+        >
+            {isSaving ? 'Saving...' : '💾 Save Configurations'}
+        </button>
+    </div>
+);
+
+// --- Main Component ---
+
 const ClothesEditorModal = ({ onClose }) => {
     const clothesDB = useStore((state) => state.clothesDB);
-    const setClothesDB = useStore((state) => state.setClothesDB); // Need to create this if it doesn't exist, or just use fetch reloader
     const loadClothesFromServer = useStore((state) => state.loadClothesFromServer);
 
     const [localDB, setLocalDB] = useState({});
@@ -104,7 +285,6 @@ const ClothesEditorModal = ({ onClose }) => {
                 body: JSON.stringify(localDB),
             });
             if (response.ok) {
-                // Refresh client store
                 await loadClothesFromServer();
                 alert("Saved successfully!");
             } else {
@@ -117,8 +297,6 @@ const ClothesEditorModal = ({ onClose }) => {
             setIsSaving(false);
         }
     };
-
-    const formatName = (key) => key.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 
     return (
         <div className="modal-overlay" onClick={onClose}>
@@ -135,170 +313,28 @@ const ClothesEditorModal = ({ onClose }) => {
                     overflow: 'hidden'
                 }}
             >
-                {/* Left Sidebar - List */}
-                <div style={{
-                    width: '260px',
-                    borderRight: '1px solid rgba(255,255,255,0.08)',
-                    background: 'rgba(0,0,0,0.2)',
-                    display: 'flex',
-                    flexDirection: 'column'
-                }}>
-                    <div className="modal-header" style={{ padding: '16px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-                        <h3 className="modal-title" style={{ fontSize: '14px', margin: 0 }}>👗 Costume Templates</h3>
-                    </div>
-                    <div style={{ padding: '12px', flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        {Object.keys(localDB).map(key => (
-                            <div 
-                                key={key}
-                                onClick={() => setSelectedCostumeId(key)}
-                                style={{
-                                    padding: '10px 12px',
-                                    borderRadius: '6px',
-                                    cursor: 'pointer',
-                                    background: selectedCostumeId === key ? 'rgba(201, 181, 255, 0.15)' : 'transparent',
-                                    border: `1px solid ${selectedCostumeId === key ? 'rgba(201, 181, 255, 0.3)' : 'transparent'}`,
-                                    color: selectedCostumeId === key ? '#fff' : 'rgba(255,255,255,0.6)',
-                                    fontWeight: selectedCostumeId === key ? 600 : 400,
-                                    fontSize: '13px',
-                                    transition: 'all 0.2s'
-                                }}
-                            >
-                                {formatName(key)}
-                            </div>
-                        ))}
-                    </div>
-                    <div style={{ padding: '12px', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-                        <button className="action-btn" onClick={handleAddNew} style={{ width: '100%', justifyContent: 'center' }}>
-                            + Add New Template
-                        </button>
-                    </div>
-                </div>
+                <CostumeSidebar 
+                    localDB={localDB}
+                    selectedCostumeId={selectedCostumeId}
+                    onSelect={setSelectedCostumeId}
+                    onAdd={handleAddNew}
+                />
 
-                {/* Right Area - Editor */}
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                    <div className="modal-header" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)', justifyContent: 'space-between' }}>
-                        <h3 className="modal-title">
-                            {selectedCostumeId ? `Editing: ${formatName(selectedCostumeId)}` : 'No Selection'}
-                        </h3>
-                        <div>
-                            {selectedCostumeId && (
-                                <button className="action-btn" onClick={handleDelete} style={{ borderColor: 'rgba(255, 100, 100, 0.3)', color: '#FFB5B5', marginRight: '16px' }}>
-                                    Delete
-                                </button>
-                            )}
-                            <button className="modal-close" onClick={onClose} style={{ top: 'auto', right: 'auto', position: 'relative' }}>×</button>
-                        </div>
-                    </div>
+                    <CostumeHeader 
+                        selectedCostumeId={selectedCostumeId}
+                        onDelete={handleDelete}
+                        onClose={onClose}
+                    />
 
                     <div className="modal-body" style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
                         {activeCostume ? (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                                
-                                {/* Core Inputs Grid */}
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                                    {CATEGORIES.filter(c => c !== 'sync').map(cat => (
-                                        <div key={cat} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                            <label style={{ fontSize: '12px', color: 'rgba(255,255,255,0.7)', fontWeight: 600, textTransform: 'capitalize' }}>
-                                                {cat}
-                                            </label>
-                                            <textarea
-                                                className="nodrag"
-                                                value={activeCostume[cat] || ''}
-                                                onChange={(e) => handleFieldChange(cat, e.target.value)}
-                                                placeholder={`Prompt template for ${cat}...`}
-                                                spellCheck="false"
-                                                style={{
-                                                    width: '100%',
-                                                    minHeight: '80px',
-                                                    padding: '10px 12px',
-                                                    background: 'rgba(255,255,255,0.03)',
-                                                    border: '1px solid rgba(255,255,255,0.1)',
-                                                    borderRadius: '6px',
-                                                    color: '#fff',
-                                                    fontSize: '13px',
-                                                    resize: 'vertical',
-                                                    fontFamily: 'monospace',
-                                                }}
-                                            />
-                                        </div>
-                                    ))}
-                                </div>
-
+                                <CategoryGrid activeCostume={activeCostume} onChange={handleFieldChange} />
                                 <hr style={{ border: 'none', borderTop: '1px solid rgba(255,255,255,0.08)', margin: '12px 0' }} />
-
-                                {/* Crucial Toggles */}
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                                    <label style={{ fontSize: '13px', color: 'rgba(255,255,255,0.9)', fontWeight: 600 }}>
-                                        🎯 Crucial Components
-                                    </label>
-                                    <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)', marginTop: '-8px' }}>
-                                        Select which parts MUST be generated for this template to be considered valid.
-                                    </div>
-                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                                        {CATEGORIES.map(cat => {
-                                            const isSelected = (activeCostume.crucial || []).includes(cat);
-                                            return (
-                                                <button
-                                                    key={cat}
-                                                    onClick={() => toggleCrucial(cat)}
-                                                    style={{
-                                                        padding: '6px 12px',
-                                                        borderRadius: '20px',
-                                                        background: isSelected ? 'var(--pastel-purple)' : 'rgba(255,255,255,0.05)',
-                                                        border: `1px solid ${isSelected ? 'var(--pastel-purple)' : 'rgba(255,255,255,0.1)'}`,
-                                                        color: isSelected ? '#1a1a2e' : 'rgba(255,255,255,0.6)',
-                                                        fontSize: '11px',
-                                                        fontWeight: 600,
-                                                        cursor: 'pointer',
-                                                        textTransform: 'capitalize',
-                                                        transition: 'all 0.2s',
-                                                    }}
-                                                >
-                                                    {isSelected ? '✓ ' : ''}{cat}
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-
+                                <CrucialToggles activeCostume={activeCostume} onToggle={toggleCrucial} />
                                 <hr style={{ border: 'none', borderTop: '1px solid rgba(255,255,255,0.08)', margin: '12px 0' }} />
-
-                                {/* Sync Config */}
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                                    <label style={{ fontSize: '13px', color: 'rgba(255,255,255,0.9)', fontWeight: 600 }}>
-                                        🔗 Cross-Part Sync
-                                    </label>
-                                    <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)', marginTop: '-8px' }}>
-                                        Define shared prompt modifiers (like color schemas) that should inject into multiple items.
-                                    </div>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', background: 'rgba(0,0,0,0.15)', padding: '16px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                                        {CATEGORIES.filter(c => c !== 'sync').map(cat => (
-                                            <div key={cat} style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                                                <div style={{ width: '100px', fontSize: '12px', color: 'rgba(255,255,255,0.7)', textTransform: 'capitalize', textAlign: 'right' }}>
-                                                    {cat}
-                                                </div>
-                                                <input
-                                                    type="text"
-                                                    value={(activeCostume.sync && activeCostume.sync[cat]) || ''}
-                                                    onChange={(e) => handleSyncChange(cat, e.target.value)}
-                                                    placeholder={`e.g., <warm$cool$neutral>`}
-                                                    spellCheck="false"
-                                                    style={{
-                                                        flex: 1,
-                                                        padding: '8px 12px',
-                                                        background: 'rgba(255,255,255,0.05)',
-                                                        border: '1px solid rgba(255,255,255,0.1)',
-                                                        borderRadius: '6px',
-                                                        color: '#fff',
-                                                        fontSize: '12px',
-                                                        fontFamily: 'monospace',
-                                                    }}
-                                                />
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-
+                                <SyncConfig activeCostume={activeCostume} onChange={handleSyncChange} />
                             </div>
                         ) : (
                             <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.3)' }}>
@@ -307,19 +343,11 @@ const ClothesEditorModal = ({ onClose }) => {
                         )}
                     </div>
 
-                    <div className="modal-footer" style={{ borderTop: '1px solid rgba(255,255,255,0.08)', background: 'rgba(0,0,0,0.2)' }}>
-                        <button className="action-btn" onClick={onClose} style={{ marginLeft: 'auto', marginRight: '12px' }}>
-                            Cancel
-                        </button>
-                        <button 
-                            className="action-btn primary" 
-                            onClick={handleSave} 
-                            disabled={isSaving}
-                            style={{ opacity: isSaving ? 0.7 : 1 }}
-                        >
-                            {isSaving ? 'Saving...' : '💾 Save Configurations'}
-                        </button>
-                    </div>
+                    <CostumeFooter 
+                        onCancel={onClose}
+                        onSave={handleSave}
+                        isSaving={isSaving}
+                    />
                 </div>
             </div>
         </div>
