@@ -2,7 +2,7 @@
  * Event routes — listing, detail, and simulation.
  */
 import { Router } from 'express';
-import { getEvents, getEventById, getMoodConfig } from '../dataStore.js';
+import { getEvents, getEventById, getMoodConfig, getGlobalPrependPrompt, getGlobalAppendPrompt } from '../dataStore.js';
 import { simulateEvent, getComposedPrompt } from '../../src/utils/simulationUtils.js';
 import { generateCostumePrompt } from '../../src/utils/promptEngine.js';
 import { getAllClothes } from '../clothesStore.js';
@@ -68,6 +68,9 @@ router.get('/:id/prompts', (req, res) => {
     }
 
     const allEvents = getEvents();
+    const globalPrepend = getGlobalPrependPrompt();
+    const globalAppend = getGlobalAppendPrompt();
+
     const promptNodes = (event.nodes || [])
         .filter(n => n.type === 'eventNode' || n.type === 'groupNode')
         .map(node => {
@@ -79,12 +82,23 @@ router.get('/:id/prompts', (req, res) => {
                 event.fixedPrompt || '',
                 { randomize: false }
             );
+
+            // Manually add global prompts to the preview parts
+            const parts = [];
+            if (globalPrepend) {
+                parts.push({ label: 'Global Prepend', prompt: globalPrepend, type: 'global' });
+            }
+            parts.push(...composed.parts);
+            if (globalAppend) {
+                parts.push({ label: 'Global Append', prompt: globalAppend, type: 'global' });
+            }
+
             return {
                 nodeId: node.id,
                 label: node.data?.label || node.type,
                 type: node.type,
-                prompt: composed.full,
-                parts: composed.parts,
+                prompt: parts.map(p => p.prompt).filter(Boolean).join(', '),
+                parts: parts,
             };
         });
 
@@ -125,7 +139,10 @@ router.post('/:id/simulate', (req, res) => {
             [],              // incomingContextParts
             new Set(),       // visitedEventIds
             inputOverrides,
-            moodConfig
+            moodConfig,
+            null,            // incomingMood
+            getGlobalPrependPrompt(),
+            getGlobalAppendPrompt()
         );
 
         simulations.push({
@@ -183,7 +200,10 @@ router.post('/simulate/bulk', (req, res) => {
             [],
             new Set(),
             inputOverrides,
-            moodConfig
+            moodConfig,
+            null,
+            getGlobalPrependPrompt(),
+            getGlobalAppendPrompt()
         );
 
         return {

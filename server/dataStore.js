@@ -70,6 +70,14 @@ export function getMoodConfig() {
     return readData().moodConfig || null;
 }
 
+export function getGlobalPrependPrompt() {
+    return readData().globalPrependPrompt || "";
+}
+
+export function getGlobalAppendPrompt() {
+    return readData().globalAppendPrompt || "";
+}
+
 export function getEventById(id) {
     const events = getEvents();
     return events.find(e => e.id === id) || null;
@@ -101,6 +109,8 @@ export function replaceData(payload) {
         moodConfig: payload.moodConfig || null,
         openTabs: payload.openTabs || [],
         activeTabId: payload.activeTabId || null,
+        globalPrependPrompt: payload.globalPrependPrompt || "",
+        globalAppendPrompt: payload.globalAppendPrompt || "",
         updatedAt: payload.updatedAt || new Date().toISOString(),
     };
     return writeData(data);

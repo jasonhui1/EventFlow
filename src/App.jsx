@@ -42,6 +42,7 @@ import EventSimulationModal from './components/EventSimulationModal';
 import BulkExportModal from './components/BulkExportModal';
 import MoodConfigModal from './components/MoodConfigModal';
 import ClothesEditorModal from './components/ClothesEditorModal';
+import GlobalPromptModal from './components/GlobalPromptModal';
 
 function App() {
 
@@ -58,6 +59,7 @@ function App() {
     const [showBulkExportModal, setShowBulkExportModal] = useState(false);
     const [showMoodConfigModal, setShowMoodConfigModal] = useState(false);
     const [showClothesEditorModal, setShowClothesEditorModal] = useState(false);
+    const [showGlobalPromptModal, setShowGlobalPromptModal] = useState(false);
 
     // Loading state from API server
     const isLoading = useStore((state) => state.isLoading);
@@ -645,6 +647,9 @@ function App() {
                         <button className="action-btn" onClick={() => setShowMoodConfigModal(true)} style={{ background: 'rgba(255, 229, 181, 0.1)', color: '#FFE5B5', border: '1px solid rgba(255, 229, 181, 0.3)' }}>
                             😊 Mood Tags
                         </button>
+                        <button className="action-btn" onClick={() => setShowGlobalPromptModal(true)} style={{ background: 'rgba(181, 255, 217, 0.1)', color: '#B5FFD9', border: '1px solid rgba(181, 255, 217, 0.3)' }}>
+                            🌍 Global Prompts
+                        </button>
                         <button className="action-btn" onClick={handleImport}>
                             📥 Import
                         </button>
@@ -977,6 +982,12 @@ function App() {
             {
                 showClothesEditorModal && (
                     <ClothesEditorModal onClose={() => setShowClothesEditorModal(false)} />
+                )
+            }
+
+            {
+                showGlobalPromptModal && (
+                    <GlobalPromptModal onClose={() => setShowGlobalPromptModal(false)} />
                 )
             }
         </div >

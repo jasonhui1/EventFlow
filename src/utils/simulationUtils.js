@@ -344,14 +344,25 @@ const shuffleFieldResults = (results, fieldSettings) => {
  */
 const buildNodeResult = (node, context) => {
     const { allEvents, processedNodes, currentEdges, currentEventFixedPrompt,
-        visitedEdgeIds, incomingContextParts, moodConfig, currentMood, containingFieldId } = context;
+        visitedEdgeIds, incomingContextParts, moodConfig, currentMood, containingFieldId,
+        globalPrependPrompt, globalAppendPrompt } = context;
 
     const { parts: localParts } = getComposedPrompt(
         node.id, allEvents, processedNodes, currentEdges, currentEventFixedPrompt,
-        { allowedEdges: visitedEdgeIds, randomize: false, resolveReferences: false }
+        { 
+            allowedEdges: visitedEdgeIds, 
+            randomize: false, 
+            resolveReferences: false
+        }
     );
 
-    const finalParts = [...incomingContextParts, ...localParts];
+    const finalParts = [];
+    if (globalPrependPrompt) {
+        finalParts.push({ label: 'Global Prepend', prompt: globalPrependPrompt, type: 'global' });
+    }
+    finalParts.push(...incomingContextParts);
+    finalParts.push(...localParts);
+
     let moodTag = null;
     let newMood = currentMood;
 
@@ -371,6 +382,10 @@ const buildNodeResult = (node, context) => {
         if (moodTag) {
             finalParts.push({ label: 'Mood Expression', prompt: moodTag, type: 'mood' });
         }
+    }
+
+    if (globalAppendPrompt) {
+        finalParts.push({ label: 'Global Append', prompt: globalAppendPrompt, type: 'global' });
     }
 
     return {
@@ -457,7 +472,8 @@ const getSelectedEdges = (node, outgoingEdges, processedNodes) => {
  */
 const processReferenceNode = (refNode, context) => {
     const { allEvents, processedNodes, currentEdges, currentEventFixedPrompt,
-        visitedEdgeIds, incomingContextParts, visitedEventIds, moodConfig, currentMood } = context;
+        visitedEdgeIds, incomingContextParts, visitedEventIds, moodConfig, currentMood,
+        globalPrependPrompt, globalAppendPrompt } = context;
 
     if (!refNode.data?.referenceId || visitedEventIds.has(refNode.data.referenceId)) {
         return null; // Skip if no reference or already visited
@@ -469,7 +485,11 @@ const processReferenceNode = (refNode, context) => {
     // Get context parts from current position
     const { parts: refPromptParts } = getComposedPrompt(
         refNode.id, allEvents, processedNodes, currentEdges, currentEventFixedPrompt,
-        { allowedEdges: visitedEdgeIds, randomize: false, resolveReferences: false }
+        { 
+            allowedEdges: visitedEdgeIds, 
+            randomize: false, 
+            resolveReferences: false
+        }
     );
 
     const newContextParts = [...incomingContextParts, ...refPromptParts];
@@ -501,7 +521,8 @@ const processReferenceNode = (refNode, context) => {
     // Recursively simulate
     const innerResults = simulateEvent(
         allEvents, nodesToSimulate, refEvent.edges || [], refEvent.fixedPrompt || '',
-        newContextParts, newVisitedEvents, {}, moodConfig, currentMood
+        newContextParts, newVisitedEvents, {}, moodConfig, currentMood,
+        globalPrependPrompt, globalAppendPrompt
     );
 
     // Get updated mood from inner simulation
@@ -524,7 +545,9 @@ export const simulateEvent = (
     visitedEventIds = new Set(),
     inputOverrides = {},
     moodConfig = null,
-    incomingMood = null
+    incomingMood = null,
+    globalPrependPrompt = '',
+    globalAppendPrompt = ''
 ) => {
     let currentEventFixedPrompt = contextFixedPrompt;
 
@@ -573,7 +596,8 @@ export const simulateEvent = (
             if (!isBlockedByField) {
                 const refResult = processReferenceNode(currentNode, {
                     allEvents, processedNodes, currentEdges, currentEventFixedPrompt,
-                    visitedEdgeIds, incomingContextParts, visitedEventIds, moodConfig, currentMood
+                    visitedEdgeIds, incomingContextParts, visitedEventIds, moodConfig, currentMood,
+                    globalPrependPrompt, globalAppendPrompt
                 });
                 if (refResult) {
                     currentMood = refResult.newMood;
@@ -589,7 +613,8 @@ export const simulateEvent = (
                 // if (!isBlockedByField) {
                 const { result, newMood } = buildNodeResult(currentNode, {
                     allEvents, processedNodes, currentEdges, currentEventFixedPrompt,
-                    visitedEdgeIds, incomingContextParts, moodConfig, currentMood, containingFieldId
+                    visitedEdgeIds, incomingContextParts, moodConfig, currentMood, containingFieldId,
+                    globalPrependPrompt, globalAppendPrompt
                 });
                 currentMood = newMood;
                 results.push(result);

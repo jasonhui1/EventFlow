@@ -174,6 +174,8 @@ const useStore = create(
         // Events library
         events: [],
         currentEventId: null,
+        globalPrependPrompt: "",
+        globalAppendPrompt: "",
 
         // React Flow state
         nodes: [],
@@ -592,6 +594,14 @@ const useStore = create(
                     e.id === eventId ? { ...e, ...metadata, updatedAt: new Date().toISOString() } : e
                 ),
             }));
+        },
+
+        updateGlobalPrependPrompt: (prompt) => {
+            set({ globalPrependPrompt: prompt });
+        },
+
+        updateGlobalAppendPrompt: (prompt) => {
+            set({ globalAppendPrompt: prompt });
         },
 
         updateEventCostumes: (eventId, costumes) => {
@@ -1383,7 +1393,24 @@ const useStore = create(
             const currentEvent = state.getCurrentEvent();
             const fixedPrompt = options.fixedPrompt || currentEvent?.fixedPrompt || '';
 
-            return sim.getComposedPrompt(nodeId, state.events, nodes, edges, fixedPrompt, options);
+            const result = sim.getComposedPrompt(nodeId, state.events, nodes, edges, fixedPrompt, {
+                ...options
+            });
+
+            // Manually add global prompts to the preview parts
+            const parts = [];
+            if (state.globalPrependPrompt) {
+                parts.push({ label: 'Global Prepend', prompt: state.globalPrependPrompt, type: 'global' });
+            }
+            parts.push(...result.parts);
+            if (state.globalAppendPrompt) {
+                parts.push({ label: 'Global Append', prompt: state.globalAppendPrompt, type: 'global' });
+            }
+
+            return {
+                parts,
+                full: parts.map(p => p.prompt).filter(Boolean).join(', ')
+            };
         },
 
         // Simulation Logic (Graph Traversal)
@@ -1400,7 +1427,19 @@ const useStore = create(
                 fixedPrompt = [fixedPrompt, costumePromptStr].filter(Boolean).join(', ');
             }
 
-            return sim.simulateEvent(state.events, currentNodes, currentEdges, fixedPrompt, incomingContextParts, visitedEventIds, inputOverrides, state.moodConfig);
+            return sim.simulateEvent(
+                state.events,
+                currentNodes,
+                currentEdges,
+                fixedPrompt,
+                incomingContextParts,
+                visitedEventIds,
+                inputOverrides,
+                state.moodConfig,
+                null, // incomingMood
+                state.globalPrependPrompt,
+                state.globalAppendPrompt
+            );
         },
 
         // Generate a test prompt, randomly selecting branches based on weights
@@ -1438,6 +1477,8 @@ const useStore = create(
                 const moodConfig = data.moodConfig || get().moodConfig;
                 const openTabs = data.openTabs || [];
                 const activeTabId = data.activeTabId || null;
+                const globalPrependPrompt = data.globalPrependPrompt || "";
+                const globalAppendPrompt = data.globalAppendPrompt || "";
 
                 set({
                     events,
@@ -1445,6 +1486,8 @@ const useStore = create(
                     moodConfig,
                     openTabs,
                     activeTabId,
+                    globalPrependPrompt,
+                    globalAppendPrompt,
                     currentEventId: events[0]?.id || null,
                     nodes: events[0]?.nodes || [],
                     edges: events[0]?.edges || [],
@@ -1508,6 +1551,8 @@ const useStore = create(
                 moodConfig: freshState.moodConfig,
                 openTabs: freshState.openTabs || [],
                 activeTabId: freshState.activeTabId || null,
+                globalPrependPrompt: freshState.globalPrependPrompt,
+                globalAppendPrompt: freshState.globalAppendPrompt,
                 updatedAt: new Date().toISOString(),
             };
 
@@ -1627,13 +1672,15 @@ useStore.subscribe((state, prevState) => {
         state.nodes !== prevState.nodes ||
         state.edges !== prevState.edges ||
         state.openTabs !== prevState.openTabs ||
-        state.activeTabId !== prevState.activeTabId
+        state.activeTabId !== prevState.activeTabId ||
+        state.globalPrependPrompt !== prevState.globalPrependPrompt ||
+        state.globalAppendPrompt !== prevState.globalAppendPrompt
     ) {
         clearTimeout(apiSaveTimeout);
-        // Debounce: Wait 2 seconds after last change before auto-saving
+        // Debounce: Wait 1 second after last change before auto-saving
         apiSaveTimeout = setTimeout(() => {
             useStore.getState().saveToServer();
-        }, 5000);
+        }, 1000);
     }
 });
 
