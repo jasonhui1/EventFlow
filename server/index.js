@@ -12,8 +12,9 @@
  */
 import express from 'express';
 import cors from 'cors';
-import { fileURLToPath } from 'url';
-import path from 'path';
+import { fileURLToPath } from 'node:url';
+import path from 'node:path';
+import fs from 'node:fs';
 
 import eventsRouter from './routes/events.js';
 import foldersRouter from './routes/folders.js';
@@ -22,9 +23,16 @@ import playlistRouter from './routes/playlist.js';
 import clothesRouter from './routes/clothes.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+// Sanitize __dirname for Windows (remove leading slash if it exists from URL-derived path)
+const rootPath = __dirname.startsWith('/') && __dirname.includes(':') ? __dirname.substring(1) : __dirname;
+
 const PORT = process.env.EVENTFLOW_PORT || 4649;
 
 const app = express();
+
+// ─── Diagnostics ──────────────────────────────────────────────
+console.log(`[Startup] PID: ${process.pid} | Node: ${process.version}`);
+
 
 // ─── Middleware ───────────────────────────────────────────────
 app.use(cors());
@@ -60,6 +68,43 @@ app.use('/api/data', dataRouter);
 app.use('/api/playlist', playlistRouter);
 app.use('/api/clothes', clothesRouter);
 
+// ─── Docs routes (Prioritized) ───────────────────────────────
+app.get('/api/docs', async (req, res) => {
+    const filePath = path.resolve(rootPath, 'openapi.yaml');
+    try {
+        const content = await fs.promises.readFile(filePath, 'utf8');
+        res.setHeader('Content-Type', 'text/yaml');
+        res.send(content);
+    } catch (err) {
+        console.error(`[Docs Error] Failed to read openapi.yaml:`, err.message);
+        res.status(404).json({ 
+            error: 'Documentation retrieval failed', 
+            message: err.message,
+            path: filePath 
+        });
+    }
+});
+
+app.get('/api/docs/ui', async (req, res) => {
+    const filePath = path.resolve(rootPath, 'swagger-ui.html');
+    try {
+        const content = await fs.promises.readFile(filePath, 'utf8');
+        res.setHeader('Content-Type', 'text/html');
+        res.send(content);
+    } catch (err) {
+        console.error(`[Docs Error] Failed to read swagger-ui.html:`, err.message);
+        res.status(404).json({ 
+            error: 'Documentation UI failed', 
+            message: err.message,
+            path: filePath 
+        });
+    }
+});
+
+
+
+
+
 // Bulk simulate shortcut (also accessible via /api/events/simulate/bulk)
 app.post('/api/simulate/bulk', (req, res) => {
     // Forward to the events router handler
@@ -92,13 +137,20 @@ app.get('/api', (req, res) => {
             { method: 'GET', path: '/api/clothes/names', description: 'List costume template names' },
             { method: 'GET', path: '/api/clothes/:name', description: 'Get single costume template' },
             { method: 'GET', path: '/api/health', description: 'Server health check' },
+            { method: 'GET', path: '/api/docs', description: 'OpenAPI Specification (YAML)' },
+            { method: 'GET', path: '/api/docs/ui', description: 'Interactive Swagger UI' },
         ],
     });
 });
 
+// ─── Docs routes ─────────────────────────────────────────────
+// (Moved to top)
+
+
 // ─── 404 handler ─────────────────────────────────────────────
 app.use((req, res) => {
-    res.status(404).json({ error: 'Not found', path: req.originalUrl });
+    console.warn(`[404] ${req.method} ${req.url} - No route matched. PID: ${process.pid}`);
+    res.status(404).json({ error: 'Not found', path: req.originalUrl, pid: process.pid });
 });
 
 // ─── Error handler ───────────────────────────────────────────

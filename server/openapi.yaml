@@ -1,0 +1,435 @@
+openapi: 3.1.0
+info:
+  title: EventFlow API
+  description: |
+    The EventFlow API provides access to the EventFlow simulation engine, event management, and costume template database.
+    It allows external applications to list events, run simulations, and sync data.
+  version: 1.0.0
+servers:
+  - url: http://localhost:4649/api
+    description: Local development server
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: ok }
+                  port: { type: integer, example: 4649 }
+                  uptime: { type: number, example: 123.45 }
+
+  /events:
+    get:
+      summary: List all events
+      parameters:
+        - name: folderId
+          in: query
+          description: Filter events by folder ID. Use 'root' to find events without a folder.
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of event summaries
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  events:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/EventSummary'
+
+  /events/{id}:
+    get:
+      summary: Get event details
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Full event details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  event:
+                    $ref: '#/components/schemas/Event'
+        '404':
+          description: Event not found
+
+  /events/{id}/prompts:
+    get:
+      summary: Get composed prompts
+      description: Returns composed prompts for all nodes in the event without running randomness.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of prompts per node
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  eventId: { type: string }
+                  eventName: { type: string }
+                  prompts:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        nodeId: { type: string }
+                        label: { type: string }
+                        type: { type: string }
+                        prompt: { type: string }
+                        parts: { type: array, items: { type: string } }
+
+  /events/{id}/simulate:
+    post:
+      summary: Simulate an event
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                count:
+                  type: integer
+                  description: Number of simulation runs
+                  default: 1
+                  maximum: 100
+                inputOverrides:
+                  type: object
+                  description: Map of node labels to specific values
+                  additionalProperties:
+                    type: string
+      responses:
+        '200':
+          description: Simulation results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  eventId: { type: string }
+                  eventName: { type: string }
+                  count: { type: integer }
+                  simulations:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SimulationRun'
+
+  /simulate/bulk:
+    post:
+      summary: Bulk simulate events
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                selections:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      eventId: { type: string }
+                      inputOverrides: { type: object, additionalProperties: { type: string } }
+      responses:
+        '200':
+          description: List of results per selection
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        eventId: { type: string }
+                        eventName: { type: string }
+                        prompts: { type: array, items: { type: string } }
+                        results: { type: array, items: { $ref: '#/components/schemas/NodeSimulationResult' } }
+
+  /folders:
+    get:
+      summary: List all folders
+      responses:
+        '200':
+          description: Folder tree
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  folders: { type: array, items: { $ref: '#/components/schemas/Folder' } }
+                  tree: { type: array, items: { $ref: '#/components/schemas/FolderTreeNode' } }
+                  rootEventCount: { type: integer }
+
+  /folders/{id}:
+    get:
+      summary: Get folder details
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Folder content and events
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  folder: { $ref: '#/components/schemas/Folder' }
+                  events: { type: array, items: { $ref: '#/components/schemas/EventSummary' } }
+                  childFolders: { type: array, items: { $ref: '#/components/schemas/Folder' } }
+
+  /data/sync:
+    post:
+      summary: Synchronize data
+      description: Push full state from frontend to persist to disk.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DataStore'
+      responses:
+        '200':
+          description: Sync successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  updatedAt: { type: string, format: date-time }
+
+  /data/export:
+    get:
+      summary: Export full data
+      responses:
+        '200':
+          description: Full data store dump
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/DataStore'
+                  - type: object
+                    properties:
+                      version: { type: string }
+                      exportedAt: { type: string, format: date-time }
+
+  /playlist/generate:
+    post:
+      summary: Generate a playlist
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                length: { type: integer, default: 5 }
+                slotTemplates: { type: array, items: { type: string } }
+                simulate: { type: boolean, default: false }
+      responses:
+        '200':
+          description: Generated playlist
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  length: { type: integer }
+                  playlist: { type: array, items: { $ref: '#/components/schemas/EventSummary' } }
+                  simulatedPrompts: 
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        eventId: { type: string }
+                        eventName: { type: string }
+                        prompts: { type: array, items: { type: string } }
+                        results: { type: array, items: { $ref: '#/components/schemas/NodeSimulationResult' } }
+
+  /clothes:
+    get:
+      summary: Get all costume templates
+    put:
+      summary: Update clothes database
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [clothes]
+              properties:
+                clothes:
+                  type: object
+                  additionalProperties:
+                    $ref: '#/components/schemas/CostumeTemplate'
+      responses:
+        '200':
+          description: Update successful
+  
+  /clothes/names:
+    get:
+      summary: List costume names
+      responses:
+        '200':
+          description: List of names
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  names: { type: array, items: { type: string } }
+
+  /clothes/{name}:
+    get:
+      summary: Get costume template
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Costume template
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  name: { type: string }
+                  template: { $ref: '#/components/schemas/CostumeTemplate' }
+
+components:
+  schemas:
+    EventSummary:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        description: { type: string }
+        folderId: { type: string, nullable: true }
+        tags: { type: array, items: { type: string } }
+        weight: { type: number }
+        nodeCount: { type: integer }
+        edgeCount: { type: integer }
+        costumes: { type: array, items: { type: string } }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    Event:
+      allOf:
+        - $ref: '#/components/schemas/EventSummary'
+        - type: object
+          properties:
+            nodes: { type: array, items: { $ref: '#/components/schemas/Node' } }
+            edges: { type: array, items: { $ref: '#/components/schemas/Edge' } }
+            fixedPrompt: { type: string }
+            viewport: { type: object }
+
+    Node:
+      type: object
+      properties:
+        id: { type: string }
+        type: { type: string }
+        position: { type: object, properties: { x: { type: number }, y: { type: number } } }
+        data: { type: object, properties: { label: { type: string }, prompt: { type: string } } }
+
+    Edge:
+      type: object
+      properties:
+        id: { type: string }
+        source: { type: string }
+        target: { type: string }
+        type: { type: string }
+
+    Folder:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        parentId: { type: string, nullable: true }
+        color: { type: string }
+
+    FolderTreeNode:
+      allOf:
+        - $ref: '#/components/schemas/Folder'
+        - type: object
+          properties:
+            children: { type: array, items: { $ref: '#/components/schemas/FolderTreeNode' } }
+            eventCount: { type: integer }
+
+    SimulationRun:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/NodeSimulationResult'
+
+    NodeSimulationResult:
+      type: object
+      properties:
+        id: { type: string }
+        originalId: { type: string }
+        label: { type: string }
+        type: { type: string }
+        prompt: { type: string }
+        parts: { type: array, items: { type: string } }
+        mood: { type: string }
+        moodTag: { type: string }
+
+    DataStore:
+      type: object
+      properties:
+        events: { type: array, items: { $ref: '#/components/schemas/Event' } }
+        folders: { type: array, items: { $ref: '#/components/schemas/Folder' } }
+        moodConfig: { type: object }
+        updatedAt: { type: string, format: date-time }
+
+    CostumeTemplate:
+      type: object
+      properties:
+        id: { type: string }
+        label: { type: string }
+        items:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: object
+              properties:
+                prompt: { type: string }
+                weight: { type: number }
