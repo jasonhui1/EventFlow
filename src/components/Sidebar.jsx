@@ -85,9 +85,10 @@ const Sidebar = () => {
         }));
     };
 
-    const filteredEvents = events.filter(event =>
-        event.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filteredEvents = useMemo(() => {
+        const term = searchTerm.toLowerCase();
+        return events.filter(event => event.name.toLowerCase().includes(term));
+    }, [events, searchTerm]);
 
     const onDragStart = (event, nodeType) => {
         event.dataTransfer.setData('application/reactflow', nodeType);
@@ -159,33 +160,6 @@ const Sidebar = () => {
         }
     };
 
-    // Get child folders for a given parent (treat undefined same as null for backwards compatibility)
-    const getChildFolders = (parentId) => {
-        return (folders || []).filter(f => {
-            const folderParent = f.parentId ?? null; // Convert undefined to null
-            return folderParent === parentId;
-        });
-    };
-
-    // Get root-level folders (no parent or parentId is undefined/null)
-    const rootFolders = getChildFolders(null);
-
-    // Group events by folder
-    const eventsByFolder = {}; // { folderId: [events] }
-    const rootEvents = [];
-
-    filteredEvents.forEach(event => {
-        if (event.folderId && folders.find(f => f.id === event.folderId)) {
-            if (!eventsByFolder[event.folderId]) {
-                eventsByFolder[event.folderId] = [];
-            }
-            eventsByFolder[event.folderId].push(event);
-        } else {
-            rootEvents.push(event);
-        }
-    });
-
-
     const foldersById = useMemo(() => {
         const map = {};
         folders.forEach(folder => {
@@ -193,6 +167,38 @@ const Sidebar = () => {
         });
         return map;
     }, [folders]);
+
+    // O(1) parent lookup instead of O(N) filter
+    const foldersByParentId = useMemo(() => {
+        const map = {};
+        (folders || []).forEach(f => {
+            const parentId = f.parentId ?? null;
+            if (!map[parentId]) map[parentId] = [];
+            map[parentId].push(f);
+        });
+        return map;
+    }, [folders]);
+
+    // Get child folders for a given parent
+    const getChildFolders = (parentId) => foldersByParentId[parentId] || [];
+
+    // Get root-level folders
+    const rootFolders = getChildFolders(null);
+
+    // Group events by folder, using O(1) Map lookup instead of O(N) find
+    const { eventsByFolder, rootEvents } = useMemo(() => {
+        const byFolder = {};
+        const root = [];
+        filteredEvents.forEach(event => {
+            if (event.folderId && foldersById[event.folderId]) {
+                if (!byFolder[event.folderId]) byFolder[event.folderId] = [];
+                byFolder[event.folderId].push(event);
+            } else {
+                root.push(event);
+            }
+        });
+        return { eventsByFolder: byFolder, rootEvents: root };
+    }, [filteredEvents, foldersById]);
 
 
     const folderVisibleMap = useMemo(() => {
