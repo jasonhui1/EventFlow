@@ -1,0 +1,3 @@
+## 2024-03-24 - Improve TabBar Accessibility and Keyboard Navigation
+**Learning:** Custom tab implementations (e.g., `<div className="tab">`) often miss critical accessibility attributes (like `role="tab"` and `aria-selected`) and require an `onKeyDown` handler for activation via "Enter" or "Space". Additionally, when custom tabs contain nested interactive elements (like a "Close" button), the `onKeyDown` handler must check `e.target === e.currentTarget` to prevent nested actions from improperly triggering the container.
+**Action:** Always ensure custom UI elements mimicking native ones implement their expected roles, dynamic ARIA attributes, and explicit keyboard handlers while carefully managing event bubbling for nested interactive children.
