@@ -550,8 +550,10 @@ export const simulateEvent = (
         console.log('[Simulation] Initialized mood:', currentMood);
     }
 
-    while (queue.length > 0) {
-        const currentNode = queue.shift();
+    // Optimization: Use an index pointer instead of shift() for O(1) queue processing
+    let queueIndex = 0;
+    while (queueIndex < queue.length) {
+        const currentNode = queue[queueIndex++];
 
         if (visitedNodeIds.has(currentNode.id)) continue;
 
