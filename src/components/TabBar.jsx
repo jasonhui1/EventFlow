@@ -20,6 +20,15 @@ function TabBar() {
         setActiveTab(eventId);
     };
 
+    // Handle keyboard navigation for tab selection
+    const handleKeyDown = (e, eventId) => {
+        if (e.target !== e.currentTarget) return; // Prevent nested buttons from triggering
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            setActiveTab(eventId);
+        }
+    };
+
     // Handle close button click
     const handleCloseClick = (e, eventId) => {
         e.stopPropagation();
@@ -44,32 +53,42 @@ function TabBar() {
     }
 
     return (
-        <div className="tab-bar">
+        <div className="tab-bar" role="tablist" aria-label="Open events">
             <div className="tab-bar-scroll">
-                {openTabs.map((tab) => (
-                    <div
-                        key={tab.eventId}
-                        className={`tab ${activeTabId === tab.eventId ? 'active' : ''}`}
-                        onClick={() => handleTabClick(tab.eventId)}
-                        onMouseDown={(e) => handleMouseDown(e, tab.eventId)}
-                        title={getEventName(tab.eventId)}
-                    >
-                        <span className="tab-icon">📋</span>
-                        <span className="tab-name">{getEventName(tab.eventId)}</span>
-                        <button
-                            className="tab-close"
-                            onClick={(e) => handleCloseClick(e, tab.eventId)}
-                            title="Close tab"
+                {openTabs.map((tab) => {
+                    const eventName = getEventName(tab.eventId);
+                    return (
+                        <div
+                            key={tab.eventId}
+                            className={`tab ${activeTabId === tab.eventId ? 'active' : ''}`}
+                            onClick={() => handleTabClick(tab.eventId)}
+                            onMouseDown={(e) => handleMouseDown(e, tab.eventId)}
+                            onKeyDown={(e) => handleKeyDown(e, tab.eventId)}
+                            title={eventName}
+                            role="tab"
+                            aria-selected={activeTabId === tab.eventId}
+                            aria-label={`Tab for ${eventName}`}
+                            tabIndex={0}
                         >
-                            ×
-                        </button>
-                    </div>
-                ))}
+                            <span className="tab-icon" aria-hidden="true">📋</span>
+                            <span className="tab-name">{eventName}</span>
+                            <button
+                                className="tab-close"
+                                onClick={(e) => handleCloseClick(e, tab.eventId)}
+                                title="Close tab"
+                                aria-label={`Close ${eventName} tab`}
+                            >
+                                ×
+                            </button>
+                        </div>
+                    );
+                })}
             </div>
             <button
                 className="tab-new"
                 onClick={handleNewTab}
                 title="New tab"
+                aria-label="Open new event tab"
             >
                 +
             </button>
