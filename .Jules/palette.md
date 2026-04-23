@@ -1,0 +1,3 @@
+## 2024-05-15 - Accessible Tabs with Nested Actions
+**Learning:** When implementing custom tab components (like in `TabBar.jsx`) that include nested interactive elements like a "Close Tab" button, native `<button>` elements shouldn't be nested. Instead, the tab container needs `role="tab"`, `tabIndex={0}`, and custom keyboard event handlers (`onKeyDown`) to handle activation via Enter/Space.
+**Action:** Always add keyboard event handlers to `div` elements acting as buttons/tabs, and explicitly check `e.target === e.currentTarget` in those handlers to prevent nested interactive elements (like the close button) from accidentally triggering the parent tab's action.
