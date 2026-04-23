@@ -1,0 +1,3 @@
+## 2024-05-24 - Handling Nested Interactive Elements in ARIA Tabs
+**Learning:** When making a custom component focusable (like a `role="tab"` element), adding a keyboard event listener (`onKeyDown`) for 'Enter' or 'Space' can unintentionally trigger for interactive children (like a close `<button>`) due to event bubbling. This causes the tab to become active immediately before the child button's action (e.g., closing the tab) is processed, leading to inconsistent state.
+**Action:** When adding keyboard handlers to complex container elements, explicitly check `e.target === e.currentTarget` in the handler to ensure the event originated from the container itself and not a nested interactive child.
