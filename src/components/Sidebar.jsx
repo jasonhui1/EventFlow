@@ -458,7 +458,7 @@ const Sidebar = () => {
                 <button
                     className="sidebar-collapse-btn"
                     onClick={() => setIsCollapsed(!isCollapsed)}
-                    title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                    title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'} aria-expanded={!isCollapsed} aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
                 >
                     {isCollapsed ? '»' : '«'}
                 </button>
