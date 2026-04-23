@@ -20,6 +20,13 @@ function TabBar() {
         setActiveTab(eventId);
     };
 
+    const handleKeyDown = (e, eventId) => {
+        if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
+            e.preventDefault();
+            setActiveTab(eventId);
+        }
+    };
+
     // Handle close button click
     const handleCloseClick = (e, eventId) => {
         e.stopPropagation();
@@ -44,13 +51,18 @@ function TabBar() {
     }
 
     return (
-        <div className="tab-bar">
+        <div className="tab-bar" role="tablist" aria-label="Open events">
             <div className="tab-bar-scroll">
                 {openTabs.map((tab) => (
                     <div
                         key={tab.eventId}
+                        role="tab"
+                        tabIndex={0}
+                        aria-selected={activeTabId === tab.eventId}
+                        aria-label={`Event: ${getEventName(tab.eventId)}`}
                         className={`tab ${activeTabId === tab.eventId ? 'active' : ''}`}
                         onClick={() => handleTabClick(tab.eventId)}
+                        onKeyDown={(e) => handleKeyDown(e, tab.eventId)}
                         onMouseDown={(e) => handleMouseDown(e, tab.eventId)}
                         title={getEventName(tab.eventId)}
                     >
@@ -59,6 +71,7 @@ function TabBar() {
                         <button
                             className="tab-close"
                             onClick={(e) => handleCloseClick(e, tab.eventId)}
+                            aria-label={`Close ${getEventName(tab.eventId)} tab`}
                             title="Close tab"
                         >
                             ×
@@ -69,6 +82,7 @@ function TabBar() {
             <button
                 className="tab-new"
                 onClick={handleNewTab}
+                aria-label="New Event"
                 title="New tab"
             >
                 +
