@@ -1,0 +1,3 @@
+## 2024-05-24 - Interactive Tab Bars require careful event propagation handling
+**Learning:** When making `<div>` elements act as tabs using `role="tab"` and `tabIndex={0}`, an `onKeyDown` handler must be added to trigger actions on `Enter` or `Space` keys for screen reader and keyboard-only users. However, if the tab contains other interactive elements like close buttons, key events from the children will bubble up.
+**Action:** Always check `e.target === e.currentTarget` in the container's keyboard handler to prevent a child button's 'Enter' or 'Space' press from incorrectly firing the container's action as well.
