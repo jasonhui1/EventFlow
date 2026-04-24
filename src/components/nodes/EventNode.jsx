@@ -1,4 +1,4 @@
-import React, { memo } from 'react';
+import React, { memo, useMemo } from 'react';
 import { Handle, Position, NodeResizer } from '@xyflow/react';
 import useStore from '../../store/useStore';
 import ResizingTextarea from '../ResizingTextarea';
@@ -9,6 +9,9 @@ const EventNode = ({ id, data, selected }) => {
     const addNodeOutput = useStore((state) => state.addNodeOutput);
     const addNodeInput = useStore((state) => state.addNodeInput);
     const inputRef = React.useRef(null);
+    const moodRef = React.useRef(null);
+    const [isCameraCollapsed, setIsCameraCollapsed] = React.useState(true);
+    const [draggingHandle, setDraggingHandle] = React.useState(null); // 'min' | 'max' | null
 
     React.useEffect(() => {
         if (data.initialFocus && inputRef.current) {
@@ -29,14 +32,18 @@ const EventNode = ({ id, data, selected }) => {
 
     return (
         <div className={`event-node ${selected ? 'selected' : ''}`}>
-            <NodeResizer
-                color="#C9B5FF"
-                isVisible={selected}
-                minWidth={320}
-                minHeight={200}
-                handleStyle={{ width: 8, height: 8, borderRadius: '50%' }}
-                lineStyle={{ border: '1px solid #C9B5FF' }}
-            />
+            {/* ⚡ Bolt: Memoize NodeResizer to prevent unnecessary re-renders during interactions like typing.
+                Impact: Reduces React overhead on heavy text input operations inside the node. */}
+            {useMemo(() => (
+                <NodeResizer
+                    color="#C9B5FF"
+                    isVisible={selected}
+                    minWidth={320}
+                    minHeight={200}
+                    handleStyle={{ width: 8, height: 8, borderRadius: '50%' }}
+                    lineStyle={{ border: '1px solid #C9B5FF' }}
+                />
+            ), [selected])}
             {/* Input Handles */}
             {data.inputs?.map((input, index) => (
                 <Handle
@@ -137,8 +144,6 @@ const EventNode = ({ id, data, selected }) => {
 
                 {/* Camera Options */}
                 {(() => {
-                    const [isCameraCollapsed, setIsCameraCollapsed] = React.useState(true);
-
                     const toggleOption = (key) => {
                         updateNode(id, { [key]: !data[key] });
                     };
@@ -231,9 +236,6 @@ const EventNode = ({ id, data, selected }) => {
 
                 {/* Mood Effect Range Slider - Min/Max */}
                 {(() => {
-                    const moodRef = React.useRef(null);
-                    const [draggingHandle, setDraggingHandle] = React.useState(null); // 'min' | 'max' | null
-
                     const moodMin = data.moodChangeMin ?? 0;
                     const moodMax = data.moodChangeMax ?? 10;
                     const moodDisabled = data.moodDisabled ?? false;
