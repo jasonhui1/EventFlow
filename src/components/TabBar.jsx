@@ -20,6 +20,14 @@ function TabBar() {
         setActiveTab(eventId);
     };
 
+    // Handle tab keydown
+    const handleKeyDown = (e, eventId) => {
+        if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
+            e.preventDefault();
+            setActiveTab(eventId);
+        }
+    };
+
     // Handle close button click
     const handleCloseClick = (e, eventId) => {
         e.stopPropagation();
@@ -44,32 +52,43 @@ function TabBar() {
     }
 
     return (
-        <div className="tab-bar">
+        <div className="tab-bar" role="tablist" aria-label="Open Events">
             <div className="tab-bar-scroll">
-                {openTabs.map((tab) => (
-                    <div
-                        key={tab.eventId}
-                        className={`tab ${activeTabId === tab.eventId ? 'active' : ''}`}
-                        onClick={() => handleTabClick(tab.eventId)}
-                        onMouseDown={(e) => handleMouseDown(e, tab.eventId)}
-                        title={getEventName(tab.eventId)}
-                    >
-                        <span className="tab-icon">📋</span>
-                        <span className="tab-name">{getEventName(tab.eventId)}</span>
-                        <button
-                            className="tab-close"
-                            onClick={(e) => handleCloseClick(e, tab.eventId)}
-                            title="Close tab"
+                {openTabs.map((tab) => {
+                    const eventName = getEventName(tab.eventId);
+                    const isActive = activeTabId === tab.eventId;
+                    return (
+                        <div
+                            key={tab.eventId}
+                            className={`tab ${isActive ? 'active' : ''}`}
+                            onClick={() => handleTabClick(tab.eventId)}
+                            onMouseDown={(e) => handleMouseDown(e, tab.eventId)}
+                            onKeyDown={(e) => handleKeyDown(e, tab.eventId)}
+                            title={eventName}
+                            role="tab"
+                            tabIndex={0}
+                            aria-selected={isActive}
+                            aria-label={eventName}
                         >
-                            ×
-                        </button>
-                    </div>
-                ))}
+                            <span className="tab-icon" aria-hidden="true">📋</span>
+                            <span className="tab-name">{eventName}</span>
+                            <button
+                                className="tab-close"
+                                onClick={(e) => handleCloseClick(e, tab.eventId)}
+                                title={`Close ${eventName} tab`}
+                                aria-label={`Close ${eventName} tab`}
+                            >
+                                ×
+                            </button>
+                        </div>
+                    );
+                })}
             </div>
             <button
                 className="tab-new"
                 onClick={handleNewTab}
-                title="New tab"
+                title="New Event"
+                aria-label="New Event"
             >
                 +
             </button>
