@@ -60,6 +60,7 @@ function TabBar() {
                             className="tab-close"
                             onClick={(e) => handleCloseClick(e, tab.eventId)}
                             title="Close tab"
+                            aria-label={"Close " + getEventName(tab.eventId) + " tab"}
                         >
                             ×
                         </button>
@@ -70,6 +71,7 @@ function TabBar() {
                 className="tab-new"
                 onClick={handleNewTab}
                 title="New tab"
+                aria-label="Create new tab"
             >
                 +
             </button>
