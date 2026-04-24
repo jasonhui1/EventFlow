@@ -1,0 +1,3 @@
+## 2024-05-27 - Accessible Tabs with Nested Buttons
+**Learning:** When creating accessible tabs that contain nested interactive elements (like a close button), making the tab container focusable (`tabIndex={0}`) and adding an `onKeyDown` handler for 'Enter'/'Space' enables keyboard activation without creating invalid HTML (like nested `<button>` tags). ARIA attributes (`role="tab"`, `aria-selected`) complete the semantic meaning.
+**Action:** Use this pattern (`<div role="tab" tabIndex={0} onKeyDown={...}>`) whenever implementing tabs or similar selectable containers that require their own internal actions.
