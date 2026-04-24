@@ -1,0 +1,3 @@
+## 2025-04-06 - Semantic Accessibility in Dynamic Tab Lists
+**Learning:** Custom tab implementations (like those rendering dynamically based on state) often miss critical semantic ARIA roles (`role="tablist"`, `role="tab"`), keyboard support (handling 'Enter' and 'Space' manually), and explicit labels for dynamic elements. Standard buttons without clear, dynamic contexts (e.g., just 'Close tab') are insufficient for screen readers.
+**Action:** When implementing custom interactive components, specifically tabs or lists, ensure they use explicit roles, manage keyboard focus securely using `onKeyDown` with `e.target === e.currentTarget` checks, and generate uniquely identifiable labels using dynamic data.
