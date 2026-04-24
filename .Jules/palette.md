@@ -1,0 +1,3 @@
+## 2025-04-05 - Accessible Custom Tab Implementations
+**Learning:** When using non-native interactive elements (like `div`) as tabs, it's critical to add semantic roles (`role="tab"`, `role="tablist"`), make them focusable (`tabIndex={0}`), and explicitly handle keyboard navigation (`onKeyDown` for Enter/Space with `e.preventDefault()`). Additionally, icon-only functional buttons nested within dynamic components must have dynamic `aria-label`s contextually linked to the data (e.g. 'Close New Event tab') to be usable by screen readers.
+**Action:** Always implement semantic roles, `tabIndex`, explicit keyboard event handlers, and contextual dynamic `aria-label`s for custom interactive components built with `div` or generic elements.
