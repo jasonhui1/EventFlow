@@ -1688,5 +1688,5 @@ body {
 /* Re-enable pointer events for controls */
 .react-flow__node-fieldNode .react-flow__resize-control,
 .react-flow__node-fieldNode .nodrag {
-  pointer-events: all !important;
+  pointer-events: auto !important;
 }
