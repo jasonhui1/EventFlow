@@ -541,6 +541,7 @@ export const simulateEvent = (
     const visitedNodeIds = new Set();
     const visitedEdgeIds = new Set();
     const queue = [...startNodes]; // Field children are reached via edges, filtered by unlockedByField
+    let queueIndex = 0;
 
     // Initialize mood state
     let currentMood = incomingMood;
@@ -550,8 +551,8 @@ export const simulateEvent = (
         console.log('[Simulation] Initialized mood:', currentMood);
     }
 
-    while (queue.length > 0) {
-        const currentNode = queue.shift();
+    while (queueIndex < queue.length) {
+        const currentNode = queue[queueIndex++];
 
         if (visitedNodeIds.has(currentNode.id)) continue;
 
