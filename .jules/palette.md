@@ -1,0 +1,3 @@
+## 2024-04-09 - Custom Tab Components Accessibility
+**Learning:** When using non-native interactive elements like `<div>` for custom components such as tabs, they are intrinsically inaccessible via keyboard navigation and invisible to screen readers without specific attributes.
+**Action:** Always complement generic `<div>` interactives with `tabIndex={0}`, proper ARIA roles (e.g. `role="tab"` and `role="tablist"`), explicit screen-reader states (e.g., `aria-selected`), and explicitly bind an `onKeyDown` handler to capture both 'Enter' and ' ' (Space) events while verifying `e.target === e.currentTarget` to prevent false triggering from nested buttons.
