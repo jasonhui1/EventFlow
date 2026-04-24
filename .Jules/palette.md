@@ -1,0 +1,3 @@
+## 2024-05-18 - Nested Interactive Element Focus Handling
+**Learning:** When implementing keyboard navigation for complex UI components (like a custom tab with `role="tab"` and `tabIndex={0}`) that contain other focusable actions (like a close button inside the tab), triggering the container's action via keyboard can inadvertently intercept key events meant for the inner element if not handled correctly.
+**Action:** Always verify `e.target === e.currentTarget` in the `onKeyDown` handler of the container element before processing `Enter` or `Space` keys to prevent triggering the container's action when a user is actually interacting with a nested focusable element.
