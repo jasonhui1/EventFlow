@@ -39,27 +39,41 @@ function TabBar() {
         addEvent('New Event');
     };
 
+    // Handle keyboard navigation for tabs
+    const handleKeyDown = (e, eventId) => {
+        if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
+            e.preventDefault();
+            handleTabClick(eventId);
+        }
+    };
+
     if (openTabs.length === 0) {
         return null; // Don't show tab bar if no tabs
     }
 
     return (
         <div className="tab-bar">
-            <div className="tab-bar-scroll">
+            <div className="tab-bar-scroll" role="tablist" aria-label="Open Events">
                 {openTabs.map((tab) => (
                     <div
                         key={tab.eventId}
+                        role="tab"
+                        aria-selected={activeTabId === tab.eventId}
+                        tabIndex={0}
                         className={`tab ${activeTabId === tab.eventId ? 'active' : ''}`}
                         onClick={() => handleTabClick(tab.eventId)}
                         onMouseDown={(e) => handleMouseDown(e, tab.eventId)}
+                        onKeyDown={(e) => handleKeyDown(e, tab.eventId)}
                         title={getEventName(tab.eventId)}
+                        aria-label={getEventName(tab.eventId)}
                     >
-                        <span className="tab-icon">📋</span>
+                        <span className="tab-icon" aria-hidden="true">📋</span>
                         <span className="tab-name">{getEventName(tab.eventId)}</span>
                         <button
                             className="tab-close"
                             onClick={(e) => handleCloseClick(e, tab.eventId)}
                             title="Close tab"
+                            aria-label={`Close ${getEventName(tab.eventId)} tab`}
                         >
                             ×
                         </button>
@@ -70,6 +84,7 @@ function TabBar() {
                 className="tab-new"
                 onClick={handleNewTab}
                 title="New tab"
+                aria-label="New tab"
             >
                 +
             </button>
