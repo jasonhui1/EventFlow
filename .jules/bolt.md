@@ -1,0 +1,3 @@
+## 2025-04-12 - Optimize BFS queue traversal in simulationUtils
+**Learning:** Found an O(N) `queue.shift()` inside the BFS traversal loop in `src/utils/simulationUtils.js`. While arrays in JavaScript typically provide fast operations, `shift()` requires re-indexing the entire array, causing a performance bottleneck on large graphs.
+**Action:** Replace `queue.shift()` with a `queueIndex` read pointer that increments, turning the operation into O(1) array access.
