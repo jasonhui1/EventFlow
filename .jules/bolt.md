@@ -1,0 +1,3 @@
+## 2024-05-24 - Sidebar Event Library Performance Fix
+**Learning:** The event grouping logic in `src/components/Sidebar.jsx` used an O(N*M) nested array lookup via `folders.find()` inside a `filteredEvents.forEach` loop. For large sets of folders and events, this caused severe performance degradation when typing in the search bar. Leveraging an existing `useMemo` dictionary (`foldersById`) enabled an O(1) lookup.
+**Action:** Replace `Array.prototype.find` inside loops with O(1) Map lookups for large lists, specifically by hoisting the `foldersById` computation above the loop where it is needed.

@@ -170,12 +170,21 @@ const Sidebar = () => {
     // Get root-level folders (no parent or parentId is undefined/null)
     const rootFolders = getChildFolders(null);
 
+    const foldersById = useMemo(() => {
+        const map = {};
+        folders.forEach(folder => {
+            map[folder.id] = folder;
+        });
+        return map;
+    }, [folders]);
+
     // Group events by folder
     const eventsByFolder = {}; // { folderId: [events] }
     const rootEvents = [];
 
     filteredEvents.forEach(event => {
-        if (event.folderId && folders.find(f => f.id === event.folderId)) {
+        // Use O(1) Map lookup instead of O(N) array find
+        if (event.folderId && foldersById[event.folderId]) {
             if (!eventsByFolder[event.folderId]) {
                 eventsByFolder[event.folderId] = [];
             }
@@ -184,15 +193,6 @@ const Sidebar = () => {
             rootEvents.push(event);
         }
     });
-
-
-    const foldersById = useMemo(() => {
-        const map = {};
-        folders.forEach(folder => {
-            map[folder.id] = folder;
-        });
-        return map;
-    }, [folders]);
 
 
     const folderVisibleMap = useMemo(() => {
