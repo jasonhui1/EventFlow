@@ -395,6 +395,7 @@ const Sidebar = () => {
                                             duplicateEvent(event.id);
                                         }}
                                         title="Duplicate Event"
+                                        aria-label={`Duplicate ${event.name}`}
                                     >
                                         ❐
                                     </button>
@@ -406,6 +407,7 @@ const Sidebar = () => {
                                                 handleDeleteEvent(event.id, event.name);
                                             }}
                                             title="Delete Event"
+                                            aria-label={`Delete ${event.name}`}
                                         >
                                             ✕
                                         </button>
@@ -682,26 +684,28 @@ const Sidebar = () => {
                                                 <div className="event-item-actions">
                                                     <span className="event-item-count">{event.nodes?.length || 0}</span>
                                                     <button
-                                                        className="event-action-btn duplicate"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            duplicateEvent(event.id);
-                                                        }}
-                                                        title="Duplicate Event"
-                                                    >
-                                                        ❐
-                                                    </button>
+                                        className="event-action-btn duplicate"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            duplicateEvent(event.id);
+                                        }}
+                                        title="Duplicate Event"
+                                        aria-label={`Duplicate ${event.name}`}
+                                    >
+                                        ❐
+                                    </button>
                                                     {events.length > 1 && (
                                                         <button
-                                                            className="event-action-btn delete"
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                handleDeleteEvent(event.id, event.name);
-                                                            }}
-                                                            title="Delete Event"
-                                                        >
-                                                            ✕
-                                                        </button>
+                                            className="event-action-btn delete"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleDeleteEvent(event.id, event.name);
+                                            }}
+                                            title="Delete Event"
+                                            aria-label={`Delete ${event.name}`}
+                                        >
+                                            ✕
+                                        </button>
                                                     )}
                                                 </div>
                                             </div>
