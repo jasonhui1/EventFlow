@@ -1,0 +1,3 @@
+## 2024-05-15 - BulkExportModal Map Lookups Performance Optimization
+**Learning:** Found O(N*M) performance bottlenecks in BulkExportModal (handleSelectAll, handleExport, and render loop) where `.find()` was used inside array iterations (like `.map` or `.forEach`) to match events and selections. In large lists, this caused notable slowdowns.
+**Action:** Replace nested array lookups (`.find()` or `.filter()`) inside loops with O(N+M) Map or Dictionary lookups. Precompute a Map before the loop (e.g., `const selectionsMap = new Map(selections.map(s => [s.eventId, s]));`) and use `.get()` inside the loop for O(1) retrieval.

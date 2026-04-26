@@ -58,8 +58,9 @@ const BulkExportModal = ({ onClose }) => {
             setSelections([]);
         } else {
             // Preservation logic: Keep existing overrides if they were already there
+            const selectionsMap = new Map(selections.map(s => [s.eventId, s]));
             setSelections(filteredEvents.map(e => {
-                const existing = selections.find(s => s.eventId === e.id);
+                const existing = selectionsMap.get(e.id);
                 return existing || { eventId: e.id, overrides: {} };
             }));
         }
@@ -69,8 +70,10 @@ const BulkExportModal = ({ onClose }) => {
         // Now 'selections' is our source of truth
         let allPrompts = [];
 
+        const eventsMap = new Map(events.map(e => [e.id, e]));
+
         selections.forEach(selection => {
-            const event = events.find(e => e.id === selection.eventId);
+            const event = eventsMap.get(selection.eventId);
             if (!event) return;
 
             allPrompts.push(`--- [Event: ${event.name}] ---`);
@@ -172,10 +175,12 @@ const BulkExportModal = ({ onClose }) => {
                             </div>
 
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                {filteredEvents.map((event) => {
-                                    const startNode = event.nodes?.find(n => n.type === 'startNode');
-                                    const inputs = startNode?.data?.inputs || [];
-                                    const selection = selections.find(s => s.eventId === event.id);
+                                {(() => {
+                                    const selectionsMap = new Map(selections.map(s => [s.eventId, s]));
+                                    return filteredEvents.map((event) => {
+                                        const startNode = event.nodes?.find(n => n.type === 'startNode');
+                                        const inputs = startNode?.data?.inputs || [];
+                                        const selection = selectionsMap.get(event.id);
                                     const isSelected = !!selection;
                                     const isExpanded = expandedEventId === event.id;
 
@@ -275,7 +280,8 @@ const BulkExportModal = ({ onClose }) => {
                                             )}
                                         </div>
                                     );
-                                })}
+                                    });
+                                })()}
                                 {filteredEvents.length === 0 && (
                                     <div style={{ textAlign: 'center', padding: '40px', color: 'rgba(255,255,255,0.3)' }}>
                                         No events match your search.
