@@ -1,0 +1,3 @@
+## 2025-02-26 - Keyboard Navigation on Custom Tabs
+**Learning:** Custom interactive elements (like custom tabs containing inner close buttons) that implement their own keyboard navigation via `onKeyDown` must always explicitly check `e.target === e.currentTarget` before reacting to "Enter" or "Space". Without this check, events from nested interactive elements (like a nested "Close tab" button) will bubble up, unintentionally triggering the parent tab's action (e.g., selecting the tab) instead of or in addition to the intended action of the child element.
+**Action:** When adding keyboard support to a container element that has nested interactive children, always ensure `e.target === e.currentTarget` to isolate the event handler.
