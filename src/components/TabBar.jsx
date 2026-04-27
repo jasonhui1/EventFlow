@@ -44,34 +44,45 @@ function TabBar() {
     }
 
     return (
-        <div className="tab-bar">
+        <div className="tab-bar" role="tablist" aria-label="Open events">
             <div className="tab-bar-scroll">
                 {openTabs.map((tab) => (
                     <div
                         key={tab.eventId}
+                        role="tab"
+                        aria-selected={activeTabId === tab.eventId}
+                        tabIndex={0}
                         className={`tab ${activeTabId === tab.eventId ? 'active' : ''}`}
                         onClick={() => handleTabClick(tab.eventId)}
                         onMouseDown={(e) => handleMouseDown(e, tab.eventId)}
+                        onKeyDown={(e) => {
+                            if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
+                                e.preventDefault();
+                                handleTabClick(tab.eventId);
+                            }
+                        }}
                         title={getEventName(tab.eventId)}
                     >
-                        <span className="tab-icon">📋</span>
+                        <span className="tab-icon" aria-hidden="true">📋</span>
                         <span className="tab-name">{getEventName(tab.eventId)}</span>
                         <button
                             className="tab-close"
+                            aria-label={`Close ${getEventName(tab.eventId)} tab`}
                             onClick={(e) => handleCloseClick(e, tab.eventId)}
                             title="Close tab"
                         >
-                            ×
+                            <span aria-hidden="true">×</span>
                         </button>
                     </div>
                 ))}
             </div>
             <button
                 className="tab-new"
+                aria-label="New Event tab"
                 onClick={handleNewTab}
                 title="New tab"
             >
-                +
+                <span aria-hidden="true">+</span>
             </button>
         </div>
     );
