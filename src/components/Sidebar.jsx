@@ -159,12 +159,21 @@ const Sidebar = () => {
         }
     };
 
+    const { foldersById, childFoldersMap } = useMemo(() => {
+        const map = {};
+        const childMap = {};
+        (folders || []).forEach(folder => {
+            map[folder.id] = folder;
+            const parentId = folder.parentId ?? null; // Convert undefined to null
+            if (!childMap[parentId]) childMap[parentId] = [];
+            childMap[parentId].push(folder);
+        });
+        return { foldersById: map, childFoldersMap: childMap };
+    }, [folders]);
+
     // Get child folders for a given parent (treat undefined same as null for backwards compatibility)
     const getChildFolders = (parentId) => {
-        return (folders || []).filter(f => {
-            const folderParent = f.parentId ?? null; // Convert undefined to null
-            return folderParent === parentId;
-        });
+        return childFoldersMap[parentId] || [];
     };
 
     // Get root-level folders (no parent or parentId is undefined/null)
@@ -175,7 +184,7 @@ const Sidebar = () => {
     const rootEvents = [];
 
     filteredEvents.forEach(event => {
-        if (event.folderId && folders.find(f => f.id === event.folderId)) {
+        if (event.folderId && foldersById[event.folderId]) {
             if (!eventsByFolder[event.folderId]) {
                 eventsByFolder[event.folderId] = [];
             }
@@ -184,15 +193,6 @@ const Sidebar = () => {
             rootEvents.push(event);
         }
     });
-
-
-    const foldersById = useMemo(() => {
-        const map = {};
-        folders.forEach(folder => {
-            map[folder.id] = folder;
-        });
-        return map;
-    }, [folders]);
 
 
     const folderVisibleMap = useMemo(() => {
