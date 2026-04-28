@@ -158,7 +158,7 @@ const EventSimulationModal = ({ onClose }) => {
             <div className="modal" onClick={(e) => e.stopPropagation()} style={{ width: '800px', maxWidth: '90vw', height: '80vh', display: 'flex', flexDirection: 'column' }}>
                 <div className="modal-header">
                     <h3 className="modal-title">🔮 Event Simulation Output</h3>
-                    <button className="modal-close" onClick={onClose}>×</button>
+                    <button className="modal-close" onClick={onClose} aria-label="Close modal" title="Close modal">×</button>
                 </div>
 
                 <div className="modal-body" style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
