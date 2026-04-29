@@ -296,6 +296,7 @@ const Sidebar = () => {
                                     cursor: 'pointer',
                                     fontSize: '12px',
                                 }}
+                                aria-label="Add Event"
                                 title="Add Event"
                             >
                                 +📌
@@ -313,6 +314,7 @@ const Sidebar = () => {
                                     cursor: 'pointer',
                                     fontSize: '12px',
                                 }}
+                                aria-label="Add Subfolder"
                                 title="Add Subfolder"
                             >
                                 +📁
@@ -329,6 +331,7 @@ const Sidebar = () => {
                                     cursor: 'pointer',
                                     fontSize: '12px',
                                 }}
+                                aria-label="Rename folder"
                                 title="Rename"
                             >
                                 ✎
@@ -345,6 +348,7 @@ const Sidebar = () => {
                                     cursor: 'pointer',
                                     fontSize: '12px',
                                 }}
+                                aria-label="Edit folder tags"
                                 title="Edit Tags"
                             >
                                 ⚙️
@@ -361,6 +365,7 @@ const Sidebar = () => {
                                     cursor: 'pointer',
                                     fontSize: '12px',
                                 }}
+                                aria-label="Delete folder"
                                 title="Delete"
                             >
                                 ✕
@@ -389,6 +394,7 @@ const Sidebar = () => {
                                 <div className="event-item-actions">
                                     <span className="event-item-count">{event.nodes?.length || 0}</span>
                                     <button
+                                        aria-label={`Duplicate ${event.name}`}
                                         className="event-action-btn duplicate"
                                         onClick={(e) => {
                                             e.stopPropagation();
@@ -400,6 +406,7 @@ const Sidebar = () => {
                                     </button>
                                     {events.length > 1 && (
                                         <button
+                                            aria-label={`Delete ${event.name}`}
                                             className="event-action-btn delete"
                                             onClick={(e) => {
                                                 e.stopPropagation();
@@ -456,6 +463,7 @@ const Sidebar = () => {
                     </>
                 )}
                 <button
+                    aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
                     className="sidebar-collapse-btn"
                     onClick={() => setIsCollapsed(!isCollapsed)}
                     title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
@@ -682,6 +690,7 @@ const Sidebar = () => {
                                                 <div className="event-item-actions">
                                                     <span className="event-item-count">{event.nodes?.length || 0}</span>
                                                     <button
+                                                        aria-label={`Duplicate ${event.name}`}
                                                         className="event-action-btn duplicate"
                                                         onClick={(e) => {
                                                             e.stopPropagation();
@@ -693,6 +702,7 @@ const Sidebar = () => {
                                                     </button>
                                                     {events.length > 1 && (
                                                         <button
+                                                            aria-label={`Delete ${event.name}`}
                                                             className="event-action-btn delete"
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
