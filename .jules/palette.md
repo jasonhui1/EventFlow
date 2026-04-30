@@ -1,0 +1,3 @@
+## 2024-04-30 - Prevent nested interactive elements from triggering parent keyboard handlers
+**Learning:** When adding keyboard handlers (like onKeyDown for Enter/Space) to a parent component (like a custom Tab) that contains nested interactive elements (like a close button), keyboard events from the nested elements will bubble up and trigger the parent's handler unless explicitly prevented. Checking if `e.target === e.currentTarget` ensures the event was fired directly on the parent.
+**Action:** Always check `e.target === e.currentTarget` inside `onKeyDown` handlers for custom interactive parent containers to prevent unintended bubbling and triggering from child elements.
