@@ -1560,6 +1560,11 @@ body {
   color: var(--text-primary);
 }
 
+.modal-close:focus-visible {
+  outline: 2px solid var(--pastel-purple);
+  outline-offset: 2px;
+}
+
 .modal-body {
   padding: 24px;
   overflow-y: auto;
