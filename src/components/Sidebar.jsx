@@ -159,12 +159,30 @@ const Sidebar = () => {
         }
     };
 
-    // Get child folders for a given parent (treat undefined same as null for backwards compatibility)
-    const getChildFolders = (parentId) => {
-        return (folders || []).filter(f => {
-            const folderParent = f.parentId ?? null; // Convert undefined to null
-            return folderParent === parentId;
+    const foldersById = useMemo(() => {
+        const map = {};
+        folders.forEach(folder => {
+            map[folder.id] = folder;
         });
+        return map;
+    }, [folders]);
+
+    // Pre-compute child folders map for O(1) lookups
+    const childrenByParentId = useMemo(() => {
+        const map = {};
+        folders.forEach(f => {
+            const parentId = f.parentId ?? null;
+            if (!map[parentId]) {
+                map[parentId] = [];
+            }
+            map[parentId].push(f);
+        });
+        return map;
+    }, [folders]);
+
+    // O(1) child folders lookup (treat undefined same as null for backwards compatibility)
+    const getChildFolders = (parentId) => {
+        return childrenByParentId[parentId] || [];
     };
 
     // Get root-level folders (no parent or parentId is undefined/null)
@@ -175,7 +193,7 @@ const Sidebar = () => {
     const rootEvents = [];
 
     filteredEvents.forEach(event => {
-        if (event.folderId && folders.find(f => f.id === event.folderId)) {
+        if (event.folderId && foldersById[event.folderId]) {
             if (!eventsByFolder[event.folderId]) {
                 eventsByFolder[event.folderId] = [];
             }
@@ -184,15 +202,6 @@ const Sidebar = () => {
             rootEvents.push(event);
         }
     });
-
-
-    const foldersById = useMemo(() => {
-        const map = {};
-        folders.forEach(folder => {
-            map[folder.id] = folder;
-        });
-        return map;
-    }, [folders]);
 
 
     const folderVisibleMap = useMemo(() => {
