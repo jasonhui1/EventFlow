@@ -60,6 +60,7 @@ function TabBar() {
                             className="tab-close"
                             onClick={(e) => handleCloseClick(e, tab.eventId)}
                             title="Close tab"
+                            aria-label="Close tab"
                         >
                             ×
                         </button>

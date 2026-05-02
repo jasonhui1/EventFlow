@@ -593,6 +593,13 @@ body {
   color: var(--pastel-pink);
 }
 
+.tab-close:focus-visible {
+  outline: 2px solid var(--pastel-purple);
+  outline-offset: -2px;
+  opacity: 1;
+  transform: scale(1);
+}
+
 .tab-new {
   width: 28px;
   height: 28px;
@@ -1556,6 +1563,13 @@ body {
 }
 
 .modal-close:hover {
+  background: var(--bg-card);
+  color: var(--text-primary);
+}
+
+.modal-close:focus-visible {
+  outline: 2px solid var(--pastel-purple);
+  outline-offset: -2px;
   background: var(--bg-card);
   color: var(--text-primary);
 }
