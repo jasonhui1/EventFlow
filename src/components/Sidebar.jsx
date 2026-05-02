@@ -159,12 +159,21 @@ const Sidebar = () => {
         }
     };
 
+    const childrenByFolderId = useMemo(() => {
+        const map = { null: [] };
+        (folders || []).forEach(f => {
+            const parentId = f.parentId ?? null;
+            if (!map[parentId]) {
+                map[parentId] = [];
+            }
+            map[parentId].push(f);
+        });
+        return map;
+    }, [folders]);
+
     // Get child folders for a given parent (treat undefined same as null for backwards compatibility)
     const getChildFolders = (parentId) => {
-        return (folders || []).filter(f => {
-            const folderParent = f.parentId ?? null; // Convert undefined to null
-            return folderParent === parentId;
-        });
+        return childrenByFolderId[parentId] || [];
     };
 
     // Get root-level folders (no parent or parentId is undefined/null)
