@@ -159,12 +159,30 @@ const Sidebar = () => {
         }
     };
 
+    // ⚡ Bolt Optimization: Precompute folder lookups
+    // Why: Replaces O(N) array scans with O(1) Map lookups
+    // Impact: Avoids N^2 traversal when rendering deeply nested folder structures
+    const foldersById = useMemo(() => {
+        const map = {};
+        folders.forEach(folder => {
+            map[folder.id] = folder;
+        });
+        return map;
+    }, [folders]);
+
+    const foldersByParentId = useMemo(() => {
+        const map = {};
+        folders.forEach(folder => {
+            const parentId = folder.parentId ?? null;
+            if (!map[parentId]) map[parentId] = [];
+            map[parentId].push(folder);
+        });
+        return map;
+    }, [folders]);
+
     // Get child folders for a given parent (treat undefined same as null for backwards compatibility)
     const getChildFolders = (parentId) => {
-        return (folders || []).filter(f => {
-            const folderParent = f.parentId ?? null; // Convert undefined to null
-            return folderParent === parentId;
-        });
+        return foldersByParentId[parentId] || [];
     };
 
     // Get root-level folders (no parent or parentId is undefined/null)
@@ -175,7 +193,7 @@ const Sidebar = () => {
     const rootEvents = [];
 
     filteredEvents.forEach(event => {
-        if (event.folderId && folders.find(f => f.id === event.folderId)) {
+        if (event.folderId && foldersById[event.folderId]) {
             if (!eventsByFolder[event.folderId]) {
                 eventsByFolder[event.folderId] = [];
             }
@@ -184,15 +202,6 @@ const Sidebar = () => {
             rootEvents.push(event);
         }
     });
-
-
-    const foldersById = useMemo(() => {
-        const map = {};
-        folders.forEach(folder => {
-            map[folder.id] = folder;
-        });
-        return map;
-    }, [folders]);
 
 
     const folderVisibleMap = useMemo(() => {
