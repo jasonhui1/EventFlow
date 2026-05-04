@@ -1690,3 +1690,12 @@ body {
 .react-flow__node-fieldNode .nodrag {
   pointer-events: all !important;
 }
+/* Accessibility: Focus visible styles for custom buttons */
+.tab-close:focus-visible,
+.tab-new:focus-visible,
+.modal-close:focus-visible,
+.event-action-btn:focus-visible,
+.folder-actions button:focus-visible {
+  outline: 2px solid var(--pastel-purple);
+  outline-offset: 2px;
+}
