@@ -297,6 +297,7 @@ const Sidebar = () => {
                                     fontSize: '12px',
                                 }}
                                 title="Add Event"
+                                aria-label="Add Event"
                             >
                                 +📌
                             </button>
@@ -314,6 +315,7 @@ const Sidebar = () => {
                                     fontSize: '12px',
                                 }}
                                 title="Add Subfolder"
+                                aria-label="Add Subfolder"
                             >
                                 +📁
                             </button>
@@ -330,6 +332,7 @@ const Sidebar = () => {
                                     fontSize: '12px',
                                 }}
                                 title="Rename"
+                                aria-label="Rename"
                             >
                                 ✎
                             </button>
@@ -346,6 +349,7 @@ const Sidebar = () => {
                                     fontSize: '12px',
                                 }}
                                 title="Edit Tags"
+                                aria-label="Edit Tags"
                             >
                                 ⚙️
                             </button>
@@ -362,6 +366,7 @@ const Sidebar = () => {
                                     fontSize: '12px',
                                 }}
                                 title="Delete"
+                                aria-label="Delete"
                             >
                                 ✕
                             </button>
@@ -395,6 +400,7 @@ const Sidebar = () => {
                                             duplicateEvent(event.id);
                                         }}
                                         title="Duplicate Event"
+                                        aria-label="Duplicate Event"
                                     >
                                         ❐
                                     </button>
@@ -406,6 +412,7 @@ const Sidebar = () => {
                                                 handleDeleteEvent(event.id, event.name);
                                             }}
                                             title="Delete Event"
+                                            aria-label="Delete Event"
                                         >
                                             ✕
                                         </button>
@@ -688,6 +695,7 @@ const Sidebar = () => {
                                                             duplicateEvent(event.id);
                                                         }}
                                                         title="Duplicate Event"
+                                                        aria-label="Duplicate Event"
                                                     >
                                                         ❐
                                                     </button>
@@ -699,6 +707,7 @@ const Sidebar = () => {
                                                                 handleDeleteEvent(event.id, event.name);
                                                             }}
                                                             title="Delete Event"
+                                                            aria-label="Delete Event"
                                                         >
                                                             ✕
                                                         </button>
