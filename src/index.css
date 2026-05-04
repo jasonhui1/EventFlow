@@ -588,9 +588,12 @@ body {
   transform: scale(1);
 }
 
-.tab-close:hover {
+.tab-close:hover,
+.tab-close:focus-visible {
   background: rgba(255, 181, 197, 0.2);
   color: var(--pastel-pink);
+  outline: 2px solid var(--pastel-pink);
+  outline-offset: 2px;
 }
 
 .tab-new {
@@ -610,10 +613,13 @@ body {
   margin-left: 4px;
 }
 
-.tab-new:hover {
+.tab-new:hover,
+.tab-new:focus-visible {
   background: rgba(201, 181, 255, 0.1);
   border-color: var(--pastel-purple);
   color: var(--pastel-purple);
+  outline: 2px solid var(--pastel-purple);
+  outline-offset: 2px;
 }
 
 /* ========================================
@@ -1555,9 +1561,12 @@ body {
   transition: all var(--transition-fast);
 }
 
-.modal-close:hover {
+.modal-close:hover,
+.modal-close:focus-visible {
   background: var(--bg-card);
   color: var(--text-primary);
+  outline: 2px solid var(--pastel-purple);
+  outline-offset: 2px;
 }
 
 .modal-body {
