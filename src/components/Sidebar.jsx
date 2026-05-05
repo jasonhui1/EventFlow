@@ -159,40 +159,39 @@ const Sidebar = () => {
         }
     };
 
+    const { foldersById, foldersByParent } = useMemo(() => {
+        const idMap = {};
+        const parentMap = { root: [] };
+        (folders || []).forEach(folder => {
+            idMap[folder.id] = folder;
+            const parentKey = folder.parentId ?? 'root';
+            if (!parentMap[parentKey]) parentMap[parentKey] = [];
+            parentMap[parentKey].push(folder);
+        });
+        return { foldersById: idMap, foldersByParent: parentMap };
+    }, [folders]);
+
     // Get child folders for a given parent (treat undefined same as null for backwards compatibility)
     const getChildFolders = (parentId) => {
-        return (folders || []).filter(f => {
-            const folderParent = f.parentId ?? null; // Convert undefined to null
-            return folderParent === parentId;
-        });
+        return foldersByParent[parentId ?? 'root'] || [];
     };
 
     // Get root-level folders (no parent or parentId is undefined/null)
     const rootFolders = getChildFolders(null);
 
-    // Group events by folder
-    const eventsByFolder = {}; // { folderId: [events] }
-    const rootEvents = [];
-
-    filteredEvents.forEach(event => {
-        if (event.folderId && folders.find(f => f.id === event.folderId)) {
-            if (!eventsByFolder[event.folderId]) {
-                eventsByFolder[event.folderId] = [];
+    const { eventsByFolder, rootEvents } = useMemo(() => {
+        const byFolder = {};
+        const root = [];
+        filteredEvents.forEach(event => {
+            if (event.folderId && foldersById[event.folderId]) {
+                if (!byFolder[event.folderId]) byFolder[event.folderId] = [];
+                byFolder[event.folderId].push(event);
+            } else {
+                root.push(event);
             }
-            eventsByFolder[event.folderId].push(event);
-        } else {
-            rootEvents.push(event);
-        }
-    });
-
-
-    const foldersById = useMemo(() => {
-        const map = {};
-        folders.forEach(folder => {
-            map[folder.id] = folder;
         });
-        return map;
-    }, [folders]);
+        return { eventsByFolder: byFolder, rootEvents: root };
+    }, [filteredEvents, foldersById]);
 
 
     const folderVisibleMap = useMemo(() => {
