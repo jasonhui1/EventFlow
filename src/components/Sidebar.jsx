@@ -174,8 +174,16 @@ const Sidebar = () => {
     const eventsByFolder = {}; // { folderId: [events] }
     const rootEvents = [];
 
+    const foldersById = useMemo(() => {
+        const map = {};
+        folders.forEach(folder => {
+            map[folder.id] = folder;
+        });
+        return map;
+    }, [folders]);
+
     filteredEvents.forEach(event => {
-        if (event.folderId && folders.find(f => f.id === event.folderId)) {
+        if (event.folderId && foldersById[event.folderId]) {
             if (!eventsByFolder[event.folderId]) {
                 eventsByFolder[event.folderId] = [];
             }
@@ -184,15 +192,6 @@ const Sidebar = () => {
             rootEvents.push(event);
         }
     });
-
-
-    const foldersById = useMemo(() => {
-        const map = {};
-        folders.forEach(folder => {
-            map[folder.id] = folder;
-        });
-        return map;
-    }, [folders]);
 
 
     const folderVisibleMap = useMemo(() => {
