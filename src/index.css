@@ -593,6 +593,11 @@ body {
   color: var(--pastel-pink);
 }
 
+.tab-close:focus-visible {
+  outline: 2px solid var(--pastel-pink);
+  outline-offset: 2px;
+}
+
 .tab-new {
   width: 28px;
   height: 28px;
@@ -614,6 +619,11 @@ body {
   background: rgba(201, 181, 255, 0.1);
   border-color: var(--pastel-purple);
   color: var(--pastel-purple);
+}
+
+.tab-new:focus-visible {
+  outline: 2px solid var(--pastel-purple);
+  outline-offset: -2px;
 }
 
 /* ========================================
@@ -1558,6 +1568,11 @@ body {
 .modal-close:hover {
   background: var(--bg-card);
   color: var(--text-primary);
+}
+
+.modal-close:focus-visible {
+  outline: 2px solid var(--pastel-purple);
+  outline-offset: 2px;
 }
 
 .modal-body {
