@@ -1,0 +1,3 @@
+## 2024-05-07 - Add aria-labels to custom icon-only close/new buttons
+**Learning:** Custom icon-only buttons like `.modal-close` ('×') and `.tab-close`/`.tab-new` in this application lack native screen reader context. These elements use generic HTML `<button>` tags with simple characters ('×', '+') for visual icons but no semantic text description.
+**Action:** Always verify custom icon-only controls in this codebase and add explicit `aria-label` attributes to ensure screen readers can announce the button's purpose clearly (e.g., `aria-label="Close modal"`). Do not rely on title attributes alone.
