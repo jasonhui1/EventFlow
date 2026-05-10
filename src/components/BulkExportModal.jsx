@@ -16,6 +16,16 @@ const BulkExportModal = ({ onClose }) => {
         );
     }, [events, searchTerm]);
 
+    // ⚡ Bolt Performance Optimization:
+    // Replaced O(N*M) nested array lookups (via .find()) with an O(1) Map lookup.
+    // Impact: Significantly reduces re-renders when selections array scales up.
+    // Measurement: Profile React render duration before and after with 100+ items selected.
+    const selectionsMap = useMemo(() => {
+        const map = new Map();
+        selections.forEach(s => map.set(s.eventId, s));
+        return map;
+    }, [selections]);
+
     const toggleEventSelection = (eventId) => {
         setSelections(prev => {
             const exists = prev.find(s => s.eventId === eventId);
@@ -59,7 +69,7 @@ const BulkExportModal = ({ onClose }) => {
         } else {
             // Preservation logic: Keep existing overrides if they were already there
             setSelections(filteredEvents.map(e => {
-                const existing = selections.find(s => s.eventId === e.id);
+                const existing = selectionsMap.get(e.id);
                 return existing || { eventId: e.id, overrides: {} };
             }));
         }
@@ -69,8 +79,14 @@ const BulkExportModal = ({ onClose }) => {
         // Now 'selections' is our source of truth
         let allPrompts = [];
 
+        // ⚡ Bolt Performance Optimization:
+        // Precomputing the events map for O(1) lookups during export iteration
+        // Impact: Changes O(N*M) operation to O(N+M)
+        const eventsMap = new Map();
+        events.forEach(e => eventsMap.set(e.id, e));
+
         selections.forEach(selection => {
-            const event = events.find(e => e.id === selection.eventId);
+            const event = eventsMap.get(selection.eventId);
             if (!event) return;
 
             allPrompts.push(`--- [Event: ${event.name}] ---`);
@@ -175,7 +191,7 @@ const BulkExportModal = ({ onClose }) => {
                                 {filteredEvents.map((event) => {
                                     const startNode = event.nodes?.find(n => n.type === 'startNode');
                                     const inputs = startNode?.data?.inputs || [];
-                                    const selection = selections.find(s => s.eventId === event.id);
+                                    const selection = selectionsMap.get(event.id);
                                     const isSelected = !!selection;
                                     const isExpanded = expandedEventId === event.id;
 
