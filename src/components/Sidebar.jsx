@@ -284,6 +284,7 @@ const Sidebar = () => {
                     {hoveredFolderId === folder.id && (
                         <div className="folder-actions" style={{ display: 'flex', gap: '4px' }}>
                             <button
+                                aria-label="Add Event"
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     setNewEventFolderId(folder.id);
@@ -301,6 +302,7 @@ const Sidebar = () => {
                                 +📌
                             </button>
                             <button
+                                aria-label="Add Subfolder"
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     setNewFolderParentId(folder.id);
@@ -318,6 +320,7 @@ const Sidebar = () => {
                                 +📁
                             </button>
                             <button
+                                aria-label="Rename Folder"
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     setRenameFolderModal({ id: folder.id, name: folder.name });
@@ -334,6 +337,7 @@ const Sidebar = () => {
                                 ✎
                             </button>
                             <button
+                                aria-label="Edit Tags"
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     setSelectedFolderId(folder.id);
@@ -350,6 +354,7 @@ const Sidebar = () => {
                                 ⚙️
                             </button>
                             <button
+                                aria-label="Delete Folder"
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     setDeleteFolderModal({ id: folder.id, name: folder.name });
@@ -390,6 +395,7 @@ const Sidebar = () => {
                                     <span className="event-item-count">{event.nodes?.length || 0}</span>
                                     <button
                                         className="event-action-btn duplicate"
+                                        aria-label="Duplicate Event"
                                         onClick={(e) => {
                                             e.stopPropagation();
                                             duplicateEvent(event.id);
@@ -401,6 +407,7 @@ const Sidebar = () => {
                                     {events.length > 1 && (
                                         <button
                                             className="event-action-btn delete"
+                                            aria-label="Delete Event"
                                             onClick={(e) => {
                                                 e.stopPropagation();
                                                 handleDeleteEvent(event.id, event.name);
@@ -619,6 +626,7 @@ const Sidebar = () => {
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <h3 className="sidebar-section-title">Event Library</h3>
                                 <button
+                                    aria-label="New Folder"
                                     onClick={() => {
                                         setNewFolderParentId(null);
                                         setShowNewFolderModal(true);
