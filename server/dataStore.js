@@ -80,15 +80,44 @@ export function getFolderById(id) {
     return folders.find(f => f.id === id) || null;
 }
 
+let eventsByFolderCache = null;
+let lastEventsCacheModified = 0;
+
+function buildEventsByFolderCache(events) {
+    eventsByFolderCache = new Map();
+    const rootEvents = [];
+
+    for (const event of events) {
+        const fId = event.folderId;
+        if (!fId) {
+            rootEvents.push(event);
+        } else {
+            let list = eventsByFolderCache.get(fId);
+            if (!list) {
+                list = [];
+                eventsByFolderCache.set(fId, list);
+            }
+            list.push(event);
+        }
+    }
+    eventsByFolderCache.set('root', rootEvents);
+}
+
 /**
  * Get all events belonging to a folder (direct children only).
  */
 export function getEventsByFolder(folderId) {
     const events = getEvents();
-    if (folderId === null || folderId === 'root') {
-        return events.filter(e => !e.folderId);
+
+    if (lastEventsCacheModified !== lastModified || !eventsByFolderCache) {
+        buildEventsByFolderCache(events);
+        lastEventsCacheModified = lastModified;
     }
-    return events.filter(e => e.folderId === folderId);
+
+    if (folderId === null || folderId === 'root') {
+        return eventsByFolderCache.get('root') || [];
+    }
+    return eventsByFolderCache.get(folderId) || [];
 }
 
 /**
