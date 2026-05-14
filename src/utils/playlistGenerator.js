@@ -15,7 +15,8 @@ const getInheritedFolderTags = (event, folders) => {
     let currentFolderId = event.folderId;
 
     while (currentFolderId) {
-        const folder = folders.find(f => f.id === currentFolderId);
+        // Optimisation: Use O(1) Map lookup if available
+        const folder = folders._byId ? folders._byId.get(currentFolderId) : folders.find(f => f.id === currentFolderId);
         if (!folder) break;
 
         result.tags.push(...(folder.tags || []));
@@ -169,10 +170,17 @@ export const generatePlaylist = (events, length, folders = [], slotTemplates = [
     const activeExclusions = new Set();
     const pickedIds = new Set();
 
+    // Optimisation: O(1) folder lookup map
+    const foldersMap = new Map();
+    for (let i = 0; i < folders.length; i++) {
+        foldersMap.set(folders[i].id, folders[i]);
+    }
+    const foldersWithMap = Object.assign([...folders], { _byId: foldersMap });
+
     // Pre-compute effective tags for all events
     const eventsWithEffective = events.map(event => ({
         event,
-        effective: getEffectiveTags(event, folders),
+        effective: getEffectiveTags(event, foldersWithMap),
     }));
 
     // Track dynamic forward constraints from the *previously selected* event
