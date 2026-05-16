@@ -57,9 +57,11 @@ const BulkExportModal = ({ onClose }) => {
         if (selections.length === filteredEvents.length) {
             setSelections([]);
         } else {
+            // [Performance] O(1) Set lookup instead of O(N) array search inside a loop
+            const existingSelectionsByEventId = new Map(selections.map(s => [s.eventId, s]));
             // Preservation logic: Keep existing overrides if they were already there
             setSelections(filteredEvents.map(e => {
-                const existing = selections.find(s => s.eventId === e.id);
+                const existing = existingSelectionsByEventId.get(e.id);
                 return existing || { eventId: e.id, overrides: {} };
             }));
         }
@@ -69,8 +71,11 @@ const BulkExportModal = ({ onClose }) => {
         // Now 'selections' is our source of truth
         let allPrompts = [];
 
+        // [Performance] O(1) Map lookup instead of O(N) array search inside a loop
+        const eventsById = new Map(events.map(e => [e.id, e]));
+
         selections.forEach(selection => {
-            const event = events.find(e => e.id === selection.eventId);
+            const event = eventsById.get(selection.eventId);
             if (!event) return;
 
             allPrompts.push(`--- [Event: ${event.name}] ---`);
