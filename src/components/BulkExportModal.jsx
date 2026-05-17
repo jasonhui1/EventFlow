@@ -69,8 +69,11 @@ const BulkExportModal = ({ onClose }) => {
         // Now 'selections' is our source of truth
         let allPrompts = [];
 
+        // ⚡ Bolt: Replace O(n^2) nested loop with O(n) Map lookup
+        const eventsById = new Map(events.map(e => [e.id, e]));
+
         selections.forEach(selection => {
-            const event = events.find(e => e.id === selection.eventId);
+            const event = eventsById.get(selection.eventId);
             if (!event) return;
 
             allPrompts.push(`--- [Event: ${event.name}] ---`);
