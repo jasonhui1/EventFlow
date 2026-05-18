@@ -58,8 +58,10 @@ const BulkExportModal = ({ onClose }) => {
             setSelections([]);
         } else {
             // Preservation logic: Keep existing overrides if they were already there
+            // Bolt: Replaced O(N) selections.find() with O(1) Map lookup
+            const selectionsByEventId = new Map(selections.map(s => [s.eventId, s]));
             setSelections(filteredEvents.map(e => {
-                const existing = selections.find(s => s.eventId === e.id);
+                const existing = selectionsByEventId.get(e.id);
                 return existing || { eventId: e.id, overrides: {} };
             }));
         }
@@ -69,8 +71,11 @@ const BulkExportModal = ({ onClose }) => {
         // Now 'selections' is our source of truth
         let allPrompts = [];
 
+        // Bolt: Replaced O(N) events.find() with O(1) Map lookup
+        const eventsById = new Map(events.map(e => [e.id, e]));
+
         selections.forEach(selection => {
-            const event = events.find(e => e.id === selection.eventId);
+            const event = eventsById.get(selection.eventId);
             if (!event) return;
 
             allPrompts.push(`--- [Event: ${event.name}] ---`);
@@ -175,7 +180,7 @@ const BulkExportModal = ({ onClose }) => {
                                 {filteredEvents.map((event) => {
                                     const startNode = event.nodes?.find(n => n.type === 'startNode');
                                     const inputs = startNode?.data?.inputs || [];
-                                    const selection = selections.find(s => s.eventId === event.id);
+                                    const selection = selectionsByEventId.get(event.id);
                                     const isSelected = !!selection;
                                     const isExpanded = expandedEventId === event.id;
 
