@@ -250,7 +250,18 @@ export const getComposedPrompt = (nodeId, allEvents, nodes, edges, currentEventF
  * @returns {{ nodeToFieldMap: Map, unlockedByField: Set, fieldSettings: Map }}
  */
 const processFields = (nodes) => {
-    const fieldNodes = nodes.filter(n => n.type === 'fieldNode');
+    const fieldNodes = [];
+    const nonFieldNodes = [];
+
+    // Bolt Optimization: Separate fields from other nodes to avoid O(N*M) lookups
+    for (const node of nodes) {
+        if (node.type === 'fieldNode') {
+            fieldNodes.push(node);
+        } else {
+            nonFieldNodes.push(node);
+        }
+    }
+
     const nodeToFieldMap = new Map();  // Maps nodeId -> fieldNodeId
     const unlockedByField = new Set(); // Selected node IDs
     const fieldSettings = new Map();   // Maps fieldId -> { randomizeOrder }
@@ -263,19 +274,20 @@ const processFields = (nodes) => {
             height: field.height || field.style?.height || 300
         };
 
-        // Find child nodes inside this field
-        const childNodes = nodes.filter(node => {
-            if (node.id === field.id || node.type === 'fieldNode') return false;
+        const childNodes = [];
+
+        // Bolt Optimization: Find child nodes inside this field by iterating only non-field nodes
+        for (const node of nonFieldNodes) {
             const nodeX = node.position?.x || 0;
             const nodeY = node.position?.y || 0;
-            return (
+            if (
                 nodeX >= fieldBounds.x && nodeX < fieldBounds.x + fieldBounds.width &&
                 nodeY >= fieldBounds.y && nodeY < fieldBounds.y + fieldBounds.height
-            );
-        });
-
-        // Map children to their field
-        childNodes.forEach(node => nodeToFieldMap.set(node.id, field.id));
+            ) {
+                childNodes.push(node);
+                nodeToFieldMap.set(node.id, field.id);
+            }
+        }
 
         if (childNodes.length === 0) return;
 
