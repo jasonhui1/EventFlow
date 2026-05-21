@@ -53,9 +53,11 @@ export const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
  * Get parent nodes (nodes that connect TO a specific node)
  */
 export const getParentNodes = (nodeId, nodes, edges) => {
+    // Optimization: Create a map for O(1) node lookup instead of O(N) array.find in a loop
+    const nodesMap = new Map(nodes.map(n => [n.id, n]));
     const parentEdges = edges.filter((edge) => edge.target === nodeId);
     return parentEdges.map((edge) => {
-        const parentNode = nodes.find((n) => n.id === edge.source);
+        const parentNode = nodesMap.get(edge.source);
         return parentNode ? { node: parentNode, edgeId: edge.id, sourceHandle: edge.sourceHandle } : null;
     }).filter(Boolean);
 };
@@ -416,9 +418,10 @@ const applyInputOverrides = (nodes, inputOverrides) => {
  * Queue target nodes from edges
  */
 const followEdges = (edges, nodes, queue, visitedEdgeIds) => {
+    const nodesMap = new Map(nodes.map(n => [n.id, n]));
     edges.forEach(edge => {
         visitedEdgeIds.add(edge.id);
-        const targetNode = nodes.find(n => n.id === edge.target);
+        const targetNode = nodesMap.get(edge.target);
         if (targetNode) queue.push(targetNode);
     });
 };

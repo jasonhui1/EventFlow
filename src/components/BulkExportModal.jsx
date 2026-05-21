@@ -172,11 +172,13 @@ const BulkExportModal = ({ onClose }) => {
                             </div>
 
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                {filteredEvents.map((event) => {
-                                    const startNode = event.nodes?.find(n => n.type === 'startNode');
-                                    const inputs = startNode?.data?.inputs || [];
-                                    const selection = selections.find(s => s.eventId === event.id);
-                                    const isSelected = !!selection;
+                                {(() => {
+                                    const selectionsMap = new Map(selections.map(s => [s.eventId, s]));
+                                    return filteredEvents.map((event) => {
+                                        const startNode = event.nodes?.find(n => n.type === 'startNode');
+                                        const inputs = startNode?.data?.inputs || [];
+                                        const selection = selectionsMap.get(event.id);
+                                        const isSelected = !!selection;
                                     const isExpanded = expandedEventId === event.id;
 
                                     return (

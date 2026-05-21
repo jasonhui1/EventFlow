@@ -174,8 +174,11 @@ const Sidebar = () => {
     const eventsByFolder = {}; // { folderId: [events] }
     const rootEvents = [];
 
+    // Precompute a Set of valid folder IDs for O(1) lookup
+    const validFolderIds = new Set(folders.map(f => f.id));
+
     filteredEvents.forEach(event => {
-        if (event.folderId && folders.find(f => f.id === event.folderId)) {
+        if (event.folderId && validFolderIds.has(event.folderId)) {
             if (!eventsByFolder[event.folderId]) {
                 eventsByFolder[event.folderId] = [];
             }

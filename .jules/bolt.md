@@ -1,0 +1,3 @@
+## 2026-05-21 - [O(1) Map Precomputation]
+**Learning:** O(N*M) lookups inside iterations (e.g., `.map` with `.find` or nested iterations finding elements by ID) degrade performance significantly on larger lists. In `simulationUtils.js`, `BulkExportModal.jsx`, and `Sidebar.jsx`, `.find` queries were executed per node/edge, which became a bottleneck when scaling events.
+**Action:** When filtering or mapping over large arrays where a lookup matches an ID, precompute an O(1) Map or Set. If done in JSX where state is bound to the render cycle, safely scope the precomputation inside an Immediately Invoked Function Expression (IIFE).
