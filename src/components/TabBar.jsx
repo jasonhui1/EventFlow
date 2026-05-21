@@ -56,23 +56,11 @@ function TabBar() {
                     >
                         <span className="tab-icon">📋</span>
                         <span className="tab-name">{getEventName(tab.eventId)}</span>
-                        <button
-                            className="tab-close"
-                            onClick={(e) => handleCloseClick(e, tab.eventId)}
-                            title="Close tab"
-                        >
-                            ×
-                        </button>
+                        <button className="tab-close" onClick={(e) => handleCloseClick(e, tab.eventId)} title="Close tab" aria-label="Close tab">×</button>
                     </div>
                 ))}
             </div>
-            <button
-                className="tab-new"
-                onClick={handleNewTab}
-                title="New tab"
-            >
-                +
-            </button>
+            <button className="tab-new" onClick={handleNewTab} title="New tab" aria-label="New tab">+</button>
         </div>
     );
 }
