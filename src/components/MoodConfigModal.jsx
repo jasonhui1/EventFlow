@@ -56,7 +56,7 @@ const MoodConfigModal = ({ onClose }) => {
             >
                 <div className="modal-header">
                     <h3 className="modal-title">😊 Mood Expression Configuration</h3>
-                    <button className="modal-close" onClick={onClose}>×</button>
+                    <button aria-label="Close modal" className="modal-close" onClick={onClose}>×</button>
                 </div>
 
                 <div className="modal-body" style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
