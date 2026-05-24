@@ -211,6 +211,7 @@ const PropertiesPanel = () => {
                         {selectedFolder ? '📁 Folder Properties' : '📋 Event Properties'}
                     </h3>}
                     <button
+                        aria-label={isCollapsed ? 'Expand properties' : 'Collapse properties'}
                         className="sidebar-collapse-btn"
                         onClick={() => setIsCollapsed(!isCollapsed)}
                         title={isCollapsed ? 'Expand panel' : 'Collapse panel'}
@@ -339,6 +340,7 @@ const PropertiesPanel = () => {
                     </h3>
                 )}
                 <button
+                    aria-label={isCollapsed ? 'Expand properties' : 'Collapse properties'}
                     className="sidebar-collapse-btn"
                     onClick={() => setIsCollapsed(!isCollapsed)}
                     title={isCollapsed ? 'Expand panel' : 'Collapse panel'}
