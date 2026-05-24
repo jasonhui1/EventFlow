@@ -50,7 +50,7 @@ const PromptPreview = ({ nodeId, onClose }) => {
             <div className="modal" onClick={(e) => e.stopPropagation()} style={{ minWidth: '500px' }}>
                 <div className="modal-header">
                     <h3 className="modal-title">📝 Prompt Preview</h3>
-                    <button className="modal-close" onClick={onClose}>×</button>
+                    <button className="modal-close" onClick={onClose} aria-label="Close">×</button>
                 </div>
 
                 <div className="modal-body" style={{ maxHeight: '60vh', overflow: 'auto' }}>
