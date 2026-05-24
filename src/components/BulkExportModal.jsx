@@ -138,7 +138,7 @@ const BulkExportModal = ({ onClose }) => {
             <div className="modal" onClick={(e) => e.stopPropagation()} style={{ minWidth: '600px', maxWidth: '800px', height: '80vh', display: 'flex', flexDirection: 'column' }}>
                 <div className="modal-header">
                     <h3 className="modal-title">📤 Bulk Prompt Generation</h3>
-                    <button className="modal-close" onClick={onClose}>×</button>
+                    <button aria-label="Close modal" className="modal-close" onClick={onClose}>×</button>
                 </div>
 
                 <div className="modal-body" style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
@@ -146,6 +146,7 @@ const BulkExportModal = ({ onClose }) => {
                         <>
                             <div style={{ marginBottom: '16px' }}>
                                 <input
+                                    aria-label="Search events"
                                     type="text"
                                     placeholder="Search events..."
                                     value={searchTerm}

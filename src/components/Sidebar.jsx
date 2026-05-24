@@ -456,6 +456,7 @@ const Sidebar = () => {
                     </>
                 )}
                 <button
+                    aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
                     className="sidebar-collapse-btn"
                     onClick={() => setIsCollapsed(!isCollapsed)}
                     title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
@@ -640,6 +641,7 @@ const Sidebar = () => {
                             <div className="sidebar-search">
                                 <span className="sidebar-search-icon">🔍</span>
                                 <input
+                                    aria-label="Search events"
                                     type="text"
                                     className="sidebar-search-input"
                                     placeholder="Search events..."
