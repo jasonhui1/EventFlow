@@ -297,6 +297,7 @@ const Sidebar = () => {
                                     fontSize: '12px',
                                 }}
                                 title="Add Event"
+                                aria-label={`Add Event to ${folder.name}`}
                             >
                                 +📌
                             </button>
@@ -314,6 +315,7 @@ const Sidebar = () => {
                                     fontSize: '12px',
                                 }}
                                 title="Add Subfolder"
+                                aria-label={`Add Subfolder to ${folder.name}`}
                             >
                                 +📁
                             </button>
@@ -330,6 +332,7 @@ const Sidebar = () => {
                                     fontSize: '12px',
                                 }}
                                 title="Rename"
+                                aria-label={`Rename ${folder.name}`}
                             >
                                 ✎
                             </button>
@@ -346,6 +349,7 @@ const Sidebar = () => {
                                     fontSize: '12px',
                                 }}
                                 title="Edit Tags"
+                                aria-label={`Edit Tags for ${folder.name}`}
                             >
                                 ⚙️
                             </button>
@@ -362,6 +366,7 @@ const Sidebar = () => {
                                     fontSize: '12px',
                                 }}
                                 title="Delete"
+                                aria-label={`Delete ${folder.name}`}
                             >
                                 ✕
                             </button>
@@ -395,7 +400,8 @@ const Sidebar = () => {
                                             duplicateEvent(event.id);
                                         }}
                                         title="Duplicate Event"
-                                    >
+                                                        aria-label={`Duplicate ${event.name}`}
+                                                    >
                                         ❐
                                     </button>
                                     {events.length > 1 && (
@@ -406,7 +412,8 @@ const Sidebar = () => {
                                                 handleDeleteEvent(event.id, event.name);
                                             }}
                                             title="Delete Event"
-                                        >
+                                                            aria-label={`Delete ${event.name}`}
+                                                        >
                                             ✕
                                         </button>
                                     )}
@@ -688,6 +695,7 @@ const Sidebar = () => {
                                                             duplicateEvent(event.id);
                                                         }}
                                                         title="Duplicate Event"
+                                                        aria-label={`Duplicate ${event.name}`}
                                                     >
                                                         ❐
                                                     </button>
@@ -699,6 +707,7 @@ const Sidebar = () => {
                                                                 handleDeleteEvent(event.id, event.name);
                                                             }}
                                                             title="Delete Event"
+                                                            aria-label={`Delete ${event.name}`}
                                                         >
                                                             ✕
                                                         </button>
