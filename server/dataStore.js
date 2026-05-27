@@ -12,6 +12,7 @@ const DATA_PATH = path.join(__dirname, '..', 'data', 'eventflow-data.json');
 
 let cache = null;
 let lastModified = 0;
+let eventsByFolderCache = null;
 
 /**
  * Read the JSON file and return parsed data.
@@ -29,6 +30,7 @@ function readData() {
         const raw = fs.readFileSync(DATA_PATH, 'utf-8');
         cache = JSON.parse(raw);
         lastModified = mtime;
+        eventsByFolderCache = null; // Invalidate cache
         return cache;
     } catch (err) {
         console.error('[DataStore] Failed to read data file:', err.message);
@@ -49,6 +51,7 @@ function writeData(data) {
         fs.writeFileSync(DATA_PATH, JSON.stringify(data, null, 2), 'utf-8');
         cache = data;
         lastModified = fs.statSync(DATA_PATH).mtimeMs;
+        eventsByFolderCache = null; // Invalidate cache
         return true;
     } catch (err) {
         console.error('[DataStore] Failed to write data file:', err.message);
@@ -85,10 +88,23 @@ export function getFolderById(id) {
  */
 export function getEventsByFolder(folderId) {
     const events = getEvents();
-    if (folderId === null || folderId === 'root') {
-        return events.filter(e => !e.folderId);
+
+    if (!eventsByFolderCache) {
+        eventsByFolderCache = new Map();
+        eventsByFolderCache.set(null, []);
+        for (const event of events) {
+            const fId = event.folderId || null;
+            if (!eventsByFolderCache.has(fId)) {
+                eventsByFolderCache.set(fId, []);
+            }
+            eventsByFolderCache.get(fId).push(event);
+        }
     }
-    return events.filter(e => e.folderId === folderId);
+
+    if (folderId === null || folderId === 'root') {
+        return eventsByFolderCache.get(null) || [];
+    }
+    return eventsByFolderCache.get(folderId) || [];
 }
 
 /**

@@ -1,0 +1,3 @@
+## 2024-05-24 - Playlist Generator Optimization
+**Learning:** In `src/utils/playlistGenerator.js`, `getInheritedFolderTags` recursively finds parent folders using an O(N) `folders.find()` on an array, causing O(N*M) lookups. By creating a temporary `Map` lookup and attaching it temporarily to the `folders` array or simply caching it inside `generatePlaylist`, performance increases drastically. But wait, `folders._byId` was already done!
+**Action:** Let's implement the O(1) Map lookup optimization for `server/dataStore.js` `getEventsByFolder` which is a backend O(N) array filter that could be queried thousands of times under load.
