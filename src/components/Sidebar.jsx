@@ -297,7 +297,7 @@ const Sidebar = () => {
                                     fontSize: '12px',
                                 }}
                                 title="Add Event"
-                            >
+                    aria-label="Add Event">
                                 +📌
                             </button>
                             <button
@@ -314,7 +314,7 @@ const Sidebar = () => {
                                     fontSize: '12px',
                                 }}
                                 title="Add Subfolder"
-                            >
+                    aria-label="Add Subfolder">
                                 +📁
                             </button>
                             <button
@@ -330,7 +330,7 @@ const Sidebar = () => {
                                     fontSize: '12px',
                                 }}
                                 title="Rename"
-                            >
+                    aria-label="Rename">
                                 ✎
                             </button>
                             <button
@@ -346,7 +346,7 @@ const Sidebar = () => {
                                     fontSize: '12px',
                                 }}
                                 title="Edit Tags"
-                            >
+                    aria-label="Edit Tags">
                                 ⚙️
                             </button>
                             <button
@@ -362,7 +362,7 @@ const Sidebar = () => {
                                     fontSize: '12px',
                                 }}
                                 title="Delete"
-                            >
+                    aria-label="Delete">
                                 ✕
                             </button>
                         </div>
@@ -395,7 +395,7 @@ const Sidebar = () => {
                                             duplicateEvent(event.id);
                                         }}
                                         title="Duplicate Event"
-                                    >
+                    aria-label="Duplicate Event">
                                         ❐
                                     </button>
                                     {events.length > 1 && (
@@ -406,7 +406,7 @@ const Sidebar = () => {
                                                 handleDeleteEvent(event.id, event.name);
                                             }}
                                             title="Delete Event"
-                                        >
+                    aria-label="Delete Event">
                                             ✕
                                         </button>
                                     )}
@@ -445,6 +445,7 @@ const Sidebar = () => {
                     onMouseDown={handleDragStart}
                     className={`sidebar-resize-handle ${isDragging ? 'dragging' : ''}`}
                     title="Drag to resize"
+                    aria-label="Drag to resize"
                 />
             )}
             <div className="sidebar-header">
@@ -459,7 +460,7 @@ const Sidebar = () => {
                     className="sidebar-collapse-btn"
                     onClick={() => setIsCollapsed(!isCollapsed)}
                     title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-                >
+                    aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
                     {isCollapsed ? '»' : '«'}
                 </button>
             </div>
@@ -473,7 +474,7 @@ const Sidebar = () => {
                     className={`sidebar-tab ${activeTab === 'nodes' ? 'active' : ''}`}
                     onClick={() => { setActiveTab('nodes'); if (isCollapsed) setIsCollapsed(false); }}
                     title="Node Palette"
-                >
+                    aria-label="Node Palette">
                     <span className="tab-icon">🧩</span>
                     {!isCollapsed && <span className="tab-label">Nodes</span>}
                 </button>
@@ -481,7 +482,7 @@ const Sidebar = () => {
                     className={`sidebar-tab ${activeTab === 'library' ? 'active' : ''}`}
                     onClick={() => { setActiveTab('library'); if (isCollapsed) setIsCollapsed(false); }}
                     title="Event Library"
-                >
+                    aria-label="Event Library">
                     <span className="tab-icon">📚</span>
                     {!isCollapsed && <span className="tab-label">Library</span>}
                 </button>
@@ -489,7 +490,7 @@ const Sidebar = () => {
                     className={`sidebar-tab ${activeTab === 'tips' ? 'active' : ''}`}
                     onClick={() => { setActiveTab('tips'); if (isCollapsed) setIsCollapsed(false); }}
                     title="Quick Tips"
-                >
+                    aria-label="Quick Tips">
                     <span className="tab-icon">💡</span>
                     {!isCollapsed && <span className="tab-label">Tips</span>}
                 </button>
@@ -688,7 +689,7 @@ const Sidebar = () => {
                                                             duplicateEvent(event.id);
                                                         }}
                                                         title="Duplicate Event"
-                                                    >
+                    aria-label="Duplicate Event">
                                                         ❐
                                                     </button>
                                                     {events.length > 1 && (
@@ -699,7 +700,7 @@ const Sidebar = () => {
                                                                 handleDeleteEvent(event.id, event.name);
                                                             }}
                                                             title="Delete Event"
-                                                        >
+                    aria-label="Delete Event">
                                                             ✕
                                                         </button>
                                                     )}

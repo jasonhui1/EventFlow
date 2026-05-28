@@ -215,7 +215,8 @@ const IfNode = ({ id, data, selected }) => {
                     height: '10px',
                 }}
                 title="True"
-            />
+                    aria-label="True"
+                />
             <Handle
                 type="source"
                 position={Position.Right}
@@ -227,7 +228,8 @@ const IfNode = ({ id, data, selected }) => {
                     height: '10px',
                 }}
                 title="False"
-            />
+                    aria-label="False"
+                />
         </div>
     );
 };
