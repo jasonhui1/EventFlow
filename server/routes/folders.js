@@ -11,13 +11,24 @@ const router = Router();
  */
 function buildFolderTree(folders, allEvents) {
     const folderMap = new Map();
+    const eventCounts = new Map();
+    let rootEventCount = 0;
+
+    // Single pass to count events per folder
+    allEvents.forEach(e => {
+        if (e.folderId) {
+            eventCounts.set(e.folderId, (eventCounts.get(e.folderId) || 0) + 1);
+        } else {
+            rootEventCount++;
+        }
+    });
 
     // Initialize all folders with their events
     folders.forEach(f => {
         folderMap.set(f.id, {
             ...f,
             children: [],
-            eventCount: allEvents.filter(e => e.folderId === f.id).length,
+            eventCount: eventCounts.get(f.id) || 0,
         });
     });
 
@@ -31,9 +42,6 @@ function buildFolderTree(folders, allEvents) {
             roots.push(node);
         }
     });
-
-    // Count root-level (unfoldered) events
-    const rootEventCount = allEvents.filter(e => !e.folderId).length;
 
     return { roots, rootEventCount };
 }
