@@ -311,7 +311,7 @@ const EventNode = ({ id, data, selected }) => {
                                             opacity: moodDisabled ? 0.6 : 1,
                                         }}
                                         title={moodDisabled ? 'Enable mood effect' : 'Disable mood effect'}
-                                    >
+                    aria-label={moodDisabled ? 'Enable mood effect' : 'Disable mood effect'}>
                                         {moodDisabled ? '🚫' : '😊'}
                                     </button>
                                     <span style={{

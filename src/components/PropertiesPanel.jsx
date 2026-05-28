@@ -214,7 +214,7 @@ const PropertiesPanel = () => {
                         className="sidebar-collapse-btn"
                         onClick={() => setIsCollapsed(!isCollapsed)}
                         title={isCollapsed ? 'Expand panel' : 'Collapse panel'}
-                    >
+                    aria-label={isCollapsed ? 'Expand panel' : 'Collapse panel'}>
                         {isCollapsed ? '«' : '»'}
                     </button>
                 </div>
@@ -342,7 +342,7 @@ const PropertiesPanel = () => {
                     className="sidebar-collapse-btn"
                     onClick={() => setIsCollapsed(!isCollapsed)}
                     title={isCollapsed ? 'Expand panel' : 'Collapse panel'}
-                >
+                    aria-label={isCollapsed ? 'Expand panel' : 'Collapse panel'}>
                     {isCollapsed ? '«' : '»'}
                 </button>
             </div>
