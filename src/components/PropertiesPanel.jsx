@@ -916,7 +916,7 @@ const PropertiesPanel = () => {
                     deleteNode(id);
                     setShowDeleteModal(false);
                 }}
-                title="Delete Node"
+                title="Delete Node" aria-label="Delete Node"
                 message={`Are you sure you want to delete "${data.label}"? This cannot be undone.`}
                 type="delete"
                 confirmText="Delete"
