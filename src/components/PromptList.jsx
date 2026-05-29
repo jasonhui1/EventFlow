@@ -74,7 +74,7 @@ const PromptList = ({ prompts, onChange, placeholder, color = '#C9B5FF', minHeig
                             marginTop: '4px',
                             display: list.length > 1 ? 'block' : 'none'
                         }}
-                        title="Remove"
+                        title="Remove" aria-label="Remove"
                     >
                         ×
                     </button>
