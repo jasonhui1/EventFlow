@@ -36,6 +36,11 @@ function readData() {
     }
 }
 
+
+
+// O(1) cache for getting events by folder tied to the events array instance
+const eventsByFolderCache = new WeakMap();
+
 /**
  * Write data to the JSON file and update cache.
  */
@@ -46,7 +51,11 @@ function writeData(data) {
             fs.mkdirSync(dir, { recursive: true });
         }
 
-        fs.writeFileSync(DATA_PATH, JSON.stringify(data, null, 2), 'utf-8');
+        // Atomic write: write to temp file, then rename
+        const tempPath = DATA_PATH + '.tmp';
+        fs.writeFileSync(tempPath, JSON.stringify(data, null, 2), 'utf-8');
+        fs.renameSync(tempPath, DATA_PATH);
+
         cache = data;
         lastModified = fs.statSync(DATA_PATH).mtimeMs;
         return true;
@@ -85,10 +94,24 @@ export function getFolderById(id) {
  */
 export function getEventsByFolder(folderId) {
     const events = getEvents();
-    if (folderId === null || folderId === 'root') {
-        return events.filter(e => !e.folderId);
+
+    // Build cache if it doesn't exist for this events instance
+    if (!eventsByFolderCache.has(events)) {
+        const map = new Map();
+        map.set('root', []);
+
+        for (const e of events) {
+            const fId = e.folderId || 'root';
+            if (!map.has(fId)) {
+                map.set(fId, []);
+            }
+            map.get(fId).push(e);
+        }
+        eventsByFolderCache.set(events, map);
     }
-    return events.filter(e => e.folderId === folderId);
+
+    const queryId = (folderId === null || folderId === 'root') ? 'root' : folderId;
+    return eventsByFolderCache.get(events).get(queryId) || [];
 }
 
 /**
