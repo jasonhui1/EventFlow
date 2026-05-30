@@ -12,12 +12,24 @@ const router = Router();
 function buildFolderTree(folders, allEvents) {
     const folderMap = new Map();
 
-    // Initialize all folders with their events
+    // Pre-calculate event counts in a single pass (O(N))
+    // This avoids O(N*M) nested loops when filtering events for each folder
+    const eventCounts = new Map();
+    let rootEventCount = 0;
+    for (const e of allEvents) {
+        if (e.folderId) {
+            eventCounts.set(e.folderId, (eventCounts.get(e.folderId) || 0) + 1);
+        } else {
+            rootEventCount++;
+        }
+    }
+
+    // Initialize all folders with their pre-calculated event counts
     folders.forEach(f => {
         folderMap.set(f.id, {
             ...f,
             children: [],
-            eventCount: allEvents.filter(e => e.folderId === f.id).length,
+            eventCount: eventCounts.get(f.id) || 0,
         });
     });
 
@@ -32,8 +44,7 @@ function buildFolderTree(folders, allEvents) {
         }
     });
 
-    // Count root-level (unfoldered) events
-    const rootEventCount = allEvents.filter(e => !e.folderId).length;
+    // rootEventCount is already calculated in the first pass
 
     return { roots, rootEventCount };
 }
