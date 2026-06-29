@@ -2,11 +2,12 @@
  * Standalone utility for simulating event flows and generating prompts.
  * These functions are decoupled from Zustand/React state and can run on the server.
  */
-
+import { AppNode, AppEdge } from '../types/graph';
+import { MoodTier, MoodTag, AppEvent } from '../types/type';
 /**
  * Get the mood tier based on current mood value
  */
-export const getMoodTier = (moodValue, tiers) => {
+export const getMoodTier = (moodValue: number, tiers: MoodTier[]): MoodTier | null => { 
     if (!tiers || tiers.length === 0) return null;
 
     for (const tier of tiers) {
@@ -28,7 +29,7 @@ export const getMoodTier = (moodValue, tiers) => {
 /**
  * Select a tag from a weighted pool
  */
-export const selectWeightedTag = (tags) => {
+export const selectWeightedTag = (tags: MoodTag[]): string | null => {
     if (!tags || tags.length === 0) return null;
 
     // Build weighted pool
@@ -49,12 +50,16 @@ export const selectWeightedTag = (tags) => {
 /**
  * Clamp a value between min and max
  */
-export const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+export const clamp = (value: number, min: number, max: number): number => Math.max(min, Math.min(max, value));
 
 /**
  * Get parent nodes (nodes that connect TO a specific node)
  */
-export const getParentNodes = (nodeId, nodes, edges) => {
+export const getParentNodes = (
+    nodeId: string,
+    nodes: AppNode[],
+    edges: AppEdge[]
+): Array<{ node: AppNode; edgeId: string; sourceHandle?: string | null }> => {
     const parentEdges = edges.filter((edge) => edge.target === nodeId);
     return parentEdges.map((edge) => {
         const parentNode = nodes.find((n) => n.id === edge.source);
@@ -65,14 +70,35 @@ export const getParentNodes = (nodeId, nodes, edges) => {
 /**
  * Get all inherited prompts from parent nodes (recursive)
  */
-const processPrompt = (promptData) => {
+const processPrompt = (promptData: string | string[]): string => {
     if (Array.isArray(promptData)) {
         return promptData.filter(p => p && p.trim() !== '').join(', ');
     }
     return promptData || '';
 };
 
-export const getInheritedPrompts = (nodeId, allEvents, nodes, edges, visited = new Set(), options = {}) => {
+export interface InheritedPromptsOptions {
+  originalDisabledSources?: string[] | null;
+  selectSinglePath?: boolean;
+  randomize?: boolean;
+  allowedEdges?: Set<string> | null;
+}
+
+export interface InheritedPromptResult {
+  nodeId: string;
+  nodeLabel: string;
+  prompt: string;
+  type: string;
+}
+
+export const getInheritedPrompts = (
+    nodeId: string,
+    allEvents: AppEvent[],
+    nodes: AppNode[],
+    edges: AppEdge[],
+    visited: Set<string> = new Set<string>(),
+    options: InheritedPromptsOptions = {}
+): InheritedPromptResult[] => {
     const { originalDisabledSources = null, selectSinglePath = false, randomize = false, allowedEdges = null } = options;
 
     const node = nodes.find((n) => n.id === nodeId);
