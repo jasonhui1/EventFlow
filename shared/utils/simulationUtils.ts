@@ -3,7 +3,7 @@
  * These functions are decoupled from Zustand/React state and can run on the server.
  */
 import { AppNode, AppEdge } from '../types/graph';
-import { MoodTier, MoodTag, AppEvent } from '../types/type';
+import { MoodTier, MoodTag,MoodConfig, AppEvent } from '../types/type';
 /**
  * Get the mood tier based on current mood value
  */
@@ -180,10 +180,66 @@ export const getInheritedPrompts = (
     return inheritedPrompts;
 };
 
+export interface PromptPart {
+  label: string;
+  prompt: string;
+  type: string;
+  nodeId?: string;
+}
+
+export interface ComposedPromptResult {
+  parts: PromptPart[];
+  full: string;
+}
+
+export interface ComposedPromptOptions {
+  globalPrependPrompt?: string;
+  globalAppendPrompt?: string;
+  incomingContextParts?: PromptPart[];
+  resolveReferences?: boolean;
+  randomize?: boolean;
+  moodTag?: string | null;
+  allowedEdges?: Set<string> | null;
+}
+
+export interface NodeSimulationResult {
+  id: string;
+  originalId: string;
+  label: string;
+  type: string;
+  prompt: string;
+  parts: PromptPart[];
+  mood: number;
+  moodTag: string | null;
+  fieldId: string | null;
+}
+
+export interface SimulationContext {
+  allEvents: AppEvent[];
+  processedNodes: AppNode[];
+  currentEdges: AppEdge[];
+  currentEventFixedPrompt: string;
+  visitedEdgeIds: Set<string>;
+  incomingContextParts: PromptPart[];
+  moodConfig: MoodConfig | null;
+  currentMood: number;
+  containingFieldId: string | null;
+  globalPrependPrompt: string;
+  globalAppendPrompt: string;
+  visitedEventIds: Set<string>;
+}
+
 /**
  * Get the fully composed prompt for a node
  */
-export const getComposedPrompt = (nodeId, allEvents, nodes, edges, currentEventFixedPrompt = '', options = {}) => {
+export const getComposedPrompt = (
+    nodeId: string,
+    allEvents: AppEvent[],
+    nodes: AppNode[],
+    edges: AppEdge[],
+    currentEventFixedPrompt: string = '',
+    options: ComposedPromptOptions = {}
+): ComposedPromptResult => {
     const node = nodes.find((n) => n.id === nodeId);
     if (!node) return { parts: [], full: '' };
 
@@ -303,7 +359,13 @@ export const getComposedPrompt = (nodeId, allEvents, nodes, edges, currentEventF
  * Process all Field Nodes upfront - compute containment and weighted selection
  * @returns {{ nodeToFieldMap: Map, unlockedByField: Set, fieldSettings: Map }}
  */
-const processFields = (nodes) => {
+interface FieldProcessingResult {
+  nodeToFieldMap: Map<string, string>;
+  unlockedByField: Set<string>;
+  fieldSettings: Map<string, { randomizeOrder: boolean }>;
+}
+
+const processFields = (nodes: AppNode[]): FieldProcessingResult => {
     const fieldNodes = nodes.filter(n => n.type === 'fieldNode');
     const nodeToFieldMap = new Map();  // Maps nodeId -> fieldNodeId
     const unlockedByField = new Set(); // Selected node IDs
@@ -379,7 +441,10 @@ const processFields = (nodes) => {
 /**
  * Shuffle consecutive results from fields with randomizeOrder enabled
  */
-const shuffleFieldResults = (results, fieldSettings) => {
+const shuffleFieldResults = (
+    results: NodeSimulationResult[],
+    fieldSettings: Map<string, { randomizeOrder: boolean }>
+): void => {
     let i = 0;
     while (i < results.length) {
         const fieldId = results[i].fieldId;
@@ -405,7 +470,10 @@ const shuffleFieldResults = (results, fieldSettings) => {
 /**
  * Build a result object for an event node
  */
-const buildNodeResult = (node, context) => {
+const buildNodeResult = (
+    node: AppNode,
+    context: SimulationContext
+): { result: NodeSimulationResult; newMood: number } => {
     const { allEvents, processedNodes, currentEdges, currentEventFixedPrompt,
         visitedEdgeIds, incomingContextParts, moodConfig, currentMood, containingFieldId,
         globalPrependPrompt, globalAppendPrompt } = context;
@@ -461,7 +529,10 @@ const buildNodeResult = (node, context) => {
 /**
  * Apply input overrides to start nodes
  */
-const applyInputOverrides = (nodes, inputOverrides) => {
+const applyInputOverrides = (
+    nodes: AppNode[],
+    inputOverrides: Record<string, boolean>
+): AppNode[] => {
     if (!inputOverrides || Object.keys(inputOverrides).length === 0) return nodes;
 
     return nodes.map(node => {
@@ -484,7 +555,12 @@ const applyInputOverrides = (nodes, inputOverrides) => {
 /**
  * Queue target nodes from edges
  */
-const followEdges = (edges, nodes, queue, visitedEdgeIds) => {
+const followEdges = (
+    edges: AppEdge[],
+    nodes: AppNode[],
+    queue: AppNode[],
+    visitedEdgeIds: Set<string>
+): void => {
     edges.forEach(edge => {
         visitedEdgeIds.add(edge.id);
         const targetNode = nodes.find(n => n.id === edge.target);
@@ -495,7 +571,11 @@ const followEdges = (edges, nodes, queue, visitedEdgeIds) => {
 /**
  * Get selected edges based on node type (branch picks random, if evaluates condition, default follows all)
  */
-const getSelectedEdges = (node, outgoingEdges, processedNodes) => {
+const getSelectedEdges = (
+    node: AppNode,
+    outgoingEdges: AppEdge[],
+    processedNodes: AppNode[]
+): AppEdge[] => {
     if (node.type === 'branchNode') {
         if (outgoingEdges.length === 0) return [];
         const uniqueHandles = [...new Set(outgoingEdges.map(e => e.sourceHandle))];
@@ -524,7 +604,10 @@ const getSelectedEdges = (node, outgoingEdges, processedNodes) => {
  * Process a reference node by recursively simulating the referenced event
  * Returns { results: [], newMood } or null if reference should be skipped
  */
-const processReferenceNode = (refNode, context) => {
+const processReferenceNode = (
+    refNode: AppNode,
+    context: SimulationContext
+): { results: NodeSimulationResult[]; newMood: number } | null => {
     const { allEvents, processedNodes, currentEdges, currentEventFixedPrompt,
         visitedEdgeIds, incomingContextParts, visitedEventIds, moodConfig, currentMood,
         globalPrependPrompt, globalAppendPrompt } = context;
@@ -591,18 +674,18 @@ const processReferenceNode = (refNode, context) => {
  * Simulate an event flow and return an array of resulting prompts
  */
 export const simulateEvent = (
-    allEvents,
-    currentNodes,
-    currentEdges,
-    contextFixedPrompt = '',
-    incomingContextParts = [],
-    visitedEventIds = new Set(),
-    inputOverrides = {},
-    moodConfig = null,
-    incomingMood = null,
-    globalPrependPrompt = '',
-    globalAppendPrompt = ''
-) => {
+    allEvents: AppEvent[],
+    currentNodes: AppNode[],
+    currentEdges: AppEdge[],
+    contextFixedPrompt: string = '',
+    incomingContextParts: PromptPart[] = [],
+    visitedEventIds: Set<string> = new Set<string>(),
+    inputOverrides: Record<string, boolean> = {},
+    moodConfig: MoodConfig | null = null,
+    incomingMood: number | null = null,
+    globalPrependPrompt: string = '',
+    globalAppendPrompt: string = ''
+): NodeSimulationResult[] => {
     let currentEventFixedPrompt = contextFixedPrompt;
 
     // Phase 0: Apply input overrides to start nodes
