@@ -53,4 +53,5 @@ export interface MoodTag {
 export interface MoodConfig {
   tiers: MoodTier[];
   tags: Record<string, MoodTag[]>;
+  initialMoodRange?: { min: number; max: number }; // <-- Add this line!
 }
