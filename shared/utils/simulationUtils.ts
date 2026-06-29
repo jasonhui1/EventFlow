@@ -2,8 +2,30 @@
  * Standalone utility for simulating event flows and generating prompts.
  * These functions are decoupled from Zustand/React state and can run on the server.
  */
-import type { AppNode, AppEdge, StartNode, ReferenceNode } from '../types/graph';
+import type { AppNode, AppEdge, StartNode, ReferenceNode, EventNode, GroupNode, IfNode, CarryForwardNode, FieldNode, EndNode } from '../types/graph';
 import type { MoodTier, MoodTag, MoodConfig, AppEvent } from '../types/type';
+
+export const isEventNode = (node: AppNode): node is EventNode => node.type === 'eventNode';
+export const isCarryForwardNode = (node: AppNode): node is CarryForwardNode => node.type === 'carryForwardNode';
+export const isGroupNode = (node: AppNode): node is GroupNode => node.type === 'groupNode';
+export const isReferenceNode = (node: AppNode): node is ReferenceNode => node.type === 'referenceNode';
+export const isFieldNode = (node: AppNode): node is FieldNode => node.type === 'fieldNode';
+export const isStartNode = (node: AppNode): node is StartNode => node.type === 'startNode';
+export const isIfNode = (node: AppNode): node is IfNode => node.type === 'ifNode';
+export const isEndNode = (node: AppNode): node is EndNode => node.type === 'endNode';
+
+const getNodeLabel = (node: AppNode): string => {
+    if (node.type === 'branchNode') return node.data.label;
+    if (isEventNode(node)) return node.data.label;
+    if (isGroupNode(node)) return node.data.label;
+    if (isReferenceNode(node)) return node.data.label;
+    if (isStartNode(node)) return node.data.label;
+    if (isEndNode(node)) return node.data.label;
+    if (isIfNode(node)) return node.data.label;
+    if (isCarryForwardNode(node)) return node.data.label;
+    if (isFieldNode(node)) return node.data.label;
+    return (node as any).type;
+};
 /**
  * Get the mood tier based on current mood value
  */
@@ -32,19 +54,23 @@ export const getMoodTier = (moodValue: number, tiers: MoodTier[]): MoodTier | nu
 export const selectWeightedTag = (tags: MoodTag[]): string | null => {
     if (!tags || tags.length === 0) return null;
 
-    // Build weighted pool
-    let weightedPool: string[] = [];
-    tags.forEach(t => {
-        const weight = t.weight || 50;
-        for (let i = 0; i < weight; i++) {
-            weightedPool.push(t.tag);
+    let totalWeight = 0;
+    for (const t of tags) {
+        totalWeight += t.weight ?? 50;
+    }
+
+    if (totalWeight <= 0) return tags[0]?.tag || null;
+
+    let random = Math.random() * totalWeight;
+    for (const t of tags) {
+        const weight = t.weight ?? 50;
+        if (random < weight) {
+            return t.tag;
         }
-    });
+        random -= weight;
+    }
 
-    if (weightedPool.length === 0) return tags[0]?.tag || null;
-
-    const randomIndex = Math.floor(Math.random() * weightedPool.length);
-    return weightedPool[randomIndex];
+    return tags[tags.length - 1].tag;
 };
 
 /**
@@ -112,10 +138,9 @@ export const getInheritedPrompts = (
 
     visited.add(nodeId);
 
-    const nodeData = node.data as any;
     const disabledSources = originalDisabledSources !== null
         ? originalDisabledSources
-        : (nodeData?.disabledInheritedSources || []);
+        : (isEventNode(node) ? node.data.disabledInheritedSources || [] : []);
 
     let parentNodes = getParentNodes(nodeId, nodes, edges);
 
@@ -143,11 +168,9 @@ export const getInheritedPrompts = (
 
         if (disabledSources.includes(parentNode.id)) continue;
 
-        const parentData = parentNode.data as any;
-
         // Handle reference nodes
-        if (parentNode.type === 'referenceNode' && parentData?.referenceId) {
-            const referencedEvent = allEvents.find(e => e.id === parentData.referenceId);
+        if (isReferenceNode(parentNode) && parentNode.data.referenceId) {
+            const referencedEvent = allEvents.find(e => e.id === parentNode.data.referenceId);
             if (referencedEvent && referencedEvent.nodes && referencedEvent.edges) {
                 const refEndNode = referencedEvent.nodes.find(n => n.type === 'endNode');
                 if (refEndNode) {
@@ -167,20 +190,20 @@ export const getInheritedPrompts = (
             }
         }
 
-        if (parentData?.inheritedPrompt) {
+        if ((isEventNode(parentNode) || isCarryForwardNode(parentNode)) && parentNode.data.inheritedPrompt) {
             inheritedPrompts.push({
                 nodeId: parentNode.id,
-                nodeLabel: parentData.label || 'Unknown',
-                prompt: processPrompt(parentData.inheritedPrompt),
+                nodeLabel: parentNode.data.label || 'Unknown',
+                prompt: processPrompt(parentNode.data.inheritedPrompt),
                 type: parentNode.type,
             });
         }
 
-        if (parentNode.type === 'groupNode' && parentData?.fixedPrompt) {
+        if (isGroupNode(parentNode) && parentNode.data.fixedPrompt) {
             inheritedPrompts.push({
                 nodeId: parentNode.id,
-                nodeLabel: parentData.label || 'Group',
-                prompt: processPrompt(parentData.fixedPrompt),
+                nodeLabel: parentNode.data.label || 'Group',
+                prompt: processPrompt(parentNode.data.fixedPrompt),
                 type: 'groupNode',
             });
         }
@@ -258,9 +281,10 @@ export const getComposedPrompt = (
         allowedEdges: options.allowedEdges
     });
 
-    const nodeData = node.data as any;
-    const localPrompt = processPrompt(nodeData?.localPrompt);
-    const nodeInheritedPrompt = processPrompt(nodeData?.inheritedPrompt);
+    const localPrompt = isEventNode(node) ? processPrompt(node.data.localPrompt) : '';
+    const nodeInheritedPrompt = (isEventNode(node) || isCarryForwardNode(node)) 
+        ? processPrompt(node.data.inheritedPrompt) 
+        : '';
 
     const parts = [];
 
@@ -285,8 +309,8 @@ export const getComposedPrompt = (
     });
 
     // 5. Reference Node Inner Prompts
-    if (options.resolveReferences !== false && node.type === 'referenceNode' && nodeData?.referenceId) {
-        const refEvent = allEvents.find(e => e.id === nodeData.referenceId);
+    if (options.resolveReferences !== false && isReferenceNode(node) && node.data.referenceId) {
+        const refEvent = allEvents.find(e => e.id === node.data.referenceId);
         if (refEvent && refEvent.nodes) {
             const refEndNode = refEvent.nodes.find(n => n.type === 'endNode');
             if (refEndNode) {
@@ -325,25 +349,27 @@ export const getComposedPrompt = (
     }
 
     // 8. Shot/Perspective
-    if (nodeData?.usePerspective) {
-        parts.push({ label: 'Perspective', prompt: 'perspective', type: 'shot' });
-    }
+    if (isEventNode(node)) {
+        const { usePerspective, cameraAbove, cameraBelow, cameraSide } = node.data;
+        if (usePerspective) {
+            parts.push({ label: 'Perspective', prompt: 'perspective', type: 'shot' });
+        }
 
-    if (nodeData?.cameraAbove && !nodeData?.cameraBelow) {
-        parts.push({ label: 'Camera Above', prompt: '<from above$>', type: 'shot' });
-    }
+        if (cameraAbove && !cameraBelow) {
+            parts.push({ label: 'Camera Above', prompt: '<from above$>', type: 'shot' });
+        }
 
-    if (nodeData?.cameraBelow && !nodeData?.cameraAbove) {
-        parts.push({ label: 'Camera Below', prompt: '<from below$>', type: 'shot' });
-    }
+        if (cameraBelow && !cameraAbove) {
+            parts.push({ label: 'Camera Below', prompt: '<from below$>', type: 'shot' });
+        }
 
-    if (nodeData?.cameraBelow && nodeData?.cameraAbove) {
-        parts.push({ label: 'Camera Above or Below', prompt: '<from above$from below$>', type: 'shot' });
-    }
+        if (cameraBelow && cameraAbove) {
+            parts.push({ label: 'Camera Above or Below', prompt: '<from above$from below$>', type: 'shot' });
+        }
 
-
-    if (nodeData?.cameraSide) {
-        parts.push({ label: 'Camera Side', prompt: '<from side$>', type: 'shot' });
+        if (cameraSide) {
+            parts.push({ label: 'Camera Side', prompt: '<from side$>', type: 'shot' });
+        }
     }
 
     // 9. Mood Expression
@@ -376,15 +402,15 @@ interface FieldProcessingResult {
 }
 
 const processFields = (nodes: AppNode[]): FieldProcessingResult => {
-    const fieldNodes = nodes.filter((n): n is any => n.type === 'fieldNode');
+    const fieldNodes = nodes.filter(isFieldNode);
     const nodeToFieldMap = new Map<string, string>();  // Maps nodeId -> fieldNodeId
     const unlockedByField = new Set<string>(); // Selected node IDs
     const fieldSettings = new Map<string, { randomizeOrder: boolean }>();   // Maps fieldId -> { randomizeOrder }
 
     fieldNodes.forEach(field => {
         const fieldBounds = {
-            x: field.position?.x || 0,
-            y: field.position?.y || 0,
+            x: field.position.x,
+            y: field.position.y,
             width: field.width || field.style?.width || 400,
             height: field.height || field.style?.height || 300
         };
@@ -392,8 +418,8 @@ const processFields = (nodes: AppNode[]): FieldProcessingResult => {
         // Find child nodes inside this field
         const childNodes = nodes.filter(node => {
             if (node.id === field.id || node.type === 'fieldNode') return false;
-            const nodeX = node.position?.x || 0;
-            const nodeY = node.position?.y || 0;
+            const nodeX = node.position.x;
+            const nodeY = node.position.y;
             return (
                 nodeX >= fieldBounds.x && nodeX < fieldBounds.x + fieldBounds.width &&
                 nodeY >= fieldBounds.y && nodeY < fieldBounds.y + fieldBounds.height
@@ -406,43 +432,55 @@ const processFields = (nodes: AppNode[]): FieldProcessingResult => {
         if (childNodes.length === 0) return;
 
         // Store field settings
-        const selectCount = field.data?.selectCount ?? 1;
-        const randomizeOrder = field.data?.randomizeOrder ?? true;
-        const childWeights = field.data?.childWeights || {};
+        const selectCount = field.data.selectCount ?? 1;
+        const randomizeOrder = field.data.randomizeOrder ?? true;
+        const childWeights = field.data.childWeights || {};
         fieldSettings.set(field.id, { randomizeOrder });
 
-        // Build weighted pool and select
-        let weightedPool: string[] = [];
-        childNodes.forEach(child => {
-            const weight = childWeights[child.id] || 50;
-            for (let i = 0; i < weight; i++) {
-                weightedPool.push(child.id);
-            }
-        });
-
-        // Select N unique children
+        // Select N unique children using dynamic cumulative weights
         const targetCount = Math.min(selectCount, childNodes.length);
+        const availableNodes = [...childNodes];
         let selectedForThisFieldCount = 0;
-        while (selectedForThisFieldCount < targetCount && weightedPool.length > 0) {
-            const idx = Math.floor(Math.random() * weightedPool.length);
-            const selectedId: string = weightedPool[idx];
 
-            // Ensure we only select nodes belonging to THIS field
-            if (nodeToFieldMap.get(selectedId) !== field.id) {
-                weightedPool = weightedPool.filter((id: string) => id !== selectedId);
+        while (selectedForThisFieldCount < targetCount && availableNodes.length > 0) {
+            let totalWeight = 0;
+            for (const n of availableNodes) {
+                totalWeight += childWeights[n.id] ?? 50;
+            }
+
+            if (totalWeight <= 0) {
+                const idx = Math.floor(Math.random() * availableNodes.length);
+                const selected = availableNodes[idx];
+                if (!unlockedByField.has(selected.id)) {
+                    unlockedByField.add(selected.id);
+                    selectedForThisFieldCount++;
+                }
+                availableNodes.splice(idx, 1);
                 continue;
             }
 
-            if (!unlockedByField.has(selectedId)) {
-                unlockedByField.add(selectedId);
-                selectedForThisFieldCount++;
+            let random = Math.random() * totalWeight;
+            let selectedIdx = -1;
+            for (let idx = 0; idx < availableNodes.length; idx++) {
+                const weight = childWeights[availableNodes[idx].id] ?? 50;
+                if (random < weight) {
+                    selectedIdx = idx;
+                    break;
+                }
+                random -= weight;
             }
 
-            // Remove all instances of this selectedId from the pool to avoid re-selection
-            weightedPool = weightedPool.filter((id: string) => id !== selectedId);
+            if (selectedIdx !== -1) {
+                const selected = availableNodes[selectedIdx];
+                if (!unlockedByField.has(selected.id)) {
+                    unlockedByField.add(selected.id);
+                    selectedForThisFieldCount++;
+                }
+                availableNodes.splice(selectedIdx, 1);
+            }
         }
 
-        console.log('[Field]', field.data?.label, '→ selected', [...unlockedByField].filter(id => nodeToFieldMap.get(id) === field.id));
+        console.log('[Field]', field.data.label, '→ selected', [...unlockedByField].filter(id => nodeToFieldMap.get(id) === field.id));
     });
 
     return { nodeToFieldMap, unlockedByField, fieldSettings };
@@ -492,9 +530,9 @@ const buildNodeResult = (
     let newMood: number = currentMood !== null ? currentMood : 0;
 
     // Apply mood change for event nodes
-    if (moodConfig && moodConfig.tiers && moodConfig.tags && node.type === 'eventNode' && !node.data?.moodDisabled) {
-        const moodMin = node.data?.moodChangeMin || 0;
-        const moodMax = node.data?.moodChangeMax || 10;
+    if (moodConfig && moodConfig.tiers && moodConfig.tags && isEventNode(node) && !node.data.moodDisabled) {
+        const moodMin = node.data.moodChangeMin || 0;
+        const moodMax = node.data.moodChangeMax || 10;
         const moodChange = moodMin === moodMax
             ? moodMin
             : Math.floor(Math.random() * (moodMax - moodMin + 1)) + moodMin;
@@ -522,9 +560,9 @@ const buildNodeResult = (
 
     return {
         result: {
-            id: `${node.id}-${Math.random().toString(36).substr(2, 9)}`,
+            id: `${node.id}-${Math.random().toString(36).substring(2, 11)}`,
             originalId: node.id,
-            label: node.data?.label || node.type,
+            label: getNodeLabel(node),
             type: node.type,
             prompt: full,
             parts: finalParts,
@@ -593,10 +631,10 @@ const getSelectedEdges = (
         return outgoingEdges.filter(e => e.sourceHandle === randomHandle);
     }
 
-    if (node.type === 'ifNode') {
-        const startNode = processedNodes.find(n => n.type === 'startNode');
-        const startInputs = startNode?.data?.inputs || [];
-        const conditionInputIds = node.data?.conditionInputIds || [];
+    if (isIfNode(node)) {
+        const startNode = processedNodes.find(isStartNode);
+        const startInputs = startNode?.data.inputs || [];
+        const conditionInputIds = node.data.conditionInputIds || [];
 
         const allEnabled = conditionInputIds.length > 0 && conditionInputIds.every(inputId => {
             const input = startInputs.find(i => i.id === inputId);
@@ -622,7 +660,7 @@ const processReferenceNode = (
         visitedEdgeIds, incomingContextParts, visitedEventIds, moodConfig, currentMood,
         globalPrependPrompt, globalAppendPrompt } = context;
 
-    if (!refNode.data?.referenceId || visitedEventIds.has(refNode.data.referenceId)) {
+    if (!refNode.data.referenceId || visitedEventIds.has(refNode.data.referenceId)) {
         return null; // Skip if no reference or already visited
     }
 
@@ -642,7 +680,7 @@ const processReferenceNode = (
     const newContextParts = [...incomingContextParts, ...refPromptParts];
 
     // Inject carry-forward text from the reference node
-    if (refNode.data?.carryForwardText?.trim()) {
+    if (refNode.data.carryForwardText?.trim()) {
         newContextParts.push({
             label: `Carry Forward (→ ${refNode.data.referenceName || 'Ref'})`,
             prompt: refNode.data.carryForwardText.trim(),
@@ -654,12 +692,12 @@ const processReferenceNode = (
     const newVisitedEvents = new Set(visitedEventIds).add(refNode.data.referenceId);
 
     // Deep clone and apply input overrides
-    const nodesToSimulate  = refEvent.nodes.map(n => ({ ...n, data: { ...n.data } })) as AppNode[];
+    const nodesToSimulate = refEvent.nodes.map(n => ({ ...n, data: { ...n.data } })) as AppNode[];
     
-    const overrides = refNode.data?.inputOverrides || {};
-    const startNode = nodesToSimulate.find(n => n.type === 'startNode')  as StartNode;
+    const overrides = refNode.data.inputOverrides || {};
+    const startNode = nodesToSimulate.find(isStartNode);
 
-    if (startNode?.data?.inputs) {
+    if (startNode?.data.inputs) {
         startNode.data.inputs = startNode.data.inputs.map(input => ({
             ...input,
             enabled: overrides.hasOwnProperty(input.id) ? overrides[input.id] : input.enabled
