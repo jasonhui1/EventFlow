@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import useStore from '../store/useStore';
-import { generatePlaylist } from '../utils/playlistGenerator';
+import { generatePlaylist } from '@shared/utils/playlistGenerator';
 
 const EventSimulationModal = ({ onClose }) => {
     const nodes = useStore((state) => state.nodes);

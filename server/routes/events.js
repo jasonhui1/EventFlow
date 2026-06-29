@@ -2,10 +2,8 @@
  * Event routes — listing, detail, and simulation.
  */
 import { Router } from 'express';
-import { getEvents, getEventById, getMoodConfig, getGlobalPrependPrompt, getGlobalAppendPrompt } from '../dataStore.js';
-import { simulateEvent, getComposedPrompt } from '../../src/utils/simulationUtils.js';
-import { generateCostumePrompt } from '../../src/utils/promptEngine.js';
-import { getAllClothes } from '../clothesStore.js';
+import { getEvents, getEventById } from '../dataStore.js';
+import * as simulationService from '../services/simulationService.js';
 
 const router = Router();
 
@@ -62,109 +60,35 @@ router.get('/:id', (req, res) => {
  * Useful for previewing without running simulation randomness.
  */
 router.get('/:id/prompts', (req, res) => {
-    const event = getEventById(req.params.id);
-    if (!event) {
-        return res.status(404).json({ error: 'Event not found' });
+    try {
+        const result = simulationService.getEventPrompts(req.params.id);
+        res.json(result);
+    } catch (error) {
+        if (error.message.includes('not found')) {
+            return res.status(404).json({ error: error.message });
+        }
+        console.error('Prompt preview error:', error);
+        res.status(500).json({ error: 'Failed to get prompt previews' });
     }
-
-    const allEvents = getEvents();
-    const globalPrepend = getGlobalPrependPrompt();
-    const globalAppend = getGlobalAppendPrompt();
-
-    const promptNodes = (event.nodes || [])
-        .filter(n => n.type === 'eventNode' || n.type === 'groupNode')
-        .map(node => {
-            const composed = getComposedPrompt(
-                node.id,
-                allEvents,
-                event.nodes,
-                event.edges || [],
-                event.fixedPrompt || '',
-                { randomize: false }
-            );
-
-            // Manually add global prompts to the preview parts
-            const parts = [];
-            if (globalPrepend) {
-                parts.push({ label: 'Global Prepend', prompt: globalPrepend, type: 'global' });
-            }
-            parts.push(...composed.parts);
-            if (globalAppend) {
-                parts.push({ label: 'Global Append', prompt: globalAppend, type: 'global' });
-            }
-
-            return {
-                nodeId: node.id,
-                label: node.data?.label || node.type,
-                type: node.type,
-                prompt: parts.map(p => p.prompt).filter(Boolean).join(', '),
-                parts: parts,
-            };
-        });
-
-    res.json({ eventId: event.id, eventName: event.name, prompts: promptNodes });
 });
 
 /**
  * POST /api/events/:id/simulate
  * Run the simulation engine on a specific event.
- * Body: { inputOverrides?, count? }
+ * Body: { inputOverrides?, count?, initialMood? }
  */
 router.post('/:id/simulate', (req, res) => {
-    const event = getEventById(req.params.id);
-    if (!event) {
-        return res.status(404).json({ error: 'Event not found' });
+    try {
+        const { inputOverrides = {}, count = 1, initialMood = null } = req.body || {};
+        const result = simulationService.runSimulation(req.params.id, { inputOverrides, count, initialMood });
+        res.json(result);
+    } catch (error) {
+        if (error.message.includes('not found')) {
+            return res.status(404).json({ error: error.message });
+        }
+        console.error('Simulation error:', error);
+        res.status(500).json({ error: 'Failed to run simulation' });
     }
-
-    const { inputOverrides = {}, count = 1 } = req.body || {};
-    const allEvents = getEvents();
-    const moodConfig = getMoodConfig();
-
-    const clothesDB = getAllClothes();
-    
-    // Inject costume string if applicable
-    let fixedPrompt = event.fixedPrompt || '';
-    const costumePromptStr = generateCostumePrompt(event.costumes || [], clothesDB);
-    if (costumePromptStr) {
-        fixedPrompt = [fixedPrompt, costumePromptStr].filter(Boolean).join(', ');
-    }
-
-    const simulations = [];
-    for (let i = 0; i < Math.min(count, 100); i++) {
-        const results = simulateEvent(
-            allEvents,
-            event.nodes || [],
-            event.edges || [],
-            fixedPrompt,
-            [],              // incomingContextParts
-            new Set(),       // visitedEventIds
-            inputOverrides,
-            moodConfig,
-            null,            // incomingMood
-            getGlobalPrependPrompt(),
-            getGlobalAppendPrompt()
-        );
-
-        simulations.push({
-            results: results.map(r => ({
-                id: r.id,
-                originalId: r.originalId,
-                label: r.label,
-                type: r.type,
-                prompt: r.prompt,
-                parts: r.parts,
-                mood: r.mood,
-                moodTag: r.moodTag,
-            })),
-        });
-    }
-
-    res.json({
-        eventId: event.id,
-        eventName: event.name,
-        count: simulations.length,
-        simulations,
-    });
 });
 
 /**
@@ -173,48 +97,14 @@ router.post('/:id/simulate', (req, res) => {
  * Body: { selections: [{ eventId, inputOverrides? }] }
  */
 router.post('/simulate/bulk', (req, res) => {
-    // Note: this route is mounted at /api/events, so the full path is /api/events/simulate/bulk
-    // But we'll also mount it at /api/simulate/bulk in index.js
-    const { selections = [] } = req.body || {};
-    const allEvents = getEvents();
-    const moodConfig = getMoodConfig();
-
-    const results = selections.map(({ eventId, inputOverrides = {} }) => {
-        const event = allEvents.find(e => e.id === eventId);
-        if (!event) {
-            return { eventId, error: 'Event not found' };
-        }
-
-        const clothesDB = getAllClothes();
-        let fixedPrompt = event.fixedPrompt || '';
-        const costumePromptStr = generateCostumePrompt(event.costumes || [], clothesDB);
-        if (costumePromptStr) {
-            fixedPrompt = [fixedPrompt, costumePromptStr].filter(Boolean).join(', ');
-        }
-
-        const simResults = simulateEvent(
-            allEvents,
-            event.nodes || [],
-            event.edges || [],
-            fixedPrompt,
-            [],
-            new Set(),
-            inputOverrides,
-            moodConfig,
-            null,
-            getGlobalPrependPrompt(),
-            getGlobalAppendPrompt()
-        );
-
-        return {
-            eventId: event.id,
-            eventName: event.name,
-            prompts: simResults.map(r => r.prompt),
-            results: simResults,
-        };
-    });
-
-    res.json({ results });
+    try {
+        const { selections = [] } = req.body || {};
+        const result = simulationService.runBulkSimulation(selections);
+        res.json(result);
+    } catch (error) {
+        console.error('Bulk simulation error:', error);
+        res.status(500).json({ error: 'Failed to run bulk simulation' });
+    }
 });
 
 export default router;

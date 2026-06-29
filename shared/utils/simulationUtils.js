@@ -7,6 +7,8 @@
  * Get the mood tier based on current mood value
  */
 export const getMoodTier = (moodValue, tiers) => {
+    if (!tiers || tiers.length === 0) return null;
+
     for (const tier of tiers) {
         if (moodValue >= tier.min && moodValue < tier.max) {
             return tier;
@@ -170,14 +172,27 @@ export const getComposedPrompt = (nodeId, allEvents, nodes, edges, currentEventF
 
     const parts = [];
 
+    // 1. Global Prepend
+    if (options.globalPrependPrompt) {
+        parts.push({ label: 'Global Prepend', prompt: options.globalPrependPrompt, type: 'global' });
+    }
+
+    // 2. Incoming Context (from parent events)
+    if (options.incomingContextParts && options.incomingContextParts.length > 0) {
+        parts.push(...options.incomingContextParts);
+    }
+
+    // 3. Event Fixed Prompt
     if (currentEventFixedPrompt) {
         parts.push({ label: 'Event Fixed Prompt', prompt: currentEventFixedPrompt, type: 'event' });
     }
 
+    // 4. Inherited Prompts (within event)
     inheritedPrompts.forEach((item) => {
         parts.push({ label: `From: ${item.nodeLabel}`, prompt: item.prompt, type: item.type, nodeId: item.nodeId });
     });
 
+    // 5. Reference Node Inner Prompts
     if (options.resolveReferences !== false && node.type === 'referenceNode' && node.data?.referenceId) {
         const refEvent = allEvents.find(e => e.id === node.data.referenceId);
         if (refEvent && refEvent.nodes) {
@@ -207,14 +222,17 @@ export const getComposedPrompt = (nodeId, allEvents, nodes, edges, currentEventF
         }
     }
 
+    // 6. Local Prompt
     if (localPrompt) {
         parts.push({ label: 'This Event Only', prompt: localPrompt, type: 'local' });
     }
 
+    // 7. Node Inherited Prompt (Carries Forward)
     if (nodeInheritedPrompt) {
         parts.push({ label: 'Carries Forward', prompt: nodeInheritedPrompt, type: 'inherited' });
     }
 
+    // 8. Shot/Perspective
     if (node.data?.usePerspective) {
         parts.push({ label: 'Perspective', prompt: 'perspective', type: 'shot' });
     }
@@ -234,6 +252,16 @@ export const getComposedPrompt = (nodeId, allEvents, nodes, edges, currentEventF
 
     if (node.data?.cameraSide) {
         parts.push({ label: 'Camera Side', prompt: '<from side$>', type: 'shot' });
+    }
+
+    // 9. Mood Expression
+    if (options.moodTag) {
+        parts.push({ label: 'Mood Expression', prompt: options.moodTag, type: 'mood' });
+    }
+
+    // 10. Global Append
+    if (options.globalAppendPrompt) {
+        parts.push({ label: 'Global Append', prompt: options.globalAppendPrompt, type: 'global' });
     }
 
     const full = parts.map((p) => p.prompt).filter(Boolean).join(', ');
@@ -296,14 +324,23 @@ const processFields = (nodes) => {
 
         // Select N unique children
         const targetCount = Math.min(selectCount, childNodes.length);
-        while (unlockedByField.size < targetCount && weightedPool.length > 0) {
+        let selectedForThisFieldCount = 0;
+        while (selectedForThisFieldCount < targetCount && weightedPool.length > 0) {
             const idx = Math.floor(Math.random() * weightedPool.length);
             const selectedId = weightedPool[idx];
-            if (!nodeToFieldMap.has(selectedId) || nodeToFieldMap.get(selectedId) !== field.id) {
+            
+            // Ensure we only select nodes belonging to THIS field
+            if (nodeToFieldMap.get(selectedId) !== field.id) {
                 weightedPool = weightedPool.filter(id => id !== selectedId);
                 continue;
             }
-            unlockedByField.add(selectedId);
+            
+            if (!unlockedByField.has(selectedId)) {
+                unlockedByField.add(selectedId);
+                selectedForThisFieldCount++;
+            }
+            
+            // Remove all instances of this selectedId from the pool to avoid re-selection
             weightedPool = weightedPool.filter(id => id !== selectedId);
         }
 
@@ -347,27 +384,11 @@ const buildNodeResult = (node, context) => {
         visitedEdgeIds, incomingContextParts, moodConfig, currentMood, containingFieldId,
         globalPrependPrompt, globalAppendPrompt } = context;
 
-    const { parts: localParts } = getComposedPrompt(
-        node.id, allEvents, processedNodes, currentEdges, currentEventFixedPrompt,
-        { 
-            allowedEdges: visitedEdgeIds, 
-            randomize: false, 
-            resolveReferences: false
-        }
-    );
-
-    const finalParts = [];
-    if (globalPrependPrompt) {
-        finalParts.push({ label: 'Global Prepend', prompt: globalPrependPrompt, type: 'global' });
-    }
-    finalParts.push(...incomingContextParts);
-    finalParts.push(...localParts);
-
     let moodTag = null;
     let newMood = currentMood;
 
     // Apply mood change for event nodes
-    if (moodConfig && node.type === 'eventNode' && !node.data?.moodDisabled) {
+    if (moodConfig && moodConfig.tiers && moodConfig.tags && node.type === 'eventNode' && !node.data?.moodDisabled) {
         const moodMin = node.data?.moodChangeMin || 0;
         const moodMax = node.data?.moodChangeMax || 10;
         const moodChange = moodMin === moodMax
@@ -376,17 +397,24 @@ const buildNodeResult = (node, context) => {
         newMood = clamp((currentMood || 0) + moodChange, -100, 100);
 
         const tier = getMoodTier(newMood, moodConfig.tiers);
-        const tierTags = moodConfig.tags[tier.id] || [];
-        moodTag = selectWeightedTag(tierTags);
-
-        if (moodTag) {
-            finalParts.push({ label: 'Mood Expression', prompt: moodTag, type: 'mood' });
+        if (tier) {
+            const tierTags = moodConfig.tags[tier.id] || [];
+            moodTag = selectWeightedTag(tierTags);
         }
     }
 
-    if (globalAppendPrompt) {
-        finalParts.push({ label: 'Global Append', prompt: globalAppendPrompt, type: 'global' });
-    }
+    const { parts: finalParts, full } = getComposedPrompt(
+        node.id, allEvents, processedNodes, currentEdges, currentEventFixedPrompt,
+        { 
+            allowedEdges: visitedEdgeIds, 
+            randomize: false, 
+            resolveReferences: false,
+            globalPrependPrompt,
+            globalAppendPrompt,
+            incomingContextParts,
+            moodTag
+        }
+    );
 
     return {
         result: {
@@ -394,7 +422,7 @@ const buildNodeResult = (node, context) => {
             originalId: node.id,
             label: node.data?.label || node.type,
             type: node.type,
-            prompt: finalParts.map(p => p.prompt).filter(Boolean).join(', '),
+            prompt: full,
             parts: finalParts,
             mood: newMood,
             moodTag,

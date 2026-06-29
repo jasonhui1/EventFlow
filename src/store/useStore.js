@@ -1,8 +1,8 @@
 import { create } from 'zustand';
 import { v4 as uuidv4 } from 'uuid';
 import { applyNodeChanges, applyEdgeChanges } from '@xyflow/react';
-import * as sim from '../utils/simulationUtils';
-import { generateCostumePrompt } from '../utils/promptEngine';
+import * as sim from '@shared/utils/simulationUtils';
+import { generateCostumePrompt } from '@shared/utils/promptEngine';
 
 // Default node templates
 const createEventNode = (position = { x: 0, y: 0 }, data = {}) => ({
