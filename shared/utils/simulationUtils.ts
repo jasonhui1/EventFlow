@@ -401,6 +401,81 @@ interface FieldProcessingResult {
     fieldSettings: Map<string, { randomizeOrder: boolean }>;
 }
 
+/**
+ * Check if a node is spatially contained within field bounds
+ */
+export const isNodeInFieldBounds = (
+    node: AppNode,
+    field: FieldNode
+): boolean => {
+    if (node.id === field.id || node.type === 'fieldNode') return false;
+    const fieldBounds = {
+        x: field.position.x,
+        y: field.position.y,
+        width: field.width || field.style?.width || 400,
+        height: field.height || field.style?.height || 300
+    };
+    const nodeX = node.position.x;
+    const nodeY = node.position.y;
+    return (
+        nodeX >= fieldBounds.x && nodeX < fieldBounds.x + fieldBounds.width &&
+        nodeY >= fieldBounds.y && nodeY < fieldBounds.y + fieldBounds.height
+    );
+};
+
+/**
+ * Select child nodes for a field based on selectCount and weights
+ */
+export const selectFieldChildNodes = (
+    childNodes: AppNode[],
+    selectCount: number,
+    childWeights: Record<string, number>,
+    unlockedByField: Set<string>
+): void => {
+    const targetCount = Math.min(selectCount, childNodes.length);
+    const availableNodes = [...childNodes];
+    let selectedForThisFieldCount = 0;
+
+    while (selectedForThisFieldCount < targetCount && availableNodes.length > 0) {
+        let totalWeight = 0;
+        for (const n of availableNodes) {
+            totalWeight += childWeights[n.id] ?? 50;
+        }
+
+        if (totalWeight <= 0) {
+            const idx = Math.floor(Math.random() * availableNodes.length);
+            const selected = availableNodes[idx];
+            if (!unlockedByField.has(selected.id)) {
+                unlockedByField.add(selected.id);
+                selectedForThisFieldCount++;
+            }
+            availableNodes.splice(idx, 1);
+            continue;
+        }
+
+        let random = Math.random() * totalWeight;
+        let selectedIdx = -1;
+        for (let idx = 0; idx < availableNodes.length; idx++) {
+            const weight = childWeights[availableNodes[idx].id] ?? 50;
+            if (random < weight) {
+                selectedIdx = idx;
+                break;
+            }
+            random -= weight;
+        }
+
+        if (selectedIdx !== -1) {
+            const selected = availableNodes[selectedIdx];
+            if (!unlockedByField.has(selected.id)) {
+                unlockedByField.add(selected.id);
+                selectedForThisFieldCount++;
+            }
+            availableNodes.splice(selectedIdx, 1);
+        }
+    }
+};
+
+
 const processFields = (nodes: AppNode[]): FieldProcessingResult => {
     const fieldNodes = nodes.filter(isFieldNode);
     const nodeToFieldMap = new Map<string, string>();  // Maps nodeId -> fieldNodeId
@@ -408,23 +483,8 @@ const processFields = (nodes: AppNode[]): FieldProcessingResult => {
     const fieldSettings = new Map<string, { randomizeOrder: boolean }>();   // Maps fieldId -> { randomizeOrder }
 
     fieldNodes.forEach(field => {
-        const fieldBounds = {
-            x: field.position.x,
-            y: field.position.y,
-            width: field.width || field.style?.width || 400,
-            height: field.height || field.style?.height || 300
-        };
-
         // Find child nodes inside this field
-        const childNodes = nodes.filter(node => {
-            if (node.id === field.id || node.type === 'fieldNode') return false;
-            const nodeX = node.position.x;
-            const nodeY = node.position.y;
-            return (
-                nodeX >= fieldBounds.x && nodeX < fieldBounds.x + fieldBounds.width &&
-                nodeY >= fieldBounds.y && nodeY < fieldBounds.y + fieldBounds.height
-            );
-        });
+        const childNodes = nodes.filter(node => isNodeInFieldBounds(node, field));
 
         // Map children to their field
         childNodes.forEach(node => nodeToFieldMap.set(node.id, field.id));
@@ -438,47 +498,7 @@ const processFields = (nodes: AppNode[]): FieldProcessingResult => {
         fieldSettings.set(field.id, { randomizeOrder });
 
         // Select N unique children using dynamic cumulative weights
-        const targetCount = Math.min(selectCount, childNodes.length);
-        const availableNodes = [...childNodes];
-        let selectedForThisFieldCount = 0;
-
-        while (selectedForThisFieldCount < targetCount && availableNodes.length > 0) {
-            let totalWeight = 0;
-            for (const n of availableNodes) {
-                totalWeight += childWeights[n.id] ?? 50;
-            }
-
-            if (totalWeight <= 0) {
-                const idx = Math.floor(Math.random() * availableNodes.length);
-                const selected = availableNodes[idx];
-                if (!unlockedByField.has(selected.id)) {
-                    unlockedByField.add(selected.id);
-                    selectedForThisFieldCount++;
-                }
-                availableNodes.splice(idx, 1);
-                continue;
-            }
-
-            let random = Math.random() * totalWeight;
-            let selectedIdx = -1;
-            for (let idx = 0; idx < availableNodes.length; idx++) {
-                const weight = childWeights[availableNodes[idx].id] ?? 50;
-                if (random < weight) {
-                    selectedIdx = idx;
-                    break;
-                }
-                random -= weight;
-            }
-
-            if (selectedIdx !== -1) {
-                const selected = availableNodes[selectedIdx];
-                if (!unlockedByField.has(selected.id)) {
-                    unlockedByField.add(selected.id);
-                    selectedForThisFieldCount++;
-                }
-                availableNodes.splice(selectedIdx, 1);
-            }
-        }
+        selectFieldChildNodes(childNodes, selectCount, childWeights, unlockedByField);
 
         console.log('[Field]', field.data.label, '→ selected', [...unlockedByField].filter(id => nodeToFieldMap.get(id) === field.id));
     });
@@ -514,6 +534,35 @@ const shuffleFieldResults = (
         }
     }
 };
+/**
+ * Calculate the mood change and clamp the resulting mood value
+ */
+export const calculateMoodChange = (
+    node: AppNode,
+    currentMood: number
+): number => {
+    if (!isEventNode(node)) return currentMood;
+    const moodMin = node.data.moodChangeMin || 0;
+    const moodMax = node.data.moodChangeMax || 10;
+    const moodChange = moodMin === moodMax
+        ? moodMin
+        : Math.floor(Math.random() * (moodMax - moodMin + 1)) + moodMin;
+    return clamp(currentMood + moodChange, -100, 100);
+};
+
+/**
+ * Get the mood tag for a given mood value
+ */
+export const getMoodTagForValue = (
+    moodValue: number,
+    moodConfig: MoodConfig
+): string | null => {
+    if (!moodConfig.tiers || !moodConfig.tags) return null;
+    const tier = getMoodTier(moodValue, moodConfig.tiers);
+    if (!tier) return null;
+    const tierTags = moodConfig.tags[tier.id] || [];
+    return selectWeightedTag(tierTags);
+};
 
 /**
  * Build a result object for an event node
@@ -529,20 +578,10 @@ const buildNodeResult = (
     let moodTag = null;
     let newMood: number = currentMood !== null ? currentMood : 0;
 
-    // Apply mood change for event nodes
-    if (moodConfig && moodConfig.tiers && moodConfig.tags && isEventNode(node) && !node.data.moodDisabled) {
-        const moodMin = node.data.moodChangeMin || 0;
-        const moodMax = node.data.moodChangeMax || 10;
-        const moodChange = moodMin === moodMax
-            ? moodMin
-            : Math.floor(Math.random() * (moodMax - moodMin + 1)) + moodMin;
-        newMood = clamp((currentMood || 0) + moodChange, -100, 100);
-
-        const tier = getMoodTier(newMood, moodConfig.tiers);
-        if (tier) {
-            const tierTags = moodConfig.tags[tier.id] || [];
-            moodTag = selectWeightedTag(tierTags);
-        }
+    const shouldApplyMood = moodConfig && moodConfig.tiers && moodConfig.tags && isEventNode(node) && !node.data.moodDisabled;
+    if (shouldApplyMood) {
+        newMood = calculateMoodChange(node, newMood);
+        moodTag = getMoodTagForValue(newMood, moodConfig);
     }
 
     const { parts: finalParts, full } = getComposedPrompt(
@@ -619,30 +658,50 @@ const followEdges = (
 /**
  * Get selected edges based on node type (branch picks random, if evaluates condition, default follows all)
  */
+/**
+ * Route branch node by selecting a random handle
+ */
+export const routeBranchNode = (
+    outgoingEdges: AppEdge[]
+): AppEdge[] => {
+    if (outgoingEdges.length === 0) return [];
+    const uniqueHandles = [...new Set(outgoingEdges.map(e => e.sourceHandle))];
+    const randomHandle = uniqueHandles[Math.floor(Math.random() * uniqueHandles.length)];
+    return outgoingEdges.filter(e => e.sourceHandle === randomHandle);
+};
+
+/**
+ * Route if node by evaluating the condition against start node inputs
+ */
+export const routeIfNode = (
+    node: IfNode,
+    outgoingEdges: AppEdge[],
+    processedNodes: AppNode[]
+): AppEdge[] => {
+    const startNode = processedNodes.find(isStartNode);
+    const startInputs = startNode?.data.inputs || [];
+    const conditionInputIds = node.data.conditionInputIds || [];
+
+    const allEnabled = conditionInputIds.length > 0 && conditionInputIds.every(inputId => {
+        const input = startInputs.find(i => i.id === inputId);
+        return input?.enabled === true;
+    });
+
+    const selectedHandle = allEnabled ? 'true_output' : 'false_output';
+    return outgoingEdges.filter(e => e.sourceHandle === selectedHandle);
+};
+
 const getSelectedEdges = (
     node: AppNode,
     outgoingEdges: AppEdge[],
     processedNodes: AppNode[]
 ): AppEdge[] => {
     if (node.type === 'branchNode') {
-        if (outgoingEdges.length === 0) return [];
-        const uniqueHandles = [...new Set(outgoingEdges.map(e => e.sourceHandle))];
-        const randomHandle = uniqueHandles[Math.floor(Math.random() * uniqueHandles.length)];
-        return outgoingEdges.filter(e => e.sourceHandle === randomHandle);
+        return routeBranchNode(outgoingEdges);
     }
 
     if (isIfNode(node)) {
-        const startNode = processedNodes.find(isStartNode);
-        const startInputs = startNode?.data.inputs || [];
-        const conditionInputIds = node.data.conditionInputIds || [];
-
-        const allEnabled = conditionInputIds.length > 0 && conditionInputIds.every(inputId => {
-            const input = startInputs.find(i => i.id === inputId);
-            return input?.enabled === true;
-        });
-
-        const selectedHandle = allEnabled ? 'true_output' : 'false_output';
-        return outgoingEdges.filter(e => e.sourceHandle === selectedHandle);
+        return routeIfNode(node, outgoingEdges, processedNodes);
     }
 
     return outgoingEdges; // Default: follow all edges
